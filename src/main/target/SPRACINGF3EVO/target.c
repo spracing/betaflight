@@ -48,7 +48,7 @@ const timerHardware_t timerHardware[USABLE_TIMER_CHANNEL_COUNT] = {
     DEF_TIM(TIM2,  CH3, PA2,  TIM_USE_MOTOR,                     0), // PWM6 [TIM2_CH3 (D1_CH1)] [TIM15_CH1  (D1_CH5)]
     DEF_TIM(TIM2,  CH1, PA0,  TIM_USE_MOTOR,                     0), // PWM7 [TIM2_CH1 (D1_CH5)]
     DEF_TIM(TIM15, CH2, PA3,  TIM_USE_MOTOR,                     0), // PWM8 [TIM2_CH4 (D1_CH7)]
-#else // SPRACINGF3EVO / SPRACINGF3MQ
+#else // SPRACINGF3EVO / SPRACINGF3MQ / SPRACINGAIRBIT
     DEF_TIM(TIM2,  CH1, PA0,  TIM_USE_MOTOR,                     0), // PWM1 [TIM2_CH1 (D1_CH5)]
     DEF_TIM(TIM2,  CH2, PA1,  TIM_USE_MOTOR,                     0), // PWM2 [TIM2_CH2 (D1_CH7)] [TIM15_CH1N (D1_CH5)]
     DEF_TIM(TIM2,  CH3, PA2,  TIM_USE_MOTOR,                     0), // PWM3 [TIM2_CH3 (D1_CH1)] [TIM15_CH1  (D1_CH5)]
