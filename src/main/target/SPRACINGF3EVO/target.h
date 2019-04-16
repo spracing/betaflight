@@ -24,6 +24,8 @@
 #define TARGET_BOARD_IDENTIFIER "ARF3"
 #elif SPRACINGF3MQ
 #define TARGET_BOARD_IDENTIFIER "SPMQ"
+#elif SPRACINGAIRBIT
+#define TARGET_BOARD_IDENTIFIER "SPAB"
 #else
 #define TARGET_BOARD_IDENTIFIER "SPEV"
 #endif
@@ -41,9 +43,16 @@
 
 #endif // SPRACINGF3MQ
 
+#ifdef SPRACINGAIRBIT
+#define BRUSHED_MOTORS
+#endif
 
 
 #define LED0_PIN                PB8
+
+#ifdef SPRACINGAIRBIT
+#define LED1_PIN                PA5
+#endif
 
 #define USE_BEEPER
 #define BEEPER_PIN              PC15
@@ -64,25 +73,36 @@
 #define USE_ACC
 #define USE_ACC_SPI_MPU6500
 
+#ifdef SPRACINGAIRBIT
+#define ACC_1_ALIGN             CW90_DEG
+#define GYRO_1_ALIGN            CW90_DEG
+#else
 #define ACC_1_ALIGN             CW180_DEG
 #define GYRO_1_ALIGN            CW180_DEG
+#endif
 
 #define USE_BARO
 #define USE_BARO_BMP280
 
+#ifdef SPRACINGAIRBIT
+#undef USE_BARO_BMP280
+#define USE_BARO_BMP388
+#endif
+
+#ifndef SPRACINGAIRBIT
 #define USE_MAG
 #define USE_MAG_AK8963
 //#define USE_MAG_HMC5883 // External
 
 #define MAG_AK8963_ALIGN CW270_DEG_FLIP
-
-//#define USE_RANGEFINDER
-//#define USE_RANGEFINDER_HCSR04
+#endif
 
 #define USE_VCP
 #define USE_UART1
 #define USE_UART2
 #define USE_UART3
+
+#ifndef SPRACINGAIRBIT
 // Disabled to make the target fit into flash
 //#define USE_SOFTSERIAL1
 //#define USE_SOFTSERIAL2
@@ -92,8 +112,13 @@
 
 #define SOFTSERIAL2_RX_PIN      PB0 // PWM 7
 #define SOFTSERIAL2_TX_PIN      PB1 // PWM 8
+#endif
 
+#if defined(USE_SOFTSERIAL1) && defined(USE_SOFTSERIAL2)
+#define SERIAL_PORT_COUNT       6
+#else
 #define SERIAL_PORT_COUNT       4
+#endif
 
 #define USE_ESCSERIAL
 #define ESCSERIAL_TIMER_TX_PIN  PA15  // (HARDARE=0,PPM)
@@ -106,6 +131,13 @@
 
 #define UART3_TX_PIN            PB10 // PB10 (AF7)
 #define UART3_RX_PIN            PB11 // PB11 (AF7)
+
+#ifdef SPRACINGAIRBIT
+#define USE_RANGEFINDER
+#define USE_RANGEFINDER_HCSR04
+#define RANGEFINDER_HCSR04_ECHO_PIN          UART3_TX_PIN
+#define RANGEFINDER_HCSR04_TRIGGER_PIN       UART3_RX_PIN
+#endif
 
 #define USE_I2C
 #define USE_I2C_DEVICE_1
@@ -142,28 +174,59 @@
 
 #define USE_ADC
 #define ADC_INSTANCE            ADC2
-#define RSSI_ADC_PIN            PB2
 #ifdef AIORACERF3
+#define RSSI_ADC_PIN            PB2
 #define VBAT_ADC_PIN            PA5
 #define CURRENT_METER_ADC_PIN   PA4
 #define DEFAULT_CURRENT_METER_SOURCE CURRENT_METER_ADC
+#elif SPRACINGAIRBIT
+// No RSSI                      (PB2 Used for BARO INT)
+#define VBAT_ADC_PIN            PA4
+// No current sensor            (PA5 Used for LED)
+#define DEFAULT_CURRENT_METER_SOURCE CURRENT_METER_VIRTUAL
 #else
+#define RSSI_ADC_PIN            PB2
 #define VBAT_ADC_PIN            PA4
 #define CURRENT_METER_ADC_PIN   PA5
 #endif
 
-#if !defined(AIORACERF3)
+#if !defined(AIORACERF3) && !defined(SPRACINGAIRBIT)
 #define USE_OSD
 #define USE_OSD_OVER_MSP_DISPLAYPORT
 #define USE_MSP_CURRENT_METER
 #endif
 
+#ifndef SPRACINGAIRBIT
 #define USE_TRANSPONDER
+#endif
 
 #define ENABLE_BLACKBOX_LOGGING_ON_SDCARD_BY_DEFAULT
 
+#ifdef SPRACINGAIRBIT
+// SPRacingAIRBIT is designed specifically for SERIAL_RX SPEKTRUM1024 + LTM telemetry.
+#define USE_TELEMETRY
+#define USE_TELEMETRY_LTM
+#define USE_SERIAL_RX
+#define USE_SERIALRX_SPEKTRUM   // SRXL, DSM2 and DSMX protocol
+#undef USE_RX_MSP
+#undef USE_PPM
+#undef USE_PWM
+#undef USE_SERIALRX_CRSF       // Team Black Sheep Crossfire protocol
+#undef USE_SERIALRX_IBUS       // FlySky and Turnigy receivers
+#undef USE_SERIALRX_SBUS       // Frsky and Futaba receivers
+#undef USE_SERIALRX_SUMD       // Graupner Hott protocol
+
+#define DEFAULT_RX_FEATURE      FEATURE_RX_SERIAL
+#else
 #define DEFAULT_RX_FEATURE      FEATURE_RX_PPM
-#define DEFAULT_FEATURES        (FEATURE_TRANSPONDER  | FEATURE_RSSI_ADC | FEATURE_TELEMETRY)
+#endif
+
+#ifdef SPRACINGAIRBIT
+#define DEFAULT_FEATURES        (0)
+#else
+#define DEFAULT_FEATURES        (FEATURE_TRANSPONDER | FEATURE_RSSI_ADC | FEATURE_TELEMETRY)
+#endif
+
 
 // IO - stm32f303cc in 48pin package
 #define TARGET_IO_PORTA         0xffff

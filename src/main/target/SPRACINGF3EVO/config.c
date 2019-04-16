@@ -29,8 +29,17 @@
 
 #include "pg/sdcard.h"
 
+#include "config_helper.h"
 
-#if defined(SPRACINGF3MQ)
+#if defined(SPRACINGAIRBIT)
+
+static targetSerialPortFunction_t targetSerialPortFunction[] = {
+    { SERIAL_PORT_USART1, FUNCTION_RX_SERIAL },
+};
+#endif
+
+
+#if defined(SPRACINGF3MQ) || defined(SPRACINGAIRBIT)
 #ifdef BRUSHED_MOTORS_PWM_RATE
 #undef BRUSHED_MOTORS_PWM_RATE
 #endif
@@ -40,10 +49,7 @@
 
 void targetConfiguration(void)
 {
-    // Temporary workaround: Disable SDCard DMA by default since it causes errors on this target
-    sdcardConfigMutable()->useDma = false;
-
-#if defined(SPRACINGF3MQ)
+#if defined(SPRACINGF3MQ) || defined(SPRACINGAIRBIT)
 
     motorConfigMutable()->dev.motorPwmRate = BRUSHED_MOTORS_PWM_RATE;
 
@@ -57,6 +63,13 @@ void targetConfiguration(void)
         pidProfile->pid[FD_PITCH].I = 44;
         pidProfile->pid[FD_PITCH].D = 60;
     }
+#else
+    // Temporary workaround: Disable SDCard DMA by default since it causes error with DSHOT, brushed targets can use DMA.
+    sdcardConfigMutable()->useDma = false;
+#endif
+
+#ifdef SPRACINGAIRBIT
+    targetSerialPortFunctionConfig(targetSerialPortFunction, ARRAYLEN(targetSerialPortFunction));
 #endif
 }
 #endif
