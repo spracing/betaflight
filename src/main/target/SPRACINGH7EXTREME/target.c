@@ -56,10 +56,3 @@ const timerHardware_t timerHardware[USABLE_TIMER_CHANNEL_COUNT] = {
     DEF_TIM(TIM3,  CH4, PB1,  TIM_USE_NONE,                0,  0,  0 ), // Also TIM8/CH3_N
 };
 
-#if defined(EEPROM_IN_RAM)
-PERSISTENT uint8_t eepromData[EEPROM_SIZE]; // persistent, so it survives warm boots.
-#elif defined(EEPROM_IN_EXTERNAL_FLASH) || defined (EEPROM_IN_SDCARD)
-uint8_t eepromData[EEPROM_SIZE];
-#endif
-
-

@@ -57,14 +57,6 @@
 #error "EEPROM storage location not defined"
 #endif
 
-#define EEPROM_SIZE     4096
-
-#ifdef EEPROM_SIZE
-extern uint8_t eepromData[EEPROM_SIZE];
-#define __config_start (*eepromData)
-#define __config_end (*ARRAYEND(eepromData))
-#endif
-
 // USE_SPI only required due to flash driver, but in this example the flash is connected to the QUADSPI interface.
 #define USE_SPI
 #define USE_SPI_DEVICE_4
