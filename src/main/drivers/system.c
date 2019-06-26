@@ -202,7 +202,7 @@ void failureMode(failureMode_e mode)
 #ifdef DEBUG
     systemReset();
 #else
-    systemResetToBootloader(BOOTLOADER_REQUEST_ROM);
+    systemResetToBootloader();
 #endif
 }
 

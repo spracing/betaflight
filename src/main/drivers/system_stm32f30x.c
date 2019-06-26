@@ -35,9 +35,8 @@ void systemReset(void)
     SCB->AIRCR = AIRCR_VECTKEY_MASK | (uint32_t)0x04;
 }
 
-void systemResetToBootloader(bootloaderRequestType_e requestType)
+void systemResetToBootloader(void)
 {
-    UNUSED(requestType);
     // 1FFFF000 -> 20000200 -> SP
     // 1FFFF004 -> 1FFFF021 -> PC
 
@@ -84,23 +83,6 @@ bool isMPUSoftReset(void)
         return false;
 }
 
-static void checkForBootLoaderRequest(void)
-{
-    void(*bootJump)(void);
-
-    if (*((uint32_t *)0x20009FFC) == 0xDEADBEEF) {
-
-        *((uint32_t *)0x20009FFC) = 0x0;
-
-        __enable_irq();
-        __set_MSP(*((uint32_t *)0x1FFFD800));
-
-        bootJump = (void(*)(void))(*((uint32_t *) 0x1FFFD804));
-        bootJump();
-        while (1);
-    }
-}
-
 void systemInit(void)
 {
     checkForBootLoaderRequest();
@@ -123,4 +105,21 @@ void systemInit(void)
 
     // SysTick
     SysTick_Config(SystemCoreClock / 1000);
+}
+
+void checkForBootLoaderRequest(void)
+{
+    void(*bootJump)(void);
+
+    if (*((uint32_t *)0x20009FFC) == 0xDEADBEEF) {
+
+        *((uint32_t *)0x20009FFC) = 0x0;
+
+        __enable_irq();
+        __set_MSP(*((uint32_t *)0x1FFFD800));
+
+        bootJump = (void(*)(void))(*((uint32_t *) 0x1FFFD804));
+        bootJump();
+        while (1);
+    }
 }

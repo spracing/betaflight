@@ -425,16 +425,16 @@ static mspPostProcessFnPtr mspSerialProcessReceivedCommand(mspPort_t *msp, mspPr
 
 static void mspEvaluateNonMspData(mspPort_t * mspPort, uint8_t receivedChar)
 {
-   if (receivedChar == serialConfig()->reboot_character) {
-        mspPort->pendingRequest = MSP_PENDING_BOOTLOADER_ROM;
 #ifdef USE_CLI
-   } else if (receivedChar == '#') {
+    if (receivedChar == '#') {
         mspPort->pendingRequest = MSP_PENDING_CLI;
+        return;
+    }
 #endif
-#if defined(USE_FLASH_BOOT_LOADER)
-   } else if (receivedChar == 'F') {
-        mspPort->pendingRequest = MSP_PENDING_BOOTLOADER_FLASH;
-#endif
+
+    if (receivedChar == serialConfig()->reboot_character) {
+        mspPort->pendingRequest = MSP_PENDING_BOOTLOADER;
+        return;
     }
 }
 
@@ -446,24 +446,18 @@ static void mspProcessPendingRequest(mspPort_t * mspPort)
     }
 
     switch(mspPort->pendingRequest) {
-    case MSP_PENDING_BOOTLOADER_ROM:
-        systemResetToBootloader(BOOTLOADER_REQUEST_ROM);
+        case MSP_PENDING_BOOTLOADER:
+            systemResetToBootloader();
+            break;
 
-        break;
-#if defined(USE_FLASH_BOOT_LOADER)
-    case MSP_PENDING_BOOTLOADER_ROM:
-        systemResetToBootloader(BOATLOADER_REQUEST_FLASH);
-
-        break;
-#endif
 #ifdef USE_CLI
-    case MSP_PENDING_CLI:
-        cliEnter(mspPort->port);
-        break;
+        case MSP_PENDING_CLI:
+            cliEnter(mspPort->port);
+            break;
 #endif
 
-    default:
-        break;
+        default:
+            break;
     }
 }
 

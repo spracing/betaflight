@@ -252,9 +252,7 @@ void systemReset(void){
     pthread_join(udpWorker, NULL);
     exit(0);
 }
-void systemResetToBootloader(bootloaderRequestType_e requestType) {
-    UNUSED(requestType);
-
+void systemResetToBootloader(void) {
     printf("[system]ResetToBootloader!\n");
     workerRunning = false;
     pthread_join(tcpWorker, NULL);

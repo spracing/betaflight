@@ -59,9 +59,8 @@ typedef enum {
 
 typedef enum {
     MSP_PENDING_NONE,
-    MSP_PENDING_BOOTLOADER_ROM,
-    MSP_PENDING_CLI,
-    MSP_PENDING_BOOTLOADER_FLASH,
+    MSP_PENDING_BOOTLOADER,
+    MSP_PENDING_CLI
 } mspPendingSystemRequest_e;
 
 #define MSP_PORT_INBUF_SIZE 192

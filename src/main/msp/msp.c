@@ -139,10 +139,9 @@ static const char * const flightControllerIdentifier = BETAFLIGHT_IDENTIFIER; //
 
 enum {
     MSP_REBOOT_FIRMWARE = 0,
-    MSP_REBOOT_BOOTLOADER_ROM,
+    MSP_REBOOT_BOOTLOADER,
     MSP_REBOOT_MSC,
     MSP_REBOOT_MSC_UTC,
-    MSP_REBOOT_BOOTLOADER_FLASH,
     MSP_REBOOT_COUNT,
 };
 
@@ -263,8 +262,8 @@ static void mspRebootFn(serialPort_t *serialPort)
         systemReset();
 
         break;
-    case MSP_REBOOT_BOOTLOADER_ROM:
-        systemResetToBootloader(BOOTLOADER_REQUEST_ROM);
+    case MSP_REBOOT_BOOTLOADER:
+        systemResetToBootloader();
 
         break;
 #if defined(USE_USB_MSC)
@@ -277,12 +276,6 @@ static void mspRebootFn(serialPort_t *serialPort)
         systemResetToMsc(0);
 #endif
         }
-        break;
-#endif
-#if defined(USE_FLASH_BOOT_LOADER)
-    case MSP_REBOOT_BOOTLOADER_FLASH:
-        systemResetToBootloader(BOOTLOADER_REQUEST_FLASH);
-
         break;
 #endif
     default:

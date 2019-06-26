@@ -114,7 +114,7 @@ void systemInit(void)
     SysTick_Config(SystemCoreClock / 1000);
 }
 
-static void checkForBootLoaderRequest(void)
+void checkForBootLoaderRequest(void)
 {
     void(*bootJump)(void);
 

@@ -43,16 +43,9 @@ void systemReset(void)
     NVIC_SystemReset();
 }
 
-void systemResetToBootloader(bootloaderRequestType_e requestType)
+void systemResetToBootloader(void)
 {
-    switch (requestType) {
-    case BOOTLOADER_REQUEST_ROM:
-    default:
-        persistentObjectWrite(PERSISTENT_OBJECT_RESET_REASON, RESET_BOOTLOADER_REQUEST);
-
-        break;
-    }
-
+    persistentObjectWrite(PERSISTENT_OBJECT_RESET_REASON, RESET_BOOTLOADER_REQUEST);
     __disable_irq();
     NVIC_SystemReset();
 }
@@ -159,30 +152,6 @@ bool isMPUSoftReset(void)
         return false;
 }
 
-static void checkForBootLoaderRequest(void)
-{
-    uint32_t bootloaderRequest = persistentObjectRead(PERSISTENT_OBJECT_RESET_REASON);
-
-    if (bootloaderRequest != RESET_BOOTLOADER_REQUEST) {
-        return;
-    }
-    persistentObjectWrite(PERSISTENT_OBJECT_RESET_REASON, RESET_NONE);
-
-    void (*SysMemBootJump)(void);
-
-    __SYSCFG_CLK_ENABLE();
-    SYSCFG->MEMRMP |= SYSCFG_MEM_BOOT_ADD0 ;
-
-    uint32_t p =  (*((uint32_t *) 0x1ff00000));
-
-    __set_MSP(p); //Set the main stack pointer to its default values
-
-    SysMemBootJump = (void (*)(void)) (*((uint32_t *) 0x1ff00004)); // Point the PC to the System Memory reset vector (+4)
-    SysMemBootJump();
-
-    while (1);
-}
-
 void systemInit(void)
 {
     checkForBootLoaderRequest();
@@ -216,4 +185,30 @@ void systemInit(void)
     HAL_SYSTICK_Config(HAL_RCC_GetHCLKFreq()/1000);
 
     HAL_SYSTICK_CLKSourceConfig(SYSTICK_CLKSOURCE_HCLK);
+}
+
+void(*bootJump)(void);
+
+void checkForBootLoaderRequest(void)
+{
+    uint32_t bootloaderRequest = persistentObjectRead(PERSISTENT_OBJECT_RESET_REASON);
+
+    if (bootloaderRequest != RESET_BOOTLOADER_REQUEST) {
+        return;
+    }
+    persistentObjectWrite(PERSISTENT_OBJECT_RESET_REASON, RESET_NONE);
+
+    void (*SysMemBootJump)(void);
+
+    __SYSCFG_CLK_ENABLE();
+    SYSCFG->MEMRMP |= SYSCFG_MEM_BOOT_ADD0 ;
+
+    uint32_t p =  (*((uint32_t *) 0x1ff00000));
+
+    __set_MSP(p); //Set the main stack pointer to its default values
+
+    SysMemBootJump = (void (*)(void)) (*((uint32_t *) 0x1ff00004)); // Point the PC to the System Memory reset vector (+4)
+    SysMemBootJump();
+
+    while (1);
 }
