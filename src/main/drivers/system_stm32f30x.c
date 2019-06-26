@@ -27,14 +27,6 @@
 #include "drivers/system.h"
 
 #define AIRCR_VECTKEY_MASK    ((uint32_t)0x05FA0000)
-
-#define BOOTLOADER_MAGIC 0xDEADBEEF
-// 40KB SRAM STM32F30X
-#define BOOT_TARGET_REGISTER ((uint32_t *)0x20009FFC)
-
-#define DEFAULT_STACK_POINTER ((uint32_t *)0x1FFFD800)
-#define SYSTEM_MEMORY_RESET_VECTOR ((uint32_t *) 0x1FFFD804)
-
 void SetSysClock();
 
 void systemReset(void)
@@ -49,7 +41,7 @@ void systemResetToBootloader(bootloaderRequestType_e requestType)
     // 1FFFF000 -> 20000200 -> SP
     // 1FFFF004 -> 1FFFF021 -> PC
 
-    *BOOT_TARGET_REGISTER = BOOTLOADER_MAGIC;
+    *((uint32_t *)0x20009FFC) = 0xDEADBEEF; // 40KB SRAM STM32F30X
 
     systemReset();
 }
@@ -94,15 +86,17 @@ bool isMPUSoftReset(void)
 
 static void checkForBootLoaderRequest(void)
 {
-    if (*BOOT_TARGET_REGISTER == BOOTLOADER_MAGIC) {
+    void(*bootJump)(void);
 
-        *BOOT_TARGET_REGISTER = 0x0;
+    if (*((uint32_t *)0x20009FFC) == 0xDEADBEEF) {
+
+        *((uint32_t *)0x20009FFC) = 0x0;
 
         __enable_irq();
-        __set_MSP(*DEFAULT_STACK_POINTER);
+        __set_MSP(*((uint32_t *)0x1FFFD800));
 
-        ((void(*)(void))(*SYSTEM_MEMORY_RESET_VECTOR))();
-
+        bootJump = (void(*)(void))(*((uint32_t *) 0x1FFFD804));
+        bootJump();
         while (1);
     }
 }

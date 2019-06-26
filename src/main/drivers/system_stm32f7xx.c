@@ -35,10 +35,6 @@
 
 
 #define AIRCR_VECTKEY_MASK    ((uint32_t)0x05FA0000)
-
-#define DEFAULT_STACK_POINTER ((uint32_t *) 0x1FF00000)
-#define SYSTEM_MEMORY_RESET_VECTOR ((uint32_t *) 0x1FF00004)
-
 void SystemClock_Config(void);
 
 void systemReset(void)
@@ -172,12 +168,17 @@ static void checkForBootLoaderRequest(void)
     }
     persistentObjectWrite(PERSISTENT_OBJECT_RESET_REASON, RESET_NONE);
 
+    void (*SysMemBootJump)(void);
+
     __SYSCFG_CLK_ENABLE();
     SYSCFG->MEMRMP |= SYSCFG_MEM_BOOT_ADD0 ;
 
-    __set_MSP(*DEFAULT_STACK_POINTER);
+    uint32_t p =  (*((uint32_t *) 0x1ff00000));
 
-    ((void (*)(void))*SYSTEM_MEMORY_RESET_VECTOR)();
+    __set_MSP(p); //Set the main stack pointer to its default values
+
+    SysMemBootJump = (void (*)(void)) (*((uint32_t *) 0x1ff00004)); // Point the PC to the System Memory reset vector (+4)
+    SysMemBootJump();
 
     while (1);
 }
