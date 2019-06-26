@@ -172,12 +172,15 @@
 //#define ADC2_DMA_STREAM DMA2_Stream2  // ADC2 not used.
 #endif
 
+#if 0
 #define USE_SDCARD
 #define USE_SDCARD_SDIO
 #define SDCARD_DETECT_PIN PD10
 #define SDCARD_DETECT_INVERTED
 
 #define ENABLE_BLACKBOX_LOGGING_ON_SDCARD_BY_DEFAULT
+#endif
+
 
 #define USE_ADC
 #define USE_ADC_INTERNAL // ADC3
