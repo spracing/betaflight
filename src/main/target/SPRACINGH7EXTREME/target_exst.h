@@ -126,9 +126,9 @@
 #define USE_ACC_SPI_MPU6500
 
 #define GYRO_1_ALIGN        CW180_DEG
-#define GYRO_2_ALIGN        CW225_DEG
+#define GYRO_2_ALIGN        CW180_DEG // FIXME - actually requires custom alignment with Clockwise 225 degree rotation.
 
-#define GYRO_CONFIG_USE_GYRO_DEFAULT GYRO_CONFIG_USE_GYRO_BOTH
+#define GYRO_CONFIG_USE_GYRO_DEFAULT GYRO_CONFIG_USE_GYRO_1 // FIXME - Actually requires GYRO_CONFIG_USE_GYRO_BOTH but cannot be enabled until custom gyro rotation code is merged.
 
 #define USE_FLASHFS
 #define USE_FLASH_TOOLS
