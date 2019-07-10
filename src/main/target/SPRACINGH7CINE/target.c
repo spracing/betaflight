@@ -42,10 +42,10 @@ const timerHardware_t timerHardware[USABLE_TIMER_CHANNEL_COUNT] = {
     DEF_TIM(TIM5,  CH4, PA3,  TIM_USE_MOTOR,               0,  3,  0 ), // M4
 
     // Pads/Picoblade connector on bottom of board.
-    DEF_TIM(TIM3,  CH1, PA6,  TIM_USE_NONE,                0,  4,  1 ), // M5 - Also TIM13/CH1
-    DEF_TIM(TIM3,  CH2, PA7,  TIM_USE_NONE,                0,  5,  1 ), //      Also TIM14/CH1
-    DEF_TIM(TIM3,  CH3, PB0,  TIM_USE_NONE,                0,  6,  1 ), //      Also TIM8/CH2_N
-    DEF_TIM(TIM3,  CH4, PB1,  TIM_USE_NONE,                0,  7,  1 ), // M8 - Also TIM8/CH3_N
+    DEF_TIM(TIM3,  CH1, PA6,  TIM_USE_MOTOR,               0,  4,  1 ), // M5 - Also TIM13/CH1
+    DEF_TIM(TIM3,  CH2, PA7,  TIM_USE_MOTOR,               0,  5,  1 ), //      Also TIM14/CH1
+    DEF_TIM(TIM3,  CH3, PB0,  TIM_USE_MOTOR,               0,  6,  1 ), //      Also TIM8/CH2_N
+    DEF_TIM(TIM3,  CH4, PB1,  TIM_USE_MOTOR,               0,  7,  1 ), // M8 - Also TIM8/CH3_N
 
     // Pads on bottom of board.
     DEF_TIM(TIM12, CH2, PB15, TIM_USE_PWM,                 0,  0,  0 ), // Also USART1 RX
