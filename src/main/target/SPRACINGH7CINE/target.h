@@ -208,6 +208,12 @@
 #define VBAT_ADC_PIN            PC4  // ADC123
 #define RSSI_ADC_PIN            PC5  // ADC12
 
+#define CAM_SELECT_PIN          PE4
+
+#define USE_PINIO
+#define PINIO1_PIN              CAM_SELECT_PIN
+#define USE_PINIOBOX
+
 #define DEFAULT_VOLTAGE_METER_SOURCE VOLTAGE_METER_ADC
 #define DEFAULT_CURRENT_METER_SOURCE CURRENT_METER_ADC
 
