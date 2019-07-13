@@ -36,16 +36,16 @@ const timerHardware_t timerHardware[USABLE_TIMER_CHANNEL_COUNT] = {
     DEF_TIM(TIM8,  CH2, PC7,  TIM_USE_PWM,                 0,  0,  0 ), // Also UART6_RX
 
     // 4in1 ESC connector on top of board; Pads/Picoblade connector on bottom of board.
-    DEF_TIM(TIM5,  CH1, PA0,  TIM_USE_MOTOR,               0,  0,  14 ), // M1
-    DEF_TIM(TIM5,  CH2, PA1,  TIM_USE_MOTOR,               0,  1,  14 ),
-    DEF_TIM(TIM5,  CH3, PA2,  TIM_USE_MOTOR,               0,  2,  14 ),
-    DEF_TIM(TIM5,  CH4, PA3,  TIM_USE_MOTOR,               0,  3,  14 ), // M4
+    DEF_TIM(TIM5,  CH1, PA0,  TIM_USE_MOTOR,               0,  0,  0 ), // M1
+    DEF_TIM(TIM5,  CH2, PA1,  TIM_USE_MOTOR,               0,  1,  0 ),
+    DEF_TIM(TIM5,  CH3, PA2,  TIM_USE_MOTOR,               0,  2,  0 ),
+    DEF_TIM(TIM5,  CH4, PA3,  TIM_USE_MOTOR,               0,  3,  0 ), // M4
 
     // Pads/Picoblade connector on bottom of board.
-    DEF_TIM(TIM3,  CH1, PA6,  TIM_USE_MOTOR,               0,  4,  12 ), // M5 - Also TIM13/CH1
-    DEF_TIM(TIM3,  CH2, PA7,  TIM_USE_MOTOR,               0,  5,  12 ), //      Also TIM14/CH1
-    DEF_TIM(TIM3,  CH3, PB0,  TIM_USE_MOTOR,               0,  6,  12 ), //      Also TIM8/CH2_N
-    DEF_TIM(TIM3,  CH4, PB1,  TIM_USE_MOTOR,               0,  7,  12 ), // M8 - Also TIM8/CH3_N
+    DEF_TIM(TIM3,  CH1, PA6,  TIM_USE_MOTOR,               0,  4,  1 ), // M5 - Also TIM13/CH1
+    DEF_TIM(TIM3,  CH2, PA7,  TIM_USE_MOTOR,               0,  5,  1 ), //      Also TIM14/CH1
+    DEF_TIM(TIM3,  CH3, PB0,  TIM_USE_MOTOR,               0,  6,  1 ), //      Also TIM8/CH2_N
+    DEF_TIM(TIM3,  CH4, PB1,  TIM_USE_MOTOR,               0,  7,  1 ), // M8 - Also TIM8/CH3_N
 
     // Pads on bottom of board.
     DEF_TIM(TIM12, CH2, PB15, TIM_USE_PWM,                 0,  0,  0 ), // Also USART1 RX
@@ -53,5 +53,8 @@ const timerHardware_t timerHardware[USABLE_TIMER_CHANNEL_COUNT] = {
 
     // Switched between Camera 1/2.
     DEF_TIM(TIM4,  CH3, PD14, TIM_USE_CAMERA_CONTROL,      0,  13,  13 ),
+
+    DEF_TIM(TIM15, CH1, PE5,  TIM_USE_VIDEO_SYNC,          0,  14, 14 ), // Pixel DMA
+    DEF_TIM(TIM1,  CH3N,PE12, TIM_USE_VIDEO_PIXEL,         0,  15, 15 ), // Sync
 };
 
