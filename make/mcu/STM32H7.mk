@@ -15,7 +15,6 @@ STDPERIPH_SRC   = $(notdir $(wildcard $(STDPERIPH_DIR)/Src/*.c))
 
 EXCLUDES        = \
                 stm32h7xx_hal_cec.c \
-                stm32h7xx_hal_comp.c \
                 stm32h7xx_hal_crc.c \
                 stm32h7xx_hal_crc_ex.c \
                 stm32h7xx_hal_cryp.c \
