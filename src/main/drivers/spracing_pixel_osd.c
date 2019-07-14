@@ -885,13 +885,13 @@ void syncStopPWM(void)
 
 void syncStartDMA(void)
 {
-    HAL_TIM_DMABurst_WriteStart(
+    HAL_TIM_DMABurst_MultiWriteStart(
         &htim1,
         TIM_DMABASE_ARR,
         TIM_DMA_UPDATE,
         (uint32_t *)palSyncItems,
-        sizeof(palSyncItems) / 2, // 2 because each item is uint16_t, not uint32_t?
-        TIM_DMABURSTLENGTH_5TRANSFERS
+        TIM_DMABURSTLENGTH_5TRANSFERS,
+        sizeof(palSyncItems) / 2 // 2 because each item is uint16_t, not uint32_t?
     );
 
     syncDMAActive = true;
