@@ -18,6 +18,10 @@
  * If not, see <http://www.gnu.org/licenses/>.
  */
 
+/*
+ * Author: Dominic Clifton
+ */
+
 #include <stdbool.h>
 #include <stdint.h>
 #include <string.h>
@@ -38,6 +42,8 @@
 
 #include "pg/spracing_pixel_osd.h"
 #include "pg/vcd.h"
+
+#include "drivers/spracing_pixel_osd.h"
 
 // Pins 8-15 of GPIOE reserved for OSD use when in GPIO OUTPUT MODE (Upper 8 bits of GPIO port)
 // Pins 8-15 on GPIOE *can* be used for other functions, just not GPIO OUTPUT.
@@ -192,6 +198,9 @@
 uint8_t pixelBufferA[PIXEL_BUFFER_SIZE];
 uint8_t pixelBufferB[PIXEL_BUFFER_SIZE];
 
+uint8_t *fillPixelBuffer = NULL;
+uint8_t *outputPixelBuffer = NULL;
+
 #define PIXEL_WHITE_ON 1
 #define PIXEL_WHITE_OFF 0
 // black is inverted (open drain)
@@ -207,6 +216,24 @@ uint8_t pixelBufferB[PIXEL_BUFFER_SIZE];
 // Frame
 //
 
+#define FRAME_PIXEL_WHITE       ((PIXEL_WHITE_ON  << 1) | (PIXEL_BLACK_OFF << 0))
+#define FRAME_PIXEL_BLACK       ((PIXEL_WHITE_OFF << 1) | (PIXEL_BLACK_ON  << 0))
+#define FRAME_PIXEL_GREY        ((PIXEL_WHITE_ON  << 1) | (PIXEL_BLACK_ON  << 0))
+#define FRAME_PIXEL_TRANSPARENT ((PIXEL_WHITE_OFF << 1) | (PIXEL_BLACK_OFF << 0))
+
+#define FRAME_PIXEL_MASK        ((1 << 1) | (1 << 0))
+
+#define BLOCK_TRANSPARENT ((FRAME_PIXEL_TRANSPARENT << 6) | (FRAME_PIXEL_TRANSPARENT << 4) | (FRAME_PIXEL_TRANSPARENT << 2) | (FRAME_PIXEL_TRANSPARENT << 0))
+
+#define PIXELS_PER_BYTE (8 / BITS_PER_PIXEL)
+
+#define BITS_PER_BYTE 8
+
+#define FRAME_BUFFER_LINE_SIZE ((PIXEL_COUNT / BITS_PER_BYTE) * BITS_PER_PIXEL)
+#define FRAME_BUFFER_SIZE (FRAME_BUFFER_LINE_SIZE * PAL_VISIBLE_LINES)
+
+uint8_t frameBuffers[2][FRAME_BUFFER_SIZE];
+
 //
 // Sync Detection/Timing
 //
@@ -216,16 +243,7 @@ DAC_HandleTypeDef hdac1;
 
 #define VIDEO_DAC_VCC 3.3
 
-typedef enum {
-    MODE_UNKNOWN = 0,
-    MODE_PAL,
-    MODE_NTSC
-} videoMode_t;
-
-videoMode_t videoMode = MODE_NTSC;
 volatile videoMode_t detectedVideoMode = MODE_UNKNOWN;
-volatile bool videoModeChanged = false;
-
 
 typedef enum fieldType_e {
     FIELD_EVEN = 0,
@@ -286,7 +304,7 @@ volatile uint16_t fillLineIndex = 0;
 // State
 //
 
-volatile bool cameraConnected = false;
+volatile bool cameraConnected = true;
 
 typedef struct spracingPixelOSDIO_s {
     IO_t blackPin;
@@ -968,9 +986,6 @@ void pixelOutputDisable(void)
     HAL_GPIO_WritePin(WHITE_SOURCE_GPIO_Port, WHITE_SOURCE_Pin, GPIO_PIN_RESET);
 }
 
-uint8_t *fillPixelBuffer = NULL;
-uint8_t *outputPixelBuffer = NULL;
-
 void pixelConfigureDMAForNextField(void)
 {
 #ifdef DEBUG_PIXEL_BUFFER
@@ -1436,6 +1451,100 @@ void COMP1_IRQHandler(void)
 #endif
 }
 
+//
+// Frame
+//
+
+
+void frameBuffer_erase(uint8_t *frameBuffer)
+{
+    memset(frameBuffer, BLOCK_TRANSPARENT, FRAME_BUFFER_SIZE);
+}
+
+void pixelBuffer_fillFromFrameBuffer(uint8_t *destinationPixelBuffer, uint8_t frameBufferIndex, uint16_t lineIndex)
+{
+#ifdef DEBUG_OUT_GPIO_Port
+    HAL_GPIO_TogglePin(DEBUG_OUT_GPIO_Port, DEBUG_OUT_Pin);
+#endif
+    uint8_t *frameBuffer = frameBuffers[frameBufferIndex];
+    uint8_t *frameBufferLine = frameBuffer + (FRAME_BUFFER_LINE_SIZE * lineIndex);
+    uint8_t *pixel = destinationPixelBuffer;
+    for (int i = 0; i < FRAME_BUFFER_LINE_SIZE; i++) {
+        uint8_t pixelBlock = *(frameBufferLine + i);
+
+        uint8_t mask = (1 << 7) | ( 1 << 6); // only for BITS_PER_PIXEL == 2
+        *pixel++ = (pixelBlock & mask) >> (BITS_PER_PIXEL * 3) << PIXEL_BLACK_BIT;
+
+        mask = mask >> BITS_PER_PIXEL;
+        *pixel++ = (pixelBlock & mask) >> (BITS_PER_PIXEL * 2) << PIXEL_BLACK_BIT;
+
+        mask = mask >> BITS_PER_PIXEL;
+        *pixel++ = (pixelBlock & mask) >> (BITS_PER_PIXEL * 1) << PIXEL_BLACK_BIT;
+
+        mask = mask >> BITS_PER_PIXEL;
+        *pixel++ = (pixelBlock & mask) >> (BITS_PER_PIXEL * 0) << PIXEL_BLACK_BIT;
+    }
+
+    destinationPixelBuffer[PIXEL_COUNT] = PIXEL_TRANSPARENT; // IMPORTANT!  The white source/black sink must be disabled before the SYNC signal, otherwise we change the sync voltage level.
+#ifdef DEBUG_OUT_GPIO_Port
+    HAL_GPIO_TogglePin(DEBUG_OUT_GPIO_Port, DEBUG_OUT_Pin);
+#endif
+}
+
+// unoptimized, avoid over-use.
+void frameBuffer_setPixel(uint8_t *frameBuffer, uint16_t x, uint16_t y, uint8_t mode)
+{
+    uint8_t *lineBuffer = frameBuffer + (y * FRAME_BUFFER_LINE_SIZE);
+
+    uint8_t pixelOffsetInBlock = (PIXELS_PER_BYTE - 1) - (x % PIXELS_PER_BYTE);
+
+    uint8_t pixelBitOffset = BITS_PER_PIXEL * pixelOffsetInBlock;
+
+    uint8_t mask = ~(FRAME_PIXEL_MASK << pixelBitOffset);
+
+    uint8_t before = lineBuffer[x / PIXELS_PER_BYTE];
+    uint8_t withMaskCleared = before & mask;
+    lineBuffer[x / PIXELS_PER_BYTE] = withMaskCleared |
+            (mode << pixelBitOffset);
+}
+
+void frameBuffer_createTestPattern1(uint8_t *frameBuffer)
+{
+    for (int lineIndex = 0; lineIndex < PAL_VISIBLE_LINES; lineIndex++) {
+        uint8_t *lineBuffer = frameBuffer + (lineIndex * FRAME_BUFFER_LINE_SIZE);
+
+        if (lineIndex & 0x8) {
+            continue; // empty vertical band.
+        }
+
+        for (int i = 0; i < PIXEL_COUNT / PIXELS_PER_BYTE; i ++) {
+
+            lineBuffer[i] =
+                    (FRAME_PIXEL_WHITE << (BITS_PER_PIXEL * 3)) |
+                    (FRAME_PIXEL_GREY << (BITS_PER_PIXEL * 2)) |
+                    (FRAME_PIXEL_BLACK << (BITS_PER_PIXEL * 1)) |
+                    (FRAME_PIXEL_TRANSPARENT << (BITS_PER_PIXEL * 0));
+        }
+    }
+}
+
+void frameBuffer_createTestPattern2(uint8_t *frameBuffer)
+{
+    for (int lineIndex = 0; lineIndex < PAL_VISIBLE_LINES; lineIndex++) {
+        int x;
+
+        x = lineIndex;
+        frameBuffer_setPixel(frameBuffer, x, lineIndex, FRAME_PIXEL_BLACK);
+        frameBuffer_setPixel(frameBuffer, x+1, lineIndex, FRAME_PIXEL_WHITE);
+        frameBuffer_setPixel(frameBuffer, x+2, lineIndex, FRAME_PIXEL_BLACK);
+
+        x = PIXEL_COUNT - 1 - lineIndex;
+        frameBuffer_setPixel(frameBuffer, x, lineIndex, FRAME_PIXEL_BLACK);
+        frameBuffer_setPixel(frameBuffer, x-1, lineIndex, FRAME_PIXEL_WHITE);
+        frameBuffer_setPixel(frameBuffer, x-2, lineIndex, FRAME_PIXEL_BLACK);
+
+    }
+}
 
 bool spracingPixelOSDInit(const struct spracingPixelOSDConfig_s *spracingPixelOSDConfig, const struct vcdProfile_s *vcdProfile)
 {
@@ -1458,13 +1567,25 @@ bool spracingPixelOSDInit(const struct spracingPixelOSDConfig_s *spracingPixelOS
     IOConfigGPIO(spracingPixelOSDIO.syncInPin, IO_VIDEO_SYNC_IN_CFG);
 
     //
+    // Frame
+    //
+
+    frameBuffer_erase(frameBuffers[0]);
+    frameBuffer_erase(frameBuffers[1]);
+
+    //frameBuffer_createTestPattern1(frameBuffers[0]);
+    //frameBuffer_createTestPattern1(frameBuffers[1]);
+
+    frameBuffer_createTestPattern2(frameBuffers[0]);
+
+    //
     // Sync detection
     //
 
     MX_COMP2_Init();
     MX_DAC1_Init();
 
-    MX_TIM2_Init(); // TIM2
+    MX_TIM2_Init();
 
 
     // DAC CH2 - Comparator reference
@@ -1515,8 +1636,12 @@ bool spracingPixelOSDInit(const struct spracingPixelOSDConfig_s *spracingPixelOS
 
     pixelInit(); // Requires that TIM1 is initialised.
 
+    //
+    // Sync detection (enable)
+    //
 
-    // Don't enable comparator until sync generation is started.
+    // Don't enable comparator until sync generation is started
+    // TODO - Maybe this is ok now?
 
     if(HAL_COMP_Start_IT(&hcomp2) != HAL_OK)
     {

@@ -22,39 +22,7 @@
  * Author: Dominic Clifton
  */
 
-#pragma once
+#include "common/time.h"
 
-//
-// General
-//
-
-
-typedef enum {
-    MODE_UNKNOWN = 0,
-    MODE_PAL,
-    MODE_NTSC
-} videoMode_t;
-
-extern volatile videoMode_t detectedVideoMode; // unstable value
-
-struct vcdProfile_s;
-struct spracingPixelOSDConfig_s;
-bool    spracingPixelOSDInit(const struct spracingPixelOSDConfig_s *spracingPixelOSDConfig, const struct vcdProfile_s *vcdProfile);
-
-//
-// Pixel Line buffer
-//
-
-extern uint8_t *fillPixelBuffer;
-
-//
-// Frame Buffer
-//
-
-extern volatile bool fillLineNow;
-extern volatile bool frameFlag;
-extern volatile uint16_t fillLineIndex;
-
-extern volatile bool videoModeChanged;
-
-void pixelBuffer_fillFromFrameBuffer(uint8_t *destinationPixelBuffer, uint8_t frameBufferIndex, uint16_t lineIndex);
+bool taskPixelOSDVideoCheck(timeUs_t currentTimeUs, timeDelta_t currentDeltaTimeUs);
+void taskPixelOSDVideo(timeUs_t currentTimeUs);

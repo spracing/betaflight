@@ -46,6 +46,14 @@
 #endif
 #endif
 
+// pg/pixel OSD
+
+#ifdef USE_SPRACING_PIXEL_OSD
+#ifndef USE_PIXEL_OSD
+#define USE_PIXEL_OSD
+#endif
+#endif
+
 // pg/flash
 
 #ifdef USE_FLASH_M25P16
