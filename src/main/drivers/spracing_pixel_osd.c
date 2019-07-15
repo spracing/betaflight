@@ -79,9 +79,9 @@
 // 48us * 80 = 3840 clocks.  3840 clocks / 640 = 6 clocks per pixel.
 // resolution scale of 2 = 12 clocks per pixel = 320 pixels.
 
-#define HORIZONTAL_RESOLUTION 640
+#define HORIZONTAL_RESOLUTION 720
 #define RESOLUTION_SCALE 2
-#define OVERLAY_LENGTH 48.000 // us
+#define OVERLAY_LENGTH 46.800 // us
 
 
 //
@@ -668,8 +668,8 @@ static void spracingPixelOSDSyncTimerInit(void)
   }
 
   sConfigOC.OCMode = TIM_OCMODE_PWM2;
-  // offset can be between 0 and 4, 4 = (VIDEO_LINE_LEN(~64) - hsync(4.7) - back porch(5.8) - front porch (1.5)) - OVERLAY_LENGTH (48)
-  sConfigOC.Pulse = _US_TO_CLOCKS((4.7 + 5.8) + (1.8)); // start of picture data + offset
+  // offset can be between 0 and 4, 4 = (VIDEO_LINE_LEN(~64) - hsync(4.7) - back porch(5.8) - front porch (1.5)) - OVERLAY_LENGTH
+  sConfigOC.Pulse = _US_TO_CLOCKS((4.7 + 5.8) + (2.0)); // start of picture data + offset
   sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
   sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
   sConfigOC.OCIdleState = TIM_OCIDLESTATE_RESET;
@@ -767,6 +767,15 @@ have to divide result by 2 for 50 percent duty cycle
 12/2 = 6
 15/2 =
 
+48000ns / 360 = 133.333ns
+
+1000 / 133.333 = 7.5
+
+100 / 7.5 = 13.333
+
+13 * 360 = 4680ns
+13/2 = 6.5
+
  *
  */
 static void spracingPixelOsdPixelTimerInit(void)
@@ -782,7 +791,7 @@ static void spracingPixelOsdPixelTimerInit(void)
   htim15.Instance = TIM15;
   htim15.Init.Prescaler = (TIMER_BUS_CLOCK / TIMER_CLOCK) - 1;
   htim15.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim15.Init.Period = (7.5 * RESOLUTION_SCALE) - 1;
+  htim15.Init.Period = (6.5 * RESOLUTION_SCALE) - 1;
   htim15.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim15.Init.RepetitionCounter = 0;
   htim15.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
@@ -813,7 +822,7 @@ static void spracingPixelOsdPixelTimerInit(void)
     Error_Handler();
   }
   sConfigOC.OCMode = TIM_OCMODE_PWM1;
-  sConfigOC.Pulse = ((7.5/2) * RESOLUTION_SCALE);
+  sConfigOC.Pulse = ((6.5/2) * RESOLUTION_SCALE);
   sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
   sConfigOC.OCNPolarity = TIM_OCNPOLARITY_HIGH;
   sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
@@ -1591,13 +1600,17 @@ void frameBuffer_slowWriteCharacter(uint8_t *frameBuffer, uint16_t x, uint16_t y
 }
 
 // unoptimized for now
-void frameBuffer_slowWriteString(uint8_t *frameBuffer, uint16_t x, uint16_t y, uint8_t *message, uint8_t messageLength)
+void frameBuffer_slowWriteString(uint8_t *frameBuffer, uint16_t x, uint16_t y, const uint8_t *message, uint8_t messageLength)
 {
     uint16_t fx = x;
     for (int mi = 0; mi < messageLength; mi++) {
+#if USE_FONT_MAPPING
+        uint8_t c = font_max7456_12x18_asciiToFontMapping[message[mi]];
+#else
         uint8_t c = message[mi];
+#endif
 
-        frameBuffer_slowWriteCharacter(frameBuffer, fx, y, font_max7456_12x18_asciiToFontMapping[c]);
+        frameBuffer_slowWriteCharacter(frameBuffer, fx, y, c);
         fx+= 12; // font width
     }
 }
@@ -1706,7 +1719,7 @@ bool spracingPixelOSDInit(const struct spracingPixelOSDConfig_s *spracingPixelOS
       Error_Handler();
     }
 
-    return false;
+    return true;
 }
 
 #endif // USE_SPRACING_PIXEL_OSD

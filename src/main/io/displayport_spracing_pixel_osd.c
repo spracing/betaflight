@@ -24,6 +24,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include <string.h>
 
 #include "platform.h"
 
@@ -38,6 +39,7 @@
 
 #include "io/displayport_spracing_pixel_osd.h"
 
+#include "osd/font_max7456_12x18.h"
 #include "osd/osd.h"
 
 #include "pg/spracing_pixel_osd.h"
@@ -81,7 +83,8 @@ static int clearScreen(displayPort_t *displayPort)
 {
     UNUSED(displayPort);
 
-    // TODO
+    uint8_t *frameBuffer = frameBuffer_getBuffer(0);
+    frameBuffer_erase(frameBuffer);
 
     return 0;
 }
@@ -105,7 +108,9 @@ static int writeString(displayPort_t *displayPort, uint8_t x, uint8_t y, const c
 {
     UNUSED(displayPort);
 
-    // TODO
+    uint8_t *frameBuffer = frameBuffer_getBuffer(0);
+
+    frameBuffer_slowWriteString(frameBuffer, x * FONT_MAX7456_WIDTH, y * FONT_MAX7456_HEIGHT, (uint8_t *)s, strlen(s));
 
     return 0;
 }
@@ -114,7 +119,8 @@ static int writeChar(displayPort_t *displayPort, uint8_t x, uint8_t y, uint8_t c
 {
     UNUSED(displayPort);
 
-    // TODO
+    uint8_t *frameBuffer = frameBuffer_getBuffer(0);
+    frameBuffer_slowWriteCharacter(frameBuffer, x * FONT_MAX7456_WIDTH, y * FONT_MAX7456_HEIGHT, c);
 
     return 0;
 }
@@ -138,6 +144,9 @@ static bool isSynced(const displayPort_t *displayPort)
 static void resync(displayPort_t *displayPort)
 {
     UNUSED(displayPort);
+
+    displayPort->rows = 16; // FIXME hardcoded to PAL.
+    displayPort->cols = 30;
 
     // TODO
 }

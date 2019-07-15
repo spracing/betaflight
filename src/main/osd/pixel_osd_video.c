@@ -29,7 +29,7 @@
 
 #ifdef USE_PIXEL_OSD
 
-#if 1
+#if 0
 #define DISPLAY_FRAME_COUNTER
 #endif
 
@@ -63,7 +63,7 @@ FAST_CODE void taskPixelOSDVideo(timeUs_t currentTimeUs)
         uint16_t frameCounter = frameBuffer_getCounter();
 
         static uint8_t frameCountBuffer[7];
-        tfp_sprintf((char *)frameCountBuffer, "F:%04x", frameCounter);
+        tfp_sprintf((char *)frameCountBuffer, "F:%04X", frameCounter);
         frameBuffer_slowWriteString(frameBuffer, (320 - (12 * 6)) / 2, (288 - 18) / 2, frameCountBuffer, 6);
 #endif
     }

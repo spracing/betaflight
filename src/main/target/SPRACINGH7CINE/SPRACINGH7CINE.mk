@@ -20,4 +20,6 @@ TARGET_SRC += \
             drivers/spracing_pixel_osd.c \
             io/displayport_spracing_pixel_osd.c \
             osd/font_max7456_12x18.c \
+            osd/font_max7456_12x18_betaflight.c \
+            osd/font_max7456_12x18_cleanflight1.c \
 
