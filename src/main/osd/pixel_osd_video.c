@@ -29,7 +29,13 @@
 
 #ifdef USE_PIXEL_OSD
 
+#if 1
+#define DISPLAY_FRAME_COUNTER
+#endif
+
 #include "build/build_config.h"
+
+#include "common/printf.h"
 
 #include "drivers/spracing_pixel_osd.h"
 
@@ -51,10 +57,14 @@ FAST_CODE void taskPixelOSDVideo(timeUs_t currentTimeUs)
 
     if (frameFlag) {
         frameFlag = false;
+
 #ifdef DISPLAY_FRAME_COUNTER
+        uint8_t *frameBuffer = frameBuffer_getBuffer(0);
+        uint16_t frameCounter = frameBuffer_getCounter();
+
         static uint8_t frameCountBuffer[7];
-        snprintf((char *)frameCountBuffer, 7, "F:%04x", frameState.counter & 0xFFFF);
-        frameBuffer_writeString(frameBuffers[0], (320 - (12 * 6)) / 2, (288 - 18) / 2, frameCountBuffer, 6);
+        tfp_sprintf((char *)frameCountBuffer, "F:%04x", frameCounter);
+        frameBuffer_slowWriteString(frameBuffer, (320 - (12 * 6)) / 2, (288 - 18) / 2, frameCountBuffer, 6);
 #endif
     }
 }

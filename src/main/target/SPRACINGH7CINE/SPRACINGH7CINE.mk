@@ -19,4 +19,5 @@ TARGET_SRC += \
             drivers/vtx_rtc6705_soft_spi.c \
             drivers/spracing_pixel_osd.c \
             io/displayport_spracing_pixel_osd.c \
+            osd/font_max7456_12x18.c \
 

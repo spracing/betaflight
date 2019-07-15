@@ -43,6 +43,8 @@
 #include "pg/spracing_pixel_osd.h"
 #include "pg/vcd.h"
 
+#include "osd/font_max7456_12x18.h"
+
 #include "drivers/spracing_pixel_osd.h"
 
 // Pins 8-15 of GPIOE reserved for OSD use when in GPIO OUTPUT MODE (Upper 8 bits of GPIO port)
@@ -1455,6 +1457,16 @@ void COMP1_IRQHandler(void)
 // Frame
 //
 
+uint8_t *frameBuffer_getBuffer(uint8_t index)
+{
+    uint8_t *frameBuffer = frameBuffers[index];
+    return frameBuffer;
+}
+
+uint16_t frameBuffer_getCounter(void)
+{
+    return frameState.counter;
+}
 
 void frameBuffer_erase(uint8_t *frameBuffer)
 {
@@ -1546,6 +1558,50 @@ void frameBuffer_createTestPattern2(uint8_t *frameBuffer)
     }
 }
 
+// unoptimized for now
+void frameBuffer_slowWriteCharacter(uint8_t *frameBuffer, uint16_t x, uint16_t y, uint8_t characterIndex)
+{
+    uint16_t fontCharacterOffset = characterIndex * FONT_MAX7456_12x18_BYTES_PER_CHARACTER;
+
+    for (int row = 0; row < FONT_MAX7456_HEIGHT; row++) {
+        uint16_t fy = y + row;
+        uint16_t fx = x;
+
+        for (int b = 0; b < 3; b++) {
+            uint8_t c = font_max7456_12x18[fontCharacterOffset];
+            fontCharacterOffset++;
+
+            for (int p = 0; p <= 3; p++) {
+                uint8_t mp = (c >> (2 * (3 - p))) & ((1 << 1) | (1 << 0)); // extract max7456 pixel from character
+                uint8_t mode = FRAME_PIXEL_TRANSPARENT;
+
+                if (mp == ((0 << 1) | (0 << 0))) {
+                    mode = FRAME_PIXEL_BLACK;
+                } else if (mp == ((1 << 1) | (0 << 0))) {
+                    mode = FRAME_PIXEL_WHITE;
+                }
+                if (mode != 0xFF) {
+                    frameBuffer_setPixel(frameBuffer, fx, fy, mode);
+                }
+                fx++;
+            }
+        }
+
+    }
+}
+
+// unoptimized for now
+void frameBuffer_slowWriteString(uint8_t *frameBuffer, uint16_t x, uint16_t y, uint8_t *message, uint8_t messageLength)
+{
+    uint16_t fx = x;
+    for (int mi = 0; mi < messageLength; mi++) {
+        uint8_t c = message[mi];
+
+        frameBuffer_slowWriteCharacter(frameBuffer, fx, y, font_max7456_12x18_asciiToFontMapping[c]);
+        fx+= 12; // font width
+    }
+}
+
 bool spracingPixelOSDInit(const struct spracingPixelOSDConfig_s *spracingPixelOSDConfig, const struct vcdProfile_s *vcdProfile)
 {
     UNUSED(spracingPixelOSDConfig);
@@ -1577,6 +1633,8 @@ bool spracingPixelOSDInit(const struct spracingPixelOSDConfig_s *spracingPixelOS
     //frameBuffer_createTestPattern1(frameBuffers[1]);
 
     frameBuffer_createTestPattern2(frameBuffers[0]);
+
+    frameBuffer_slowWriteString(frameBuffers[0], 50, 150, (uint8_t*)"SP RACING PIXEL OSD", 19);
 
     //
     // Sync detection

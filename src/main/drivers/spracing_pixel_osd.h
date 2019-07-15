@@ -58,3 +58,13 @@ extern volatile uint16_t fillLineIndex;
 extern volatile bool videoModeChanged;
 
 void pixelBuffer_fillFromFrameBuffer(uint8_t *destinationPixelBuffer, uint8_t frameBufferIndex, uint16_t lineIndex);
+
+uint8_t *frameBuffer_getBuffer(uint8_t index);
+uint16_t frameBuffer_getCounter(void);
+
+//
+// Drawing
+//
+
+void frameBuffer_slowWriteString(uint8_t *frameBuffer, uint16_t x, uint16_t y, uint8_t *message, uint8_t messageLength);
+void frameBuffer_slowWriteCharacter(uint8_t *frameBuffer, uint16_t x, uint16_t y, uint8_t characterIndex);
