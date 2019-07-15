@@ -195,8 +195,8 @@
 
 #define PIXEL_ADDRESS   ((uint32_t)&(PIXEL_ODR) + (PIXEL_ODR_OFFSET / 8)) // +1 for upper 8 bits
 
-uint8_t pixelBufferA[PIXEL_BUFFER_SIZE];
-uint8_t pixelBufferB[PIXEL_BUFFER_SIZE];
+DMA_RAM uint8_t pixelBufferA[PIXEL_BUFFER_SIZE];
+DMA_RAM uint8_t pixelBufferB[PIXEL_BUFFER_SIZE];
 
 uint8_t *fillPixelBuffer = NULL;
 uint8_t *outputPixelBuffer = NULL;
@@ -232,7 +232,7 @@ uint8_t *outputPixelBuffer = NULL;
 #define FRAME_BUFFER_LINE_SIZE ((PIXEL_COUNT / BITS_PER_BYTE) * BITS_PER_PIXEL)
 #define FRAME_BUFFER_SIZE (FRAME_BUFFER_LINE_SIZE * PAL_VISIBLE_LINES)
 
-uint8_t frameBuffers[2][FRAME_BUFFER_SIZE];
+DMA_RAM uint8_t frameBuffers[2][FRAME_BUFFER_SIZE];
 
 //
 // Sync Detection/Timing
