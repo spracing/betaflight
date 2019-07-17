@@ -61,6 +61,20 @@
 #define SPRACING_PIXEL_OSD_PIXEL_DEBUG_1_PIN            PE5  // TIM15_CH1 - For DMA updates
 #define SPRACING_PIXEL_OSD_PIXEL_DEBUG_2_PIN            PE6  // TIM15_CH2 - Spare
 
+#if 1
+#else
+#define DEBUG_PULSE_STATISTICS
+#define DEBUG_PIXEL_BUFFER_FILL
+#define DEBUG_PULSE_ERRORS
+#define DEBUG_LAST_HALF_LINE
+#define DEBUG_PIXEL_BUFFER
+#define DEBUG_COMP_TRIGGER
+#define DEBUG_SYNC_PWM
+#define DEBUG_FIELD_START
+#define DEBUG_SHORT_PULSE
+#define DEBUG_PIXEL_DMA
+#define DEBUG_FIRST_SYNC_PULSE
+#endif
 
 //
 // Video Format
@@ -99,10 +113,14 @@
 #define VIDEO_LINE_LEN            63.556  // us
 #define VIDEO_SYNC_SHORT           2.000  // us
 #define VIDEO_SYNC_HSYNC           4.700  // us
+#define VIDEO_BLANKING            10.900  // us
+#define VIDEO_FRONT_PORCH          1.500  // us
 #else
 #define VIDEO_LINE_LEN            64.000  // us
 #define VIDEO_SYNC_SHORT           2.000  // us
 #define VIDEO_SYNC_HSYNC           4.700  // us
+#define VIDEO_BLANKING            12.000  // us
+#define VIDEO_FRONT_PORCH          1.650  // us
 #endif
 #define VIDEO_FIELD_ODD            1
 #define VIDEO_FIELD_EVEN           (1-VIDEO_FIELD_ODD)
@@ -118,6 +136,7 @@
 #define VIDEO_SYNC_HI_BROAD     (VIDEO_SYNC_HSYNC)
 #define VIDEO_SYNC_HI_VSYNC     ((VIDEO_LINE_LEN / 2.0) - VIDEO_SYNC_HSYNC)
 #define VIDEO_SYNC_HI_SHORT     ((VIDEO_LINE_LEN / 2.0) - VIDEO_SYNC_SHORT)
+#define VIDEO_ACTIVE            (VIDEO_LINE_LEN - VIDEO_BLANKING)
 #define VIDEO_SYNC_HI_DATA      (VIDEO_LINE_LEN)
 //
 // -> valid vsync = .... (1)---[xxx(2)xxx]---(3)------(4)
@@ -160,6 +179,9 @@
 #define PIXEL_DEBUG_1_GPIO_Port GPIOE
 #define PIXEL_DEBUG_2_Pin GPIO_PIN_6
 #define PIXEL_DEBUG_2_GPIO_Port GPIOE
+
+#define DEBUG_OUT_GPIO_Port PIXEL_DEBUG_2_GPIO_Port
+#define DEBUG_OUT_Pin PIXEL_DEBUG_2_Pin
 
 #define PIXEL_COUNT (HORIZONTAL_RESOLUTION / RESOLUTION_SCALE)
 #define PIXEL_BUFFER_SIZE PIXEL_COUNT + 1 // one more pixel which must always be transparent to reset output level during sync
@@ -301,6 +323,13 @@ volatile uint16_t visibleLineIndex;
 volatile bool fillLineNow = false;
 volatile bool frameFlag = false;
 volatile uint16_t fillLineIndex = 0;
+
+#ifdef DEBUG_PULSE_STATISTICS
+uint16_t syncPulseRisingStatisticIndex = 0;
+uint16_t syncPulseRisingStatistics[PAL_LINES] __attribute__((used));
+uint16_t syncPulseFallingStatisticIndex = 0;
+uint16_t syncPulseFallingStatistics[PAL_LINES] __attribute__((used));
+#endif
 
 //
 // State
@@ -1484,7 +1513,7 @@ void frameBuffer_erase(uint8_t *frameBuffer)
 
 void pixelBuffer_fillFromFrameBuffer(uint8_t *destinationPixelBuffer, uint8_t frameBufferIndex, uint16_t lineIndex)
 {
-#ifdef DEBUG_OUT_GPIO_Port
+#ifdef DEBUG_PIXEL_BUFFER_FILL
     HAL_GPIO_TogglePin(DEBUG_OUT_GPIO_Port, DEBUG_OUT_Pin);
 #endif
     uint8_t *frameBuffer = frameBuffers[frameBufferIndex];
@@ -1507,7 +1536,7 @@ void pixelBuffer_fillFromFrameBuffer(uint8_t *destinationPixelBuffer, uint8_t fr
     }
 
     destinationPixelBuffer[PIXEL_COUNT] = PIXEL_TRANSPARENT; // IMPORTANT!  The white source/black sink must be disabled before the SYNC signal, otherwise we change the sync voltage level.
-#ifdef DEBUG_OUT_GPIO_Port
+#ifdef DEBUG_PIXEL_BUFFER_FILL
     HAL_GPIO_TogglePin(DEBUG_OUT_GPIO_Port, DEBUG_OUT_Pin);
 #endif
 }
