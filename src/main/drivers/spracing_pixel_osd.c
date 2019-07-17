@@ -1803,6 +1803,22 @@ bool spracingPixelOSDInit(const struct spracingPixelOSDConfig_s *spracingPixelOS
 
     // DAC CH2 - Generate comparator reference voltage
 
+    // High-saturation colors in the picture data should not cause false comparator triggers.
+    //
+    //      color burst          /----\             /-----\.
+    //                |    -----/      \----   ----/       \---
+    //                v   |                | |                 |
+    //  --        --\/\/\--                | |                 --
+    //    | SYNC |                         |_|   <-- false comparator trigger needs to be avoided
+    //    |______|
+    //    ^      ^
+    //    |      |
+    //    |      Rising edge of Sync
+    //    Falling edge of Sync
+    //
+    // Comparator threshold MV should be as low as possible to detect sync voltages without triggering
+    // on low voltages causes by color bust or high-saturation colors.
+
     uint32_t targetMv = determineInitialComparatorTargetMv();
 
     // IMPORTANT: The voltage keeps drifting the longer the camera has been on (rises over time)
