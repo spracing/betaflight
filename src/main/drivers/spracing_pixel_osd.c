@@ -256,7 +256,7 @@ uint8_t *outputPixelBuffer = NULL;
 #define FRAME_BUFFER_LINE_SIZE ((PIXEL_COUNT / BITS_PER_BYTE) * BITS_PER_PIXEL)
 #define FRAME_BUFFER_SIZE (FRAME_BUFFER_LINE_SIZE * PAL_VISIBLE_LINES)
 
-DMA_RAM uint8_t frameBuffers[2][FRAME_BUFFER_SIZE];
+DMA_RAM uint8_t frameBuffers[2][FRAME_BUFFER_SIZE] __attribute__((aligned(32)));
 
 //
 // Sync Detection/Timing
@@ -335,7 +335,7 @@ uint16_t syncPulseFallingStatistics[PAL_LINES] __attribute__((used));
 // State
 //
 
-volatile bool cameraConnected = true;
+volatile bool cameraConnected = false;
 
 typedef struct spracingPixelOSDIO_s {
     IO_t blackPin;
@@ -1506,9 +1506,78 @@ uint16_t frameBuffer_getCounter(void)
     return frameState.counter;
 }
 
+DMA_RAM uint32_t fillColor __attribute__((aligned(32)));
+static MDMA_HandleTypeDef     frameBuffer_MDMA_Handle_Erase = { 0 };
+
+void frameBuffer_eraseInit(void)
+{
+    __HAL_RCC_MDMA_CLK_ENABLE();
+
+    frameBuffer_MDMA_Handle_Erase.Instance = MDMA_Channel0;
+    frameBuffer_MDMA_Handle_Erase.Init.Request              = MDMA_REQUEST_SW;
+    frameBuffer_MDMA_Handle_Erase.Init.TransferTriggerMode  = MDMA_REPEAT_BLOCK_TRANSFER;
+    frameBuffer_MDMA_Handle_Erase.Init.Priority             = MDMA_PRIORITY_HIGH;
+    frameBuffer_MDMA_Handle_Erase.Init.Endianness           = MDMA_LITTLE_ENDIANNESS_PRESERVE;
+
+    frameBuffer_MDMA_Handle_Erase.Init.DataAlignment        = MDMA_DATAALIGN_PACKENABLE;
+    frameBuffer_MDMA_Handle_Erase.Init.BufferTransferLength = 128;
+
+    frameBuffer_MDMA_Handle_Erase.Init.DestinationInc       = MDMA_DEST_INC_WORD;
+    frameBuffer_MDMA_Handle_Erase.Init.DestDataSize         = MDMA_DEST_DATASIZE_WORD;
+    frameBuffer_MDMA_Handle_Erase.Init.DestBurst            = MDMA_DEST_BURST_SINGLE;
+    frameBuffer_MDMA_Handle_Erase.Init.DestBlockAddressOffset    = 0;
+
+    frameBuffer_MDMA_Handle_Erase.Init.SourceInc            = MDMA_SRC_INC_DISABLE;
+    frameBuffer_MDMA_Handle_Erase.Init.SourceDataSize       = MDMA_SRC_DATASIZE_WORD;
+    frameBuffer_MDMA_Handle_Erase.Init.SourceBurst          = MDMA_SOURCE_BURST_SINGLE;
+    frameBuffer_MDMA_Handle_Erase.Init.SourceBlockAddressOffset  = 0;
+
+    if (HAL_MDMA_Init(&frameBuffer_MDMA_Handle_Erase) != HAL_OK) {
+      Error_Handler();
+    }
+
+    fillColor = BLOCK_TRANSPARENT << 24 | BLOCK_TRANSPARENT << 16 | BLOCK_TRANSPARENT << 8 | BLOCK_TRANSPARENT;
+}
+
 void frameBuffer_erase(uint8_t *frameBuffer)
 {
+#if 0
     memset(frameBuffer, BLOCK_TRANSPARENT, FRAME_BUFFER_SIZE);
+#else
+    uint32_t hal_status;
+
+    uint32_t bytesRemaining = FRAME_BUFFER_SIZE;
+
+    while (bytesRemaining > 0) {
+
+        uint32_t bytesToFill = 4096 * sizeof(fillColor); // 4096 is maximum block count.
+        if (bytesRemaining < bytesToFill) {
+            bytesToFill = bytesRemaining;
+        }
+
+        uint32_t offset = FRAME_BUFFER_SIZE - bytesRemaining;
+
+        hal_status = HAL_MDMA_Start(&frameBuffer_MDMA_Handle_Erase, (uint32_t)&fillColor,
+                                                  (uint32_t)frameBuffer + offset,
+                                                  sizeof(fillColor),
+                                                  bytesToFill / sizeof(fillColor));
+        if(hal_status != HAL_OK)
+        {
+          /* Transfer Error */
+          Error_Handler();
+        }
+
+        const uint32_t eraseTimeoutTicks = 1000;
+        hal_status = HAL_MDMA_PollForTransfer(&frameBuffer_MDMA_Handle_Erase, HAL_MDMA_FULL_TRANSFER, eraseTimeoutTicks);
+        if(hal_status != HAL_OK)
+        {
+          /* Transfer Error */
+          Error_Handler();
+        }
+
+        bytesRemaining -= bytesToFill;
+    }
+#endif
 }
 
 void pixelBuffer_fillFromFrameBuffer(uint8_t *destinationPixelBuffer, uint8_t frameBufferIndex, uint16_t lineIndex)
@@ -1667,6 +1736,8 @@ bool spracingPixelOSDInit(const struct spracingPixelOSDConfig_s *spracingPixelOS
     //
     // Frame
     //
+
+    frameBuffer_eraseInit();
 
     frameBuffer_erase(frameBuffers[0]);
     frameBuffer_erase(frameBuffers[1]);
