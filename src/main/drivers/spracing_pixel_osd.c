@@ -62,8 +62,8 @@
 #define SPRACING_PIXEL_OSD_PIXEL_DEBUG_2_PIN            PE6  // TIM15_CH2 - Spare
 
 #if 1
-#else
 #define DEBUG_PULSE_STATISTICS
+#else
 #define DEBUG_PIXEL_BUFFER_FILL
 #define DEBUG_PULSE_ERRORS
 #define DEBUG_LAST_HALF_LINE
@@ -335,7 +335,7 @@ uint16_t syncPulseFallingStatistics[PAL_LINES] __attribute__((used));
 // State
 //
 
-volatile bool cameraConnected = false;
+volatile bool cameraConnected = true;
 
 typedef struct spracingPixelOSDIO_s {
     IO_t blackPin;
@@ -1215,6 +1215,48 @@ static void MX_DAC1_Init(void)
   }
 }
 
+uint32_t determineInitialComparatorTargetMv(void)
+{
+    typedef enum {
+        L432BREADBOARD = 0,
+        H7CINE_1,
+        H7CINE_2,
+    } osdDeviceInstance_e;
+
+    typedef enum {
+        SONY_CAMERA_1 = 0
+    } cameraInstance_e;
+
+    typedef struct cameraMeasurements_s {
+        osdDeviceInstance_e deviceInstance;
+        cameraInstance_e cameraInstance;
+        uint16_t syncLowMv;
+        uint16_t blackLevelMv;
+        uint16_t colorBurstLowMv;
+        uint16_t highSaturationLowMv;
+    } cameraMeasurements_t;
+
+    // Board,   Camera,         syncLowMv,  BlackLevelMv,   ColorBurstLowMv,    HighSaturationLowMv
+    // H7CINE1, Sony Camera,    460,        920,            780,                800
+
+    static const cameraMeasurements_t cameraMeasurements[] = {
+        { H7CINE_1, SONY_CAMERA_1, 460, 920, 780, 800 },
+    };
+
+    const cameraMeasurements_t *cameraMeasurement = &cameraMeasurements[0];
+    uint32_t targetMv = cameraMeasurement->syncLowMv + ((cameraMeasurement->colorBurstLowMv - cameraMeasurement->syncLowMv) / 2);
+
+    //uint32_t targetMv = 735; // Sony Board Camera, positive sync voltage
+    //uint32_t targetMv = 820; // Sony Camera, positive sync voltage
+    //uint32_t targetMv = 725; // Pixim Seawolf, negative sync voltage
+
+    if (!cameraConnected) {
+        targetMv = 700;
+    }
+
+    return targetMv;
+}
+
 
 typedef struct {
 #ifdef DEBUG_COMP_TRIGGER
@@ -1759,22 +1801,16 @@ bool spracingPixelOSDInit(const struct spracingPixelOSDConfig_s *spracingPixelOS
     MX_TIM2_Init();
 
 
-    // DAC CH2 - Comparator reference
+    // DAC CH2 - Generate comparator reference voltage
 
-    //uint32_t targetMv = 735; // Sony Board Camera, positive sync voltage
-    uint32_t targetMv = 820; // Sony Camera, positive sync voltage
-    //uint32_t targetMv = 725; // Pixim Seawolf, negative sync voltage
-    int32_t offsetMv = 0;//-28; // scope shows 328mv when targetMv is 300mv
-
-    if (!cameraConnected) {
-        targetMv = 700;
-    }
+    uint32_t targetMv = determineInitialComparatorTargetMv();
 
     // IMPORTANT: The voltage keeps drifting the longer the camera has been on (rises over time)
     // TODO: auto-correct targetMv based on sync length (shorter = nearer lower level, longer = nearer high level)
 
-    // TODO get measured VREF via ADC and use instead of VIDEO_DAC_VCC here?
+    int32_t offsetMv = 0;//-28; // scope shows 328mv when targetMv is 300mv
 
+    // TODO get measured VREF via ADC and use instead of VIDEO_DAC_VCC here?
     uint32_t dacComparatorRaw = ((targetMv + offsetMv) * 0x0FFF) / (VIDEO_DAC_VCC * 1000);
 
     HAL_DAC_SetValue(&hdac1, DAC_CHANNEL_2, DAC_ALIGN_12B_R, dacComparatorRaw);
