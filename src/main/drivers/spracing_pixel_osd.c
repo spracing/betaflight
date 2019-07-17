@@ -1838,6 +1838,11 @@ bool spracingPixelOSDInit(const struct spracingPixelOSDConfig_s *spracingPixelOS
       Error_Handler();
     }
 
+    if(HAL_COMP_Start_IT(&hcomp2) != HAL_OK)
+    {
+      Error_Handler();
+    }
+
     //
     // Sync generation
     //
@@ -1858,18 +1863,6 @@ bool spracingPixelOSDInit(const struct spracingPixelOSDConfig_s *spracingPixelOS
     pixelBuffer_createTestPattern1(pixelBufferB, 8);
 
     pixelInit(); // Requires that TIM1 is initialised.
-
-    //
-    // Sync detection (enable)
-    //
-
-    // Don't enable comparator until sync generation is started
-    // TODO - Maybe this is ok now?
-
-    if(HAL_COMP_Start_IT(&hcomp2) != HAL_OK)
-    {
-      Error_Handler();
-    }
 
     return true;
 }
