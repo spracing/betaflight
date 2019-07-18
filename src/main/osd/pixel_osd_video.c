@@ -29,7 +29,7 @@
 
 #ifdef USE_PIXEL_OSD
 
-#if 0
+#if 1
 #define DISPLAY_FRAME_COUNTER
 #endif
 
@@ -43,17 +43,15 @@
 
 FAST_CODE bool taskPixelOSDVideoCheck(timeUs_t currentTimeUs, timeDelta_t currentDeltaTimeUs)
 {
-    return (fillLineNow || frameFlag);
+    UNUSED(currentTimeUs);
+    UNUSED(currentDeltaTimeUs);
+
+    return (frameFlag);
 }
 
 FAST_CODE void taskPixelOSDVideo(timeUs_t currentTimeUs)
 {
-
-    if (fillLineNow) {
-        fillLineNow = false;
-        pixelBuffer_fillFromFrameBuffer(fillPixelBuffer, 0, fillLineIndex);
-        //pixelBuffer_update();
-    }
+    UNUSED(currentTimeUs);
 
     if (frameFlag) {
         frameFlag = false;
@@ -64,7 +62,7 @@ FAST_CODE void taskPixelOSDVideo(timeUs_t currentTimeUs)
 
         static uint8_t frameCountBuffer[7];
         tfp_sprintf((char *)frameCountBuffer, "F:%04X", frameCounter);
-        frameBuffer_slowWriteString(frameBuffer, (320 - (12 * 6)) / 2, (288 - 18) / 2, frameCountBuffer, 6);
+        frameBuffer_slowWriteString(frameBuffer, (360 - (12 * 6)) / 2, 18, frameCountBuffer, 6);
 #endif
     }
 }

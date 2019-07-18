@@ -51,13 +51,8 @@ extern uint8_t *fillPixelBuffer;
 // Frame Buffer
 //
 
-extern volatile bool fillLineNow;
 extern volatile bool frameFlag;
-extern volatile uint16_t fillLineIndex;
-
 extern volatile bool videoModeChanged;
-
-void pixelBuffer_fillFromFrameBuffer(uint8_t *destinationPixelBuffer, uint8_t frameBufferIndex, uint16_t lineIndex);
 
 void frameBuffer_erase(uint8_t *frameBuffer);
 

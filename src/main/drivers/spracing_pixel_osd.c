@@ -264,6 +264,8 @@ uint8_t *outputPixelBuffer = NULL;
 
 DMA_RAM uint8_t frameBuffers[2][FRAME_BUFFER_SIZE] __attribute__((aligned(32)));
 
+void pixelBuffer_fillFromFrameBuffer(uint8_t *destinationPixelBuffer, uint8_t frameBufferIndex, uint16_t lineIndex);
+
 //
 // Sync Detection/Timing
 //
@@ -326,7 +328,6 @@ uint16_t lastVisibleLine;
 bool nextLineIsVisible;
 volatile uint16_t visibleLineIndex;
 
-volatile bool fillLineNow = false;
 volatile bool frameFlag = false;
 volatile uint16_t fillLineIndex = 0;
 
@@ -1456,7 +1457,6 @@ void RAW_COMP_TriggerCallback(void)
 
                     outputPixelBuffer = fillPixelBuffer;
 
-                    fillLineNow = true;
                     fillLineIndex = visibleLineIndex;
 
                     fillPixelBuffer = previousOutputPixelBuffer;
@@ -1464,6 +1464,8 @@ void RAW_COMP_TriggerCallback(void)
                         // if this line is visible the transfer-complete handler would configure the DMA
                         pixelConfigureDMAForNextField();
                     }
+
+                    pixelBuffer_fillFromFrameBuffer(fillPixelBuffer, 0, fillLineIndex);
                 }
 
                 if (fieldState.lineNumber > fieldState.highestFieldLineNumber) {
@@ -1639,7 +1641,9 @@ void frameBuffer_erase(uint8_t *frameBuffer)
 
 void pixelBuffer_fillFromFrameBuffer(uint8_t *destinationPixelBuffer, uint8_t frameBufferIndex, uint16_t lineIndex)
 {
-#ifdef DEBUG_PIXEL_BUFFER_FILL
+    // This method only works for BITS_PER_PIXEL == 2
+
+    #ifdef DEBUG_PIXEL_BUFFER_FILL
     pixelDebug2Toggle();
 #endif
     uint8_t *frameBuffer = frameBuffers[frameBufferIndex];
@@ -1648,7 +1652,7 @@ void pixelBuffer_fillFromFrameBuffer(uint8_t *destinationPixelBuffer, uint8_t fr
     for (int i = 0; i < FRAME_BUFFER_LINE_SIZE; i++) {
         uint8_t pixelBlock = *(frameBufferLine + i);
 
-        uint8_t mask = (1 << 7) | ( 1 << 6); // only for BITS_PER_PIXEL == 2
+        uint8_t mask = (1 << 7) | ( 1 << 6);
         *pixel++ = (pixelBlock & mask) >> (BITS_PER_PIXEL * 3) << PIXEL_BLACK_BIT;
 
         mask = mask >> BITS_PER_PIXEL;
