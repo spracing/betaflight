@@ -55,7 +55,7 @@
 
 #define SPRACING_PIXEL_OSD_SYNC_IN_PIN                  PE11 // COMP2_INP
 #define SPRACING_PIXEL_OSD_SYNC_OUT_A_PIN               PE12 // TIM1_CH3N
-#define SPRACING_PIXEL_OSD_SYNC_OUT_B_PIN               PA8  // TIM1_CH1 / MCO
+#define SPRACING_PIXEL_OSD_SYNC_OUT_B_PIN               PA8  // TIM1_CH1 / MCO / Currently Unused
 
 #define SPRACING_PIXEL_OSD_VIDEO_THRESHOLD_DEBUG_PIN    PA5
 #define SPRACING_PIXEL_OSD_PIXEL_DEBUG_1_PIN            PE5  // TIM15_CH1 - For DMA updates
@@ -75,6 +75,15 @@
 #define DEBUG_PIXEL_DMA
 #define DEBUG_FIRST_SYNC_PULSE
 #endif
+
+static void pixelDebug1Set(bool state);
+static void pixelDebug2Set(bool state);
+static void pixelDebug1Low(void);
+static void pixelDebug2Low(void);
+static void pixelDebug1High(void);
+static void pixelDebug2High(void);
+static void pixelDebug1Toggle(void);
+static void pixelDebug2Toggle(void);
 
 //
 // Video Format
@@ -179,9 +188,6 @@
 #define PIXEL_DEBUG_1_GPIO_Port GPIOE
 #define PIXEL_DEBUG_2_Pin GPIO_PIN_6
 #define PIXEL_DEBUG_2_GPIO_Port GPIOE
-
-#define DEBUG_OUT_GPIO_Port PIXEL_DEBUG_2_GPIO_Port
-#define DEBUG_OUT_Pin PIXEL_DEBUG_2_Pin
 
 #define PIXEL_COUNT (HORIZONTAL_RESOLUTION / RESOLUTION_SCALE)
 #define PIXEL_BUFFER_SIZE PIXEL_COUNT + 1 // one more pixel which must always be transparent to reset output level during sync
@@ -341,16 +347,22 @@ typedef struct spracingPixelOSDIO_s {
     IO_t blackPin;
     IO_t whitePin;
     IO_t syncInPin;
+    IO_t debug1Pin;
+    IO_t debug2Pin;
 } spracingPixelOSDIO_t;
 
 static spracingPixelOSDIO_t spracingPixelOSDIO = {
     .blackPin           = IO_NONE,
     .whitePin           = IO_NONE,
     .syncInPin          = IO_NONE,
+    .debug1Pin          = IO_NONE,
+    .debug2Pin          = IO_NONE,
 };
 
 #define IO_PIXEL_BLACK_CFG      IO_CONFIG(GPIO_MODE_OUTPUT_OD, GPIO_SPEED_FREQ_MEDIUM,  GPIO_NOPULL)
 #define IO_PIXEL_WHITE_CFG      IO_CONFIG(GPIO_MODE_OUTPUT_PP, GPIO_SPEED_FREQ_MEDIUM,  GPIO_NOPULL)
+
+#define IO_PIXEL_DEBUG_CFG      IO_CONFIG(GPIO_MODE_OUTPUT_PP, GPIO_SPEED_FREQ_MEDIUM,  GPIO_PULLDOWN)
 
 #define IO_VIDEO_SYNC_IN_CFG       IO_CONFIG(GPIO_MODE_INPUT,     GPIO_SPEED_FREQ_LOW,     GPIO_NOPULL)
 
@@ -420,7 +432,7 @@ void HAL_TIM_MspPostInit(TIM_HandleTypeDef* htim)
     PE5     ------> TIM15_CH1
     PE6     ------> TIM15_CH2
     */
-    GPIO_InitStruct.Pin = PIXEL_DEBUG_1_Pin|PIXEL_DEBUG_2_Pin;
+    GPIO_InitStruct.Pin = PIXEL_DEBUG_1_Pin;
     GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
     GPIO_InitStruct.Pull = GPIO_NOPULL;
     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
@@ -522,12 +534,14 @@ void HAL_TIM_Base_MspInit(TIM_HandleTypeDef* htim_base)
 
 void SYNC_DMA_IRQHandler(dmaChannelDescriptor_t* descriptor)
 {
+    UNUSED(descriptor);
     //    HAL_DMA_IRQHandler(TimHandle.hdma[descriptor->userParam]);
     HAL_DMA_IRQHandler(&hdma_tim1_up);
 }
 
 void PIXEL_DMA_IRQHandler(dmaChannelDescriptor_t* descriptor)
 {
+    UNUSED(descriptor);
     //    HAL_DMA_IRQHandler(TimHandle.hdma[descriptor->userParam]);
     HAL_DMA_IRQHandler(&hdma_tim15_ch1);
 }
@@ -535,27 +549,26 @@ void PIXEL_DMA_IRQHandler(dmaChannelDescriptor_t* descriptor)
 static void MX_DMA_Init(void)
 {
 #if 0
-  /* DMA controller clock enable */
-  __HAL_RCC_DMA1_CLK_ENABLE();
-  __HAL_RCC_DMA2_CLK_ENABLE();
+    /* DMA controller clock enable */
+    __HAL_RCC_DMA1_CLK_ENABLE();
+    __HAL_RCC_DMA2_CLK_ENABLE();
 
-  /* DMA interrupt init */
-  /* DMA1_Channel5_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA2_Stream6_IRQn, 0, 0);
-  HAL_NVIC_EnableIRQ(DMA2_Stream6_IRQn);
+    /* DMA interrupt init */
+    /* DMA1_Channel5_IRQn interrupt configuration */
+    HAL_NVIC_SetPriority(DMA2_Stream6_IRQn, 0, 0);
+    HAL_NVIC_EnableIRQ(DMA2_Stream6_IRQn);
 
-  /* DMA1_Channel6_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA2_Stream7_IRQn, 0, 0);
-  HAL_NVIC_EnableIRQ(DMA2_Stream7_IRQn);
+    /* DMA1_Channel6_IRQn interrupt configuration */
+    HAL_NVIC_SetPriority(DMA2_Stream7_IRQn, 0, 0);
+    HAL_NVIC_EnableIRQ(DMA2_Stream7_IRQn);
 #endif
 
+    //
+    // Sync Generation DMA
+    //
 
-  //
-  // Sync Generation DMA
-  //
-
-  ioTag_t syncIoTag = timerioTagGetByUsage(TIM_USE_VIDEO_SYNC, 0);
-  const timerHardware_t *syncTimerHardware = timerGetByTag(syncIoTag);
+    ioTag_t syncIoTag = timerioTagGetByUsage(TIM_USE_VIDEO_SYNC, 0);
+    const timerHardware_t *syncTimerHardware = timerGetByTag(syncIoTag);
 
 #if defined(USE_DMA_SPEC)
     const dmaChannelSpec_t *syncDmaSpec = dmaGetChannelSpecByTimer(syncTimerHardware);
@@ -571,18 +584,20 @@ static void MX_DMA_Init(void)
     uint32_t syncDmaChannel = syncTimerHardware->dmaChannel;
 #endif
 
-  uint16_t syncTimerChannel = syncTimerHardware->channel;
-  uint16_t syncDmaIndex = timerDmaIndex(syncTimerChannel);
+    UNUSED(syncDmaChannel);
 
-  dmaInit(dmaGetIdentifier(syncDmaRef), OWNER_OSD, 0);
-  dmaSetHandler(dmaGetIdentifier(syncDmaRef), SYNC_DMA_IRQHandler, NVIC_PRIO_VIDEO_DMA, syncDmaIndex);
+    uint16_t syncTimerChannel = syncTimerHardware->channel;
+    uint16_t syncDmaIndex = timerDmaIndex(syncTimerChannel);
 
-  //
-  // Pixel Generation DMA
-  //
+    dmaInit(dmaGetIdentifier(syncDmaRef), OWNER_OSD, 0);
+    dmaSetHandler(dmaGetIdentifier(syncDmaRef), SYNC_DMA_IRQHandler, NVIC_PRIO_VIDEO_DMA, syncDmaIndex);
 
-  ioTag_t pixelIoTag = timerioTagGetByUsage(TIM_USE_VIDEO_PIXEL, 0);
-  const timerHardware_t *pixelTimerHardware = timerGetByTag(pixelIoTag);
+    //
+    // Pixel Generation DMA
+    //
+
+    ioTag_t pixelIoTag = timerioTagGetByUsage(TIM_USE_VIDEO_PIXEL, 0);
+    const timerHardware_t *pixelTimerHardware = timerGetByTag(pixelIoTag);
 
 #if defined(USE_DMA_SPEC)
     const dmaChannelSpec_t *pixelDmaSpec = dmaGetChannelSpecByTimer(pixelTimerHardware);
@@ -598,12 +613,13 @@ static void MX_DMA_Init(void)
     uint32_t pixelDmaChannel = pixelTimerHardware->dmaChannel;
 #endif
 
-  uint16_t pixelTimerChannel = pixelTimerHardware->channel;
-  uint16_t pixelDmaIndex = timerDmaIndex(pixelTimerChannel);
+    UNUSED(pixelDmaChannel);
 
-  dmaInit(dmaGetIdentifier(pixelDmaRef), OWNER_OSD, 0);
-  dmaSetHandler(dmaGetIdentifier(pixelDmaRef), PIXEL_DMA_IRQHandler, NVIC_PRIO_VIDEO_DMA, pixelDmaIndex);
+    uint16_t pixelTimerChannel = pixelTimerHardware->channel;
+    uint16_t pixelDmaIndex = timerDmaIndex(pixelTimerChannel);
 
+    dmaInit(dmaGetIdentifier(pixelDmaRef), OWNER_OSD, 0);
+    dmaSetHandler(dmaGetIdentifier(pixelDmaRef), PIXEL_DMA_IRQHandler, NVIC_PRIO_VIDEO_DMA, pixelDmaIndex);
 }
 
 static void spracingPixelOSDSyncTimerInit(void)
@@ -1029,7 +1045,7 @@ void pixelOutputDisable(void)
 void pixelConfigureDMAForNextField(void)
 {
 #ifdef DEBUG_PIXEL_BUFFER
-    HAL_GPIO_WritePin(DEBUG_OUT_GPIO_Port, DEBUG_OUT_Pin, fillPixelBuffer == pixelBufferA ? GPIO_PIN_SET : GPIO_PIN_RESET);
+    pixelDebug2Set(fillPixelBuffer == pixelBufferA);
 #endif
 
     if (HAL_DMA_Start_IT(hPixelOutDMA, (uint32_t)fillPixelBuffer, PIXEL_ADDRESS, PIXEL_BUFFER_SIZE) != HAL_OK)
@@ -1039,11 +1055,12 @@ void pixelConfigureDMAForNextField(void)
 
 }
 
-void pixelXferCpltCallback(struct __DMA_HandleTypeDef * hdma)
+void pixelXferCpltCallback(struct __DMA_HandleTypeDef *hdma)
 {
+    UNUSED(hdma);
 
 #ifdef DEBUG_PIXEL_DMA
-    HAL_GPIO_TogglePin(DEBUG_OUT_GPIO_Port, DEBUG_OUT_Pin);
+    pixelDebug2Toggle();
 #endif
 
 #ifdef STOP_START_PIXEL_TIMER
@@ -1092,7 +1109,7 @@ void pixelInit(void)
 static inline void pixelStartDMA(void)
 {
 #ifdef DEBUG_PIXEL_DMA
-    HAL_GPIO_WritePin(DEBUG_OUT_GPIO_Port, DEBUG_OUT_Pin, GPIO_PIN_SET);
+    pixelDebug2High();
 #endif
 
     (&htim15)->Instance->CNT = 0;
@@ -1277,11 +1294,11 @@ frameState_t frameState = { 0 };
 
 static inline void pulseError(void) {
 #ifdef DEBUG_PULSE_ERRORS
-    HAL_GPIO_TogglePin(DEBUG_OUT_GPIO_Port, DEBUG_OUT_Pin);
+    pixelDebug2Toggle();
 #endif
     frameState.pulseErrors++;
 #ifdef DEBUG_PULSE_ERRORS
-    HAL_GPIO_TogglePin(DEBUG_OUT_GPIO_Port, DEBUG_OUT_Pin);
+    pixelDebug2Toggle();
 #endif
 }
 
@@ -1306,7 +1323,7 @@ void RAW_COMP_TriggerCallback(void)
     if (compState.fallingEdge) {
 #ifdef DEBUG_COMP_TRIGGER
         compState.triggerLowCount++;
-        HAL_GPIO_WritePin(DEBUG_OUT_GPIO_Port, DEBUG_OUT_Pin, GPIO_PIN_RESET);
+        pixelDebug2Low();
 #endif
 
         // VIDEO_SYNC_VSYNC_MIN ((uint32_t)((((64.000 / 2.0) - 4.700) - (((64.000 / 2.0) - 4.700) - (4.700))/2.0) * (80000000 / 1000000)))
@@ -1330,10 +1347,8 @@ void RAW_COMP_TriggerCallback(void)
                 }
 
 #ifdef DEBUG_LAST_HALF_LINE
-                HAL_GPIO_WritePin(DEBUG_OUT_GPIO_Port, DEBUG_OUT_Pin, GPIO_PIN_RESET);
-#endif
-#ifdef DEBUG_LAST_HALF_LINE
-                HAL_GPIO_WritePin(DEBUG_OUT_GPIO_Port, DEBUG_OUT_Pin, GPIO_PIN_SET);
+                pixelDebug2Low();
+                pixelDebug2High();
 #endif
             }
         }
@@ -1352,7 +1367,7 @@ void RAW_COMP_TriggerCallback(void)
     } else {
 #ifdef DEBUG_COMP_TRIGGER
         compState.triggerHighCount++;
-        HAL_GPIO_WritePin(DEBUG_OUT_GPIO_Port, DEBUG_OUT_Pin, GPIO_PIN_SET);
+        pixelDebug2High();
 #endif
 
         //
@@ -1360,7 +1375,7 @@ void RAW_COMP_TriggerCallback(void)
         //
         if (pulseLength < VIDEO_SYNC_SHORT_MAX) {
 #ifdef DEBUG_SHORT_PULSE
-            HAL_GPIO_WritePin(DEBUG_OUT_GPIO_Port, DEBUG_OUT_Pin, GPIO_PIN_RESET);
+            pixelDebug2Low();
 #endif
 
             if (frameState.status == WAITING_FOR_FIRST_FIELD) {
@@ -1404,7 +1419,7 @@ void RAW_COMP_TriggerCallback(void)
             }
 
 #ifdef DEBUG_SHORT_PULSE
-            HAL_GPIO_WritePin(DEBUG_OUT_GPIO_Port, DEBUG_OUT_Pin, GPIO_PIN_SET);
+            pixelDebug2High();
 #endif
 
         } else if (pulseLength < VIDEO_SYNC_HSYNC_MAX) {
@@ -1483,14 +1498,14 @@ void RAW_COMP_TriggerCallback(void)
 
                 fieldState.phase = FIELD_SYNCRONIZING;
 #ifdef DEBUG_FIELD_START
-                HAL_GPIO_WritePin(DEBUG_OUT_GPIO_Port, DEBUG_OUT_Pin, GPIO_PIN_RESET);
+                pixelDebug2Low();
 #endif
             }
 
             if (frameState.status == COUNTING_POST_EQUALIZING_PULSES) {
                 fieldState.type = FIELD_SECOND;
 #ifdef DEBUG_FIELD_START
-                HAL_GPIO_WritePin(DEBUG_OUT_GPIO_Port, DEBUG_OUT_Pin, GPIO_PIN_SET);
+                pixelDebug2High();
 #endif
             }
 
@@ -1501,9 +1516,9 @@ void RAW_COMP_TriggerCallback(void)
 #ifdef DEBUG_FIRST_SYNC_PULSE
             bool firstSyncPulse = (fieldState.syncronizingPulses == 0);
             if (firstSyncPulse) {
-                HAL_GPIO_WritePin(DEBUG_OUT_GPIO_Port, DEBUG_OUT_Pin, GPIO_PIN_SET);
+                pixelDebug2Low();
             } else if (fieldState.syncronizingPulses == 1) {
-                HAL_GPIO_WritePin(DEBUG_OUT_GPIO_Port, DEBUG_OUT_Pin, GPIO_PIN_RESET);
+                pixelDebug2High();
             }
 #endif
         } else {
@@ -1625,7 +1640,7 @@ void frameBuffer_erase(uint8_t *frameBuffer)
 void pixelBuffer_fillFromFrameBuffer(uint8_t *destinationPixelBuffer, uint8_t frameBufferIndex, uint16_t lineIndex)
 {
 #ifdef DEBUG_PIXEL_BUFFER_FILL
-    HAL_GPIO_TogglePin(DEBUG_OUT_GPIO_Port, DEBUG_OUT_Pin);
+    pixelDebug2Toggle();
 #endif
     uint8_t *frameBuffer = frameBuffers[frameBufferIndex];
     uint8_t *frameBufferLine = frameBuffer + (FRAME_BUFFER_LINE_SIZE * lineIndex);
@@ -1648,7 +1663,7 @@ void pixelBuffer_fillFromFrameBuffer(uint8_t *destinationPixelBuffer, uint8_t fr
 
     destinationPixelBuffer[PIXEL_COUNT] = PIXEL_TRANSPARENT; // IMPORTANT!  The white source/black sink must be disabled before the SYNC signal, otherwise we change the sync voltage level.
 #ifdef DEBUG_PIXEL_BUFFER_FILL
-    HAL_GPIO_TogglePin(DEBUG_OUT_GPIO_Port, DEBUG_OUT_Pin);
+    pixelDebug2Toggle();
 #endif
 }
 
@@ -1755,6 +1770,54 @@ void frameBuffer_slowWriteString(uint8_t *frameBuffer, uint16_t x, uint16_t y, c
     }
 }
 
+//
+// Debug
+//
+
+static inline void pixelDebug1Set(bool state)
+{
+    IOWrite(spracingPixelOSDIO.debug1Pin, state);
+}
+
+static inline void pixelDebug1Low(void)
+{
+    IOLo(spracingPixelOSDIO.debug1Pin);
+}
+
+static inline void pixelDebug1High(void)
+{
+    IOHi(spracingPixelOSDIO.debug1Pin);
+}
+
+static inline void pixelDebug1Toggle(void)
+{
+    IOToggle(spracingPixelOSDIO.debug1Pin);
+}
+
+static inline void pixelDebug2Set(bool state)
+{
+    IOWrite(spracingPixelOSDIO.debug2Pin, state);
+}
+
+static inline void pixelDebug2Low(void)
+{
+    IOLo(spracingPixelOSDIO.debug2Pin);
+}
+
+static inline void pixelDebug2High(void)
+{
+    IOHi(spracingPixelOSDIO.debug2Pin);
+}
+
+static inline void pixelDebug2Toggle(void)
+{
+    IOToggle(spracingPixelOSDIO.debug2Pin);
+}
+
+//
+// Init
+//
+
 bool spracingPixelOSDInit(const struct spracingPixelOSDConfig_s *spracingPixelOSDConfig, const struct vcdProfile_s *vcdProfile)
 {
     UNUSED(spracingPixelOSDConfig);
@@ -1774,6 +1837,17 @@ bool spracingPixelOSDInit(const struct spracingPixelOSDConfig_s *spracingPixelOS
     IOLo(spracingPixelOSDIO.syncInPin);
     IOInit(spracingPixelOSDIO.syncInPin, OWNER_OSD, 0);
     IOConfigGPIO(spracingPixelOSDIO.syncInPin, IO_VIDEO_SYNC_IN_CFG);
+
+    spracingPixelOSDIO.debug1Pin = IOGetByTag(IO_TAG(SPRACING_PIXEL_OSD_PIXEL_DEBUG_1_PIN));
+    IOLo(spracingPixelOSDIO.debug1Pin);
+    IOInit(spracingPixelOSDIO.debug1Pin, OWNER_OSD, 0);
+    IOConfigGPIO(spracingPixelOSDIO.debug1Pin, IO_PIXEL_DEBUG_CFG);
+
+    spracingPixelOSDIO.debug2Pin = IOGetByTag(IO_TAG(SPRACING_PIXEL_OSD_PIXEL_DEBUG_2_PIN));
+    IOLo(spracingPixelOSDIO.debug2Pin);
+    IOInit(spracingPixelOSDIO.debug2Pin, OWNER_OSD, 0);
+    IOConfigGPIO(spracingPixelOSDIO.debug2Pin, IO_PIXEL_DEBUG_CFG);
+
 
     //
     // Frame
