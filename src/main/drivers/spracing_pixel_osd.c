@@ -225,8 +225,8 @@ static void pixelDebug2Toggle(void);
 
 #define PIXEL_ADDRESS   ((uint32_t)&(PIXEL_ODR) + (PIXEL_ODR_OFFSET / 8)) // +1 for upper 8 bits
 
-DMA_RAM uint8_t pixelBufferA[PIXEL_BUFFER_SIZE];
-DMA_RAM uint8_t pixelBufferB[PIXEL_BUFFER_SIZE];
+DMA_RAM uint8_t pixelBufferA[PIXEL_BUFFER_SIZE] __attribute__((aligned(32)));
+DMA_RAM uint8_t pixelBufferB[PIXEL_BUFFER_SIZE] __attribute__((aligned(32)));
 
 uint8_t *fillPixelBuffer = NULL;
 uint8_t *outputPixelBuffer = NULL;
@@ -1648,6 +1648,8 @@ void pixelBuffer_fillFromFrameBuffer(uint8_t *destinationPixelBuffer, uint8_t fr
 #endif
     uint8_t *frameBuffer = frameBuffers[frameBufferIndex];
     uint8_t *frameBufferLine = frameBuffer + (FRAME_BUFFER_LINE_SIZE * lineIndex);
+#if USE_SLOW_PIXEL_BUFFER_FILL_METHOD
+    // XXX - After compilier optimization this is slower than the implementation below.
     uint8_t *pixel = destinationPixelBuffer;
     for (int i = 0; i < FRAME_BUFFER_LINE_SIZE; i++) {
         uint8_t pixelBlock = *(frameBufferLine + i);
@@ -1664,7 +1666,19 @@ void pixelBuffer_fillFromFrameBuffer(uint8_t *destinationPixelBuffer, uint8_t fr
         mask = mask >> BITS_PER_PIXEL;
         *pixel++ = (pixelBlock & mask) >> (BITS_PER_PIXEL * 0) << PIXEL_BLACK_BIT;
     }
+#else
+    uint32_t *pixels = (uint32_t)destinationPixelBuffer;
+    for (int i = 0; i < FRAME_BUFFER_LINE_SIZE; i++) {
+        uint8_t pixelBlock = *(frameBufferLine + i);
 
+        *pixels++ = (
+            ((pixelBlock & (0x03 << 0)) >> (BITS_PER_PIXEL * 0) << 24) |
+            ((pixelBlock & (0x03 << 2)) >> (BITS_PER_PIXEL * 1) << 16) |
+            ((pixelBlock & (0x03 << 4)) >> (BITS_PER_PIXEL * 2) << 8) |
+            ((pixelBlock & (0x03 << 6)) >> (BITS_PER_PIXEL * 3) << 0)
+        ) << PIXEL_BLACK_BIT;
+    }
+#endif
     destinationPixelBuffer[PIXEL_COUNT] = PIXEL_TRANSPARENT; // IMPORTANT!  The white source/black sink must be disabled before the SYNC signal, otherwise we change the sync voltage level.
 #ifdef DEBUG_PIXEL_BUFFER_FILL
     pixelDebug2Toggle();
