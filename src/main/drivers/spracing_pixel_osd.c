@@ -1667,7 +1667,7 @@ void pixelBuffer_fillFromFrameBuffer(uint8_t *destinationPixelBuffer, uint8_t fr
         *pixel++ = (pixelBlock & mask) >> (BITS_PER_PIXEL * 0) << PIXEL_BLACK_BIT;
     }
 #else
-    uint32_t *pixels = (uint32_t)destinationPixelBuffer;
+    uint32_t *pixels = (uint32_t *)destinationPixelBuffer;
     for (int i = 0; i < FRAME_BUFFER_LINE_SIZE; i++) {
         uint8_t pixelBlock = *(frameBufferLine + i);
 
