@@ -99,12 +99,20 @@ static void pixelDebug2Toggle(void);
 #define PAL_VISIBLE_LINES 288  // MAX7456 (16 rows * 18 character height)
 #define NTSC_VISIBLE_LINES 234 // MAX7456 (13 rows * 18 character height)
 
-// 48us * 80 = 3840 clocks.  3840 clocks / 640 = 6 clocks per pixel.
-// resolution scale of 2 = 12 clocks per pixel = 320 pixels.
+// 48us * 80mhz = 3840 clocks.  3840 clocks / 720 = 5.33 clocks per pixel.
+// resolution scale of 2 = 10.77 clocks per pixel = 360 pixels.
+// 5 * 720 = 3600 clocks / 80 = 45us.
+// 6 * 720 = 4320 clocks / 80 = 54us == Too long!
+
+// 48us * 100mhz = 4800 clocks.  4800 clocks / 720 = 6.6 clocks per pixel.
+// resolution scale of 2 = 13.33 clocks per pixel = 360 pixels.
+// 7 * 720 = 5040 clocks / 100 = 50.04us.
+
+#define CLOCKS_PER_PIXEL 6.6
 
 #define HORIZONTAL_RESOLUTION 720
 #define RESOLUTION_SCALE 2
-#define OVERLAY_LENGTH 46.800 // us
+#define OVERLAY_LENGTH ((CLOCKS_PER_PIXEL * HORIZONTAL_RESOLUTION) / TIMER_CLOCKS_PER_US) // us
 
 
 //
@@ -798,32 +806,6 @@ static void MX_TIM2_Init(void)
 
 }
 
-/*
-48us = 48,000ns
-48,000ns / resolution (320) = 150ns
-
-1000 / 150ns = 6.6666666666666666666666666666667
-
-80 / 6.6666666666666666666666666666667 = 12
-
-100 / 6.6666666666666666666666666666667 = 15
-
-have to divide result by 2 for 50 percent duty cycle
-
-12/2 = 6
-15/2 =
-
-48000ns / 360 = 133.333ns
-
-1000 / 133.333 = 7.5
-
-100 / 7.5 = 13.333
-
-13 * 360 = 4680ns
-13/2 = 6.5
-
- *
- */
 static void spracingPixelOsdPixelTimerInit(void)
 {
   TIM_ClockConfigTypeDef sClockSourceConfig = {0};
@@ -837,7 +819,7 @@ static void spracingPixelOsdPixelTimerInit(void)
   htim15.Instance = TIM15;
   htim15.Init.Prescaler = (TIMER_BUS_CLOCK / TIMER_CLOCK) - 1;
   htim15.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim15.Init.Period = (6.5 * RESOLUTION_SCALE) - 1;
+  htim15.Init.Period = (CLOCKS_PER_PIXEL * RESOLUTION_SCALE) - 1;
   htim15.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim15.Init.RepetitionCounter = 0;
   htim15.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
@@ -868,7 +850,7 @@ static void spracingPixelOsdPixelTimerInit(void)
     Error_Handler();
   }
   sConfigOC.OCMode = TIM_OCMODE_PWM1;
-  sConfigOC.Pulse = ((6.5/2) * RESOLUTION_SCALE);
+  sConfigOC.Pulse = ((CLOCKS_PER_PIXEL / 2) * RESOLUTION_SCALE);
   sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
   sConfigOC.OCNPolarity = TIM_OCNPOLARITY_HIGH;
   sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
