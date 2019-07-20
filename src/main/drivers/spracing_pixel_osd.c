@@ -1491,7 +1491,7 @@ void RAW_COMP_TriggerCallback(void)
                     frameState.counter++;
                     frameFlag = true;
 
-                    osdFrameTimeoutAt = frameState.vsyncAt + ((1000000 / 1) * 1); // 1 seconds, 1hz // FIXME adjust to a more suitable timeout
+                    osdFrameTimeoutAt = frameState.vsyncAt + ((1000000 / 1) * 1); // 1 second // FIXME adjust ?
 
                 } else {
                     fieldState.type = FIELD_SECOND;
@@ -1959,6 +1959,33 @@ bool spracingPixelOSDInit(const struct spracingPixelOSDConfig_s *spracingPixelOS
     pixelInit(); // Requires that TIM1 is initialised.
 
     return true;
+}
+
+void spracingPixelOSDProcess(timeUs_t currentTimeUs)
+{
+    bool osdFrameTimeoutFlag = osdFrameTimeoutAt > 0 && cmp32(currentTimeUs, osdFrameTimeoutAt) > 0;
+
+    if (osdFrameTimeoutFlag) {
+        if (cameraConnected) {
+            cameraConnected = false;
+        } else {
+            syncStopDMA();
+            syncStopPWM();
+
+            // probably the frame timeout caused by having camera sync interfering with generated sync..
+            cameraConnected = true;
+
+        }
+
+        pixelOutputDisable();
+        syncInit();
+        spracingPixelOSDSyncTriggerReset();
+
+        memset(&frameState, 0x00, sizeof(frameState));
+        memset(&fieldState, 0x00, sizeof(fieldState));
+
+        osdFrameTimeoutAt = currentTimeUs + (1000000 / 1) * 1; // 1 second
+    }
 }
 
 #endif // USE_SPRACING_PIXEL_OSD

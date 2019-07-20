@@ -41,17 +41,23 @@
 
 #include "pixel_osd_video.h"
 
+bool osdServiceFlag = false;
+
+#define DELAY_60_HZ (1000000 / 60)
+
 FAST_CODE bool taskPixelOSDVideoCheck(timeUs_t currentTimeUs, timeDelta_t currentDeltaTimeUs)
 {
     UNUSED(currentTimeUs);
     UNUSED(currentDeltaTimeUs);
 
-    return (frameFlag);
+    osdServiceFlag = currentDeltaTimeUs > DELAY_60_HZ;
+
+    return (frameFlag || osdServiceFlag);
 }
 
 FAST_CODE void taskPixelOSDVideo(timeUs_t currentTimeUs)
 {
-    UNUSED(currentTimeUs);
+    // Handle the more frequent operations first
 
     if (frameFlag) {
         frameFlag = false;
@@ -64,6 +70,10 @@ FAST_CODE void taskPixelOSDVideo(timeUs_t currentTimeUs)
         tfp_sprintf((char *)frameCountBuffer, "F:%04X", frameCounter);
         frameBuffer_slowWriteString(frameBuffer, (360 - (12 * 6)) / 2, 18, frameCountBuffer, 6);
 #endif
+    }
+
+    if (osdServiceFlag) {
+        spracingPixelOSDProcess(currentTimeUs);
     }
 }
 
