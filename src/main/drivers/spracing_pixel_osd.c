@@ -168,7 +168,7 @@ static void pixelDebug2Toggle(void);
 //
 // short sync =  (1)xxx]---(2)------(3)
 //
-#define VIDEO_SYNC_SHORT_MIN    _US_TO_CLOCKS(0)
+#define VIDEO_SYNC_SHORT_MIN    _US_TO_CLOCKS(VIDEO_SYNC_SHORT / 2.0)
 #define VIDEO_SYNC_SHORT_MAX    _US_TO_CLOCKS(VIDEO_SYNC_SHORT +  (VIDEO_SYNC_HSYNC - VIDEO_SYNC_SHORT)/2.0)
 //
 // hsync      =  (1)---[xxx(2)xxx]---(3)
@@ -1357,7 +1357,9 @@ void RAW_COMP_TriggerCallback(void)
         //
         // check pulse lengths in order from shortest to longest.
         //
-        if (pulseLength < VIDEO_SYNC_SHORT_MAX) {
+        if (pulseLength < VIDEO_SYNC_SHORT_MIN) {
+            pulseError();
+        } else if (pulseLength < VIDEO_SYNC_SHORT_MAX) {
 #ifdef DEBUG_SHORT_PULSE
             pixelDebug2Low();
 #endif
