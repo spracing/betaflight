@@ -35,8 +35,6 @@
 
 #include "build/build_config.h"
 
-#include "common/printf.h"
-
 #include "drivers/spracing_pixel_osd.h"
 
 #include "pixel_osd_video.h"
@@ -52,24 +50,20 @@ FAST_CODE bool taskPixelOSDVideoCheck(timeUs_t currentTimeUs, timeDelta_t curren
 
     osdServiceFlag = currentDeltaTimeUs > DELAY_60_HZ;
 
-    return (frameFlag || osdServiceFlag);
+    return (frameStartFlag || osdServiceFlag);
 }
 
 FAST_CODE void taskPixelOSDVideo(timeUs_t currentTimeUs)
 {
     // Handle the more frequent operations first
 
-    if (frameFlag) {
-        frameFlag = false;
+    if (frameStartFlag) {
+        frameStartFlag = false;
+        spracingPixelOSDDrawDebugOverlay();
 
-#ifdef DISPLAY_FRAME_COUNTER
-        uint8_t *frameBuffer = frameBuffer_getBuffer(0);
-        uint16_t frameCounter = frameBuffer_getCounter();
-
-        static uint8_t frameCountBuffer[7];
-        tfp_sprintf((char *)frameCountBuffer, "F:%04X", frameCounter);
-        frameBuffer_slowWriteString(frameBuffer, (360 - (12 * 6)) / 2, 18, frameCountBuffer, 6);
-#endif
+        //
+        // TODO sync Betaflight OSD code to frameFlag/vsync
+        //
     }
 
     if (osdServiceFlag) {

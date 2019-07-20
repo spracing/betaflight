@@ -24,10 +24,11 @@
 
 #pragma once
 
+#include "common/time.h"
+
 //
 // General
 //
-
 
 typedef enum {
     MODE_UNKNOWN = 0,
@@ -39,25 +40,18 @@ extern volatile videoMode_t detectedVideoMode; // unstable value
 
 struct vcdProfile_s;
 struct spracingPixelOSDConfig_s;
-bool    spracingPixelOSDInit(const struct spracingPixelOSDConfig_s *spracingPixelOSDConfig, const struct vcdProfile_s *vcdProfile);
-
-//
-// Pixel Line buffer
-//
-
-extern uint8_t *fillPixelBuffer;
-
+bool spracingPixelOSDInit(const struct spracingPixelOSDConfig_s *spracingPixelOSDConfig, const struct vcdProfile_s *vcdProfile);
+void spracingPixelOSDDrawDebugOverlay(void);
+void spracingPixelOSDProcess(timeUs_t currentTimeUs);
 //
 // Frame Buffer
 //
 
-extern volatile bool frameFlag;
-extern volatile bool videoModeChanged;
+extern volatile bool frameStartFlag;
 
 void frameBuffer_erase(uint8_t *frameBuffer);
 
 uint8_t *frameBuffer_getBuffer(uint8_t index);
-uint16_t frameBuffer_getCounter(void);
 
 //
 // Drawing

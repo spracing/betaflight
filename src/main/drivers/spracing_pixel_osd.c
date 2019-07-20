@@ -32,6 +32,8 @@
 
 #include "build/debug.h"
 
+#include "common/printf.h"
+
 #include "drivers/dma.h"
 #include "drivers/dma_reqmap.h"
 #include "drivers/nvic.h"
@@ -323,7 +325,8 @@ typedef struct fieldState_s {
 } fieldState_t;
 
 typedef struct frameState_s {
-    uint32_t counter;
+    uint32_t frameStartCounter;
+    uint32_t validFrameCounter;
     uint16_t lineNumber;
     uint16_t pulseErrors;
     frameStatus_t status;
@@ -339,7 +342,7 @@ uint16_t lastVisibleLine;
 bool nextLineIsVisible;
 volatile uint16_t visibleLineIndex;
 
-volatile bool frameFlag = false;
+volatile bool frameStartFlag = false;
 volatile uint16_t fillLineIndex = 0;
 
 #ifdef DEBUG_PULSE_STATISTICS
@@ -1425,6 +1428,13 @@ void RAW_COMP_TriggerCallback(void)
             } else if (frameState.status == COUNTING_HSYNC_PULSES) {
                 frameState.status = COUNTING_PRE_EQUALIZING_PULSES;
 
+                if (fieldState.type == FIELD_SECOND) {
+                    if (frameState.pulseErrors == 0) {
+                        frameState.validFrameCounter++;
+                    }
+                    frameState.pulseErrors = 0;
+                }
+
                 fieldState.phase = FIELD_PRE_EQUALIZING;
                 fieldState.preEqualizingPulses = 1; // this one
             } else {
@@ -1504,8 +1514,8 @@ void RAW_COMP_TriggerCallback(void)
                     fieldState.type = FIELD_FIRST;
 
                     frameState.vsyncAt = microsISR();
-                    frameState.counter++;
-                    frameFlag = true;
+                    frameState.frameStartCounter++;
+                    frameStartFlag = true;
 
                     osdFrameTimeoutAt = frameState.vsyncAt + ((1000000 / 1) * 1); // 1 second // FIXME adjust ?
 
@@ -1576,11 +1586,6 @@ uint8_t *frameBuffer_getBuffer(uint8_t index)
 {
     uint8_t *frameBuffer = frameBuffers[index];
     return frameBuffer;
-}
-
-uint16_t frameBuffer_getCounter(void)
-{
-    return frameState.counter;
 }
 
 DMA_RAM uint32_t fillColor __attribute__((aligned(32)));
@@ -2014,6 +2019,25 @@ void spracingPixelOSDProcess(timeUs_t currentTimeUs)
 
         osdFrameTimeoutAt = currentTimeUs + (1000000 / 1) * 1; // 1 second
     }
+}
+
+void spracingPixelOSDDrawDebugOverlay(void)
+{
+    uint8_t *frameBuffer = frameBuffer_getBuffer(0);
+
+    static uint8_t messageBuffer[32];
+
+    const uint16_t debugY = 18 * 13;
+
+    static const char *videoModeNames[] = { "????", "PAL", "NTSC" };
+    tfp_sprintf((char *)messageBuffer, "P:%04X V:%04X E:%04X M:%04s",
+            frameState.pulseErrors,
+            frameState.validFrameCounter,
+            frameState.frameStartCounter - frameState.validFrameCounter,
+            videoModeNames[detectedVideoMode]
+    );
+    const int messageLength = strlen((char *)messageBuffer);
+    frameBuffer_slowWriteString(frameBuffer, (360 - (12 * messageLength)) / 2, debugY, messageBuffer, messageLength);
 }
 
 #endif // USE_SPRACING_PIXEL_OSD
