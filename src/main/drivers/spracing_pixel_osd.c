@@ -37,8 +37,7 @@
 #include "drivers/nvic.h"
 #include "drivers/io.h"
 #include "drivers/timer.h"
-//#include "drivers/light_led.h"
-//#include "drivers/time.h"
+#include "drivers/time.h"
 
 #include "pg/spracing_pixel_osd.h"
 #include "pg/vcd.h"
@@ -63,9 +62,9 @@
 
 #if 1
 #define DEBUG_PULSE_STATISTICS
+#define DEBUG_PULSE_ERRORS
 #else
 #define DEBUG_PIXEL_BUFFER_FILL
-#define DEBUG_PULSE_ERRORS
 #define DEBUG_LAST_HALF_LINE
 #define DEBUG_PIXEL_BUFFER
 #define DEBUG_COMP_TRIGGER
@@ -325,6 +324,7 @@ typedef struct frameState_s {
     uint16_t lineNumber;
     uint16_t pulseErrors;
     frameStatus_t status;
+    uint32_t vsyncAt;
 } frameState_t;
 
 
@@ -350,7 +350,8 @@ uint16_t syncPulseFallingStatistics[PAL_LINES] __attribute__((used));
 // State
 //
 
-volatile bool cameraConnected = true;
+volatile bool cameraConnected = false;
+static uint32_t osdFrameTimeoutAt = 0;
 
 typedef struct spracingPixelOSDIO_s {
     IO_t blackPin;
@@ -1422,6 +1423,9 @@ void RAW_COMP_TriggerCallback(void)
             case COUNTING_POST_EQUALIZING_PULSES:
                 frameState.status = COUNTING_HSYNC_PULSES;
 
+                //
+                // HSync detected
+                //
                 fieldState.phase = FIELD_HSYNC;
 
             FALLTHROUGH;
@@ -1470,8 +1474,12 @@ void RAW_COMP_TriggerCallback(void)
                 if (fieldState.type == FIELD_SECOND) {
                     fieldState.type = FIELD_FIRST;
 
+                    frameState.vsyncAt = microsISR();
                     frameState.counter++;
                     frameFlag = true;
+
+                    osdFrameTimeoutAt = frameState.vsyncAt + ((1000000 / 1) * 1); // 1 seconds, 1hz // FIXME adjust to a more suitable timeout
+
                 } else {
                     fieldState.type = FIELD_SECOND;
                 }
@@ -1480,7 +1488,6 @@ void RAW_COMP_TriggerCallback(void)
                 visibleLineIndex = 0;
                 nextLineIsVisible = false;
 
-                fieldState.phase = FIELD_SYNCRONIZING;
 #ifdef DEBUG_FIELD_START
                 pixelDebug2Low();
 #endif
