@@ -632,6 +632,29 @@ static void MX_DMA_Init(void)
     dmaSetHandler(dmaGetIdentifier(pixelDmaRef), PIXEL_DMA_IRQHandler, NVIC_PRIO_VIDEO_DMA, pixelDmaIndex);
 }
 
+static void spracingPixelOSDSyncTriggerReset(void)
+{
+
+    TIM_SlaveConfigTypeDef sSlaveConfig = {0};
+
+    if (cameraConnected) {
+        // COMP2 trigger resets timer when camera connected
+        sSlaveConfig.SlaveMode = TIM_SLAVEMODE_COMBINED_RESETTRIGGER;
+        sSlaveConfig.InputTrigger = TIM_TS_ETRF;
+    } else {
+        sSlaveConfig.SlaveMode = TIM_SLAVEMODE_DISABLE;
+        sSlaveConfig.InputTrigger = TIM_TS_ITR0;
+    }
+
+    sSlaveConfig.TriggerPolarity = TIM_TRIGGERPOLARITY_INVERTED;
+    sSlaveConfig.TriggerPrescaler = TIM_TRIGGERPRESCALER_DIV1;
+    sSlaveConfig.TriggerFilter = 0;
+    if (HAL_TIM_SlaveConfigSynchronization(&htim1, &sSlaveConfig) != HAL_OK)
+    {
+      Error_Handler();
+    }
+}
+
 static void spracingPixelOSDSyncTimerInit(void)
 {
 
@@ -640,7 +663,6 @@ static void spracingPixelOSDSyncTimerInit(void)
   /* USER CODE END TIM1_Init 0 */
 
   TIM_ClockConfigTypeDef sClockSourceConfig = {0};
-  TIM_SlaveConfigTypeDef sSlaveConfig = {0};
   TIM_MasterConfigTypeDef sMasterConfig = {0};
   TIM_OC_InitTypeDef sConfigOC = {0};
   TIM_BreakDeadTimeConfigTypeDef sBreakDeadTimeConfig = {0};
@@ -682,18 +704,7 @@ static void spracingPixelOSDSyncTimerInit(void)
     Error_Handler();
   }
 
-  if (cameraConnected) {
-      // COMP2 trigger resets timer (i.e. when camera connected)
-      sSlaveConfig.SlaveMode = TIM_SLAVEMODE_COMBINED_RESETTRIGGER;
-      sSlaveConfig.InputTrigger = TIM_TS_ETRF;
-      sSlaveConfig.TriggerPolarity = TIM_TRIGGERPOLARITY_INVERTED;
-      sSlaveConfig.TriggerPrescaler = TIM_TRIGGERPRESCALER_DIV1;
-      sSlaveConfig.TriggerFilter = 0;
-      if (HAL_TIM_SlaveConfigSynchronization(&htim1, &sSlaveConfig) != HAL_OK)
-      {
-        Error_Handler();
-      }
-  }
+  spracingPixelOSDSyncTriggerReset();
 
   // Channel 4 used to gate TIM15, TRGO2 unused, but can use it to trigger ADC of black level.
   sMasterConfig.MasterOutputTrigger = TIM_TRGO_OC4REF;
