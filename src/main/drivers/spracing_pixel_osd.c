@@ -1257,7 +1257,8 @@ uint32_t determineInitialComparatorTargetMv(void)
     } osdDeviceInstance_e;
 
     typedef enum {
-        SONY_CAMERA_1 = 0
+        SONY_CAMERA_1 = 0,
+        PIXIM_SEAWOLF_1,
     } cameraInstance_e;
 
     typedef struct cameraMeasurements_s {
@@ -1269,14 +1270,18 @@ uint32_t determineInitialComparatorTargetMv(void)
         uint16_t highSaturationLowMv;
     } cameraMeasurements_t;
 
+    // Measurements taken at SYNC INPUT pin.
+
     // Board,   Camera,         syncLowMv,  BlackLevelMv,   ColorBurstLowMv,    HighSaturationLowMv
     // H7CINE1, Sony Camera,    460,        920,            780,                800
 
     static const cameraMeasurements_t cameraMeasurements[] = {
-        { H7CINE_1, SONY_CAMERA_1, 460, 920, 780, 800 },
+        // Board,   Camera,             syncLowMv,  BlackLevelMv,   ColorBurstLowMv,    HighSaturationLowMv
+        { H7CINE_1, SONY_CAMERA_1,      460,        920,            780,                800 },
+        { H7CINE_2, PIXIM_SEAWOLF_1,    20,         150,            90,                 90  },
     };
 
-    const cameraMeasurements_t *cameraMeasurement = &cameraMeasurements[0];
+    const cameraMeasurements_t *cameraMeasurement = &cameraMeasurements[1];
     uint32_t targetMv = cameraMeasurement->syncLowMv + ((cameraMeasurement->colorBurstLowMv - cameraMeasurement->syncLowMv) / 2);
 
     //uint32_t targetMv = 735; // Sony Board Camera, positive sync voltage
@@ -1290,6 +1295,36 @@ uint32_t determineInitialComparatorTargetMv(void)
     return targetMv;
 }
 
+void reconfigureComparatorTargetMv(void)
+{
+    // High-saturation colors in the picture data should not cause false comparator triggers.
+    //
+    //      color burst          /----\             /-----\.
+    //                |    -----/      \----   ----/       \---
+    //                v   |                | |                 |
+    //  --        --\/\/\--                | |                 --
+    //    | SYNC |                         |_|   <-- false comparator trigger needs to be avoided
+    //    |______|
+    //    ^      ^
+    //    |      |
+    //    |      Rising edge of Sync
+    //    Falling edge of Sync
+    //
+    // Comparator threshold MV should be as low as possible to detect sync voltages without triggering
+    // on low voltages causes by color bust or high-saturation colors.
+
+    uint32_t targetMv = determineInitialComparatorTargetMv();
+
+    // IMPORTANT: The voltage keeps drifting the longer the camera has been on (rises over time)
+    // TODO: auto-correct targetMv based on sync length (shorter = nearer lower level, longer = nearer high level)
+
+    int32_t offsetMv = 0;//-28; // scope shows 328mv when targetMv is 300mv
+
+    // TODO get measured VREF via ADC and use instead of VIDEO_DAC_VCC here?
+    uint32_t dacComparatorRaw = ((targetMv + offsetMv) * 0x0FFF) / (VIDEO_DAC_VCC * 1000);
+
+    HAL_DAC_SetValue(&hdac1, DAC_CHANNEL_2, DAC_ALIGN_12B_R, dacComparatorRaw);
+}
 
 typedef struct {
 #ifdef DEBUG_COMP_TRIGGER
@@ -1950,33 +1985,7 @@ bool spracingPixelOSDInit(const struct spracingPixelOSDConfig_s *spracingPixelOS
 
     // DAC CH2 - Generate comparator reference voltage
 
-    // High-saturation colors in the picture data should not cause false comparator triggers.
-    //
-    //      color burst          /----\             /-----\.
-    //                |    -----/      \----   ----/       \---
-    //                v   |                | |                 |
-    //  --        --\/\/\--                | |                 --
-    //    | SYNC |                         |_|   <-- false comparator trigger needs to be avoided
-    //    |______|
-    //    ^      ^
-    //    |      |
-    //    |      Rising edge of Sync
-    //    Falling edge of Sync
-    //
-    // Comparator threshold MV should be as low as possible to detect sync voltages without triggering
-    // on low voltages causes by color bust or high-saturation colors.
-
-    uint32_t targetMv = determineInitialComparatorTargetMv();
-
-    // IMPORTANT: The voltage keeps drifting the longer the camera has been on (rises over time)
-    // TODO: auto-correct targetMv based on sync length (shorter = nearer lower level, longer = nearer high level)
-
-    int32_t offsetMv = 0;//-28; // scope shows 328mv when targetMv is 300mv
-
-    // TODO get measured VREF via ADC and use instead of VIDEO_DAC_VCC here?
-    uint32_t dacComparatorRaw = ((targetMv + offsetMv) * 0x0FFF) / (VIDEO_DAC_VCC * 1000);
-
-    HAL_DAC_SetValue(&hdac1, DAC_CHANNEL_2, DAC_ALIGN_12B_R, dacComparatorRaw);
+    reconfigureComparatorTargetMv();
 
     HAL_DAC_Start(&hdac1, DAC_CHANNEL_2);
 
@@ -2044,6 +2053,7 @@ void spracingPixelOSDProcess(timeUs_t currentTimeUs)
 
         spracingPixelOSDSyncTimerInit();
         //spracingPixelOSDSyncTriggerReset();
+        reconfigureComparatorTargetMv();
         syncInit();
 
         memset(&frameState, 0x00, sizeof(frameState));
