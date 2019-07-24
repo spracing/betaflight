@@ -329,7 +329,7 @@ typedef struct fieldState_s {
 typedef struct frameState_s {
     uint32_t frameStartCounter;
     uint32_t validFrameCounter;
-    uint16_t lineNumber;
+    uint16_t lineCounter;
     uint16_t pulseErrors;
     uint16_t totalPulseErrors;
     frameStatus_t status;
@@ -1477,7 +1477,7 @@ void RAW_COMP_TriggerCallback(void)
             case COUNTING_HSYNC_PULSES:
 
                 fieldState.lineNumber++;
-                frameState.lineNumber++;
+                frameState.lineCounter++;
 
                 // prepare for next line
                 nextLineIsVisible = fieldState.lineNumber >= firstVisibleLine && fieldState.lineNumber <= lastVisibleLine;
