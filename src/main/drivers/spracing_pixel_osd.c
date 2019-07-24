@@ -2016,7 +2016,7 @@ void spracingPixelOSDProcess(timeUs_t currentTimeUs)
 {
     static uint32_t nextEventAt = 0;
 
-    const uint32_t tenFramesUs = (VIDEO_LINE_LEN * 10) * PAL_LINES;
+    const uint32_t minimumFrameDelayUs = (VIDEO_LINE_LEN) * (PAL_LINES + 10);
 
     debug[0] = frameState.validFrameCounter;
     debug[1] = frameState.totalPulseErrors;
@@ -2026,7 +2026,7 @@ void spracingPixelOSDProcess(timeUs_t currentTimeUs)
         {
             if (nextEventAt == 0) {
                 // state transition
-                nextEventAt = currentTimeUs + tenFramesUs;
+                nextEventAt = currentTimeUs + minimumFrameDelayUs;
             }
             bool handleEventNow = cmp32(currentTimeUs, nextEventAt) > 0;
 
@@ -2036,7 +2036,7 @@ void spracingPixelOSDProcess(timeUs_t currentTimeUs)
                     syncDetectionState.minimumLevelForValidFrameMv += 5;
                     setComparatorTargetMv(syncDetectionState.minimumLevelForValidFrameMv);
 
-                    nextEventAt = currentTimeUs + tenFramesUs;
+                    nextEventAt = currentTimeUs + minimumFrameDelayUs;
                 } else {
                     pixelOsdState = SEARCHING_FOR_MAX_LEVEL;
                     nextEventAt = 0;
@@ -2054,7 +2054,7 @@ void spracingPixelOSDProcess(timeUs_t currentTimeUs)
                 validFrameCounterAtStart = frameState.validFrameCounter;
                 syncDetectionState.maximumLevelForValidFrameMv = syncDetectionState.minimumLevelForValidFrameMv + 5;
                 setComparatorTargetMv(syncDetectionState.maximumLevelForValidFrameMv);
-                nextEventAt = currentTimeUs + tenFramesUs;
+                nextEventAt = currentTimeUs + minimumFrameDelayUs;
             }
             bool handleEventNow = cmp32(currentTimeUs, nextEventAt) > 0;
 
@@ -2068,7 +2068,7 @@ void spracingPixelOSDProcess(timeUs_t currentTimeUs)
 
                     // start again using current frame counter.
                     validFrameCounterAtStart = frameState.validFrameCounter;
-                    nextEventAt = currentTimeUs + tenFramesUs;
+                    nextEventAt = currentTimeUs + minimumFrameDelayUs;
                 } else {
                     // no valid frame received
                     syncDetectionState.maximumLevelForValidFrameMv -= 5;
