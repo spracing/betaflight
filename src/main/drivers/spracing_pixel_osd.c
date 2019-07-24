@@ -2016,7 +2016,7 @@ void spracingPixelOSDProcess(timeUs_t currentTimeUs)
 {
     static uint32_t nextEventAt = 0;
 
-    const uint32_t tenFramesUs = (1000000 / VIDEO_LINE_LEN) * 10;
+    const uint32_t tenFramesUs = (VIDEO_LINE_LEN * 10) * PAL_LINES;
 
     debug[0] = frameState.validFrameCounter;
     debug[1] = frameState.totalPulseErrors;
