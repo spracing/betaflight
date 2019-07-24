@@ -331,6 +331,7 @@ typedef struct frameState_s {
     uint32_t validFrameCounter;
     uint16_t lineNumber;
     uint16_t pulseErrors;
+    uint16_t totalPulseErrors;
     frameStatus_t status;
     uint32_t vsyncAt;
 } frameState_t;
@@ -358,7 +359,7 @@ uint16_t syncPulseFallingStatistics[PAL_LINES] __attribute__((used));
 // State
 //
 
-volatile bool cameraConnected = false;
+volatile bool cameraConnected = true;
 static uint32_t osdFrameTimeoutAt = 0;
 
 typedef struct spracingPixelOSDIO_s {
@@ -1248,54 +1249,22 @@ static void MX_DAC1_Init(void)
   }
 }
 
+
+uint32_t targetMv = 0;
+int32_t offsetMv = 0;//-28; // scope shows 328mv when targetMv is 300mv
+
 uint32_t determineInitialComparatorTargetMv(void)
 {
-    typedef enum {
-        L432BREADBOARD = 0,
-        H7CINE_1,
-        H7CINE_2,
-    } osdDeviceInstance_e;
-
-    typedef enum {
-        SONY_CAMERA_1 = 0,
-        PIXIM_SEAWOLF_1,
-    } cameraInstance_e;
-
-    typedef struct cameraMeasurements_s {
-        osdDeviceInstance_e deviceInstance;
-        cameraInstance_e cameraInstance;
-        uint16_t syncLowMv;
-        uint16_t blackLevelMv;
-        uint16_t colorBurstLowMv;
-        uint16_t highSaturationLowMv;
-    } cameraMeasurements_t;
-
-    // Measurements taken at SYNC INPUT pin.
-
-    // Board,   Camera,         syncLowMv,  BlackLevelMv,   ColorBurstLowMv,    HighSaturationLowMv
-    // H7CINE1, Sony Camera,    460,        920,            780,                800
-
-    static const cameraMeasurements_t cameraMeasurements[] = {
-        // Board,   Camera,             syncLowMv,  BlackLevelMv,   ColorBurstLowMv,    HighSaturationLowMv
-        { H7CINE_1, SONY_CAMERA_1,      460,        920,            780,                800 },
-        { H7CINE_2, PIXIM_SEAWOLF_1,    20,         150,            90,                 90  },
-    };
-
-    const cameraMeasurements_t *cameraMeasurement = &cameraMeasurements[1];
-    uint32_t targetMv = cameraMeasurement->syncLowMv + ((cameraMeasurement->colorBurstLowMv - cameraMeasurement->syncLowMv) / 2);
-
-    //uint32_t targetMv = 735; // Sony Board Camera, positive sync voltage
-    //uint32_t targetMv = 820; // Sony Camera, positive sync voltage
-    //uint32_t targetMv = 725; // Pixim Seawolf, negative sync voltage
-
-    if (!cameraConnected) {
+    if (cameraConnected) {
+        targetMv = 0;
+    } else {
         targetMv = 700;
     }
 
     return targetMv;
 }
 
-void reconfigureComparatorTargetMv(void)
+void setComparatorTargetMv(uint32_t newTargetMv)
 {
     // High-saturation colors in the picture data should not cause false comparator triggers.
     //
@@ -1313,12 +1282,10 @@ void reconfigureComparatorTargetMv(void)
     // Comparator threshold MV should be as low as possible to detect sync voltages without triggering
     // on low voltages causes by color bust or high-saturation colors.
 
-    uint32_t targetMv = determineInitialComparatorTargetMv();
-
     // IMPORTANT: The voltage keeps drifting the longer the camera has been on (rises over time)
     // TODO: auto-correct targetMv based on sync length (shorter = nearer lower level, longer = nearer high level)
 
-    int32_t offsetMv = 0;//-28; // scope shows 328mv when targetMv is 300mv
+    targetMv = newTargetMv;
 
     // TODO get measured VREF via ADC and use instead of VIDEO_DAC_VCC here?
     uint32_t dacComparatorRaw = ((targetMv + offsetMv) * 0x0FFF) / (VIDEO_DAC_VCC * 1000);
@@ -1348,6 +1315,7 @@ static inline void pulseError(void) {
     pixelDebug2Toggle();
 #endif
     frameState.pulseErrors++;
+    frameState.totalPulseErrors++;
 #ifdef DEBUG_PULSE_ERRORS
     pixelDebug2Toggle();
 #endif
@@ -1554,7 +1522,7 @@ void RAW_COMP_TriggerCallback(void)
                     frameState.frameStartCounter++;
                     frameStartFlag = true;
 
-                    osdFrameTimeoutAt = frameState.vsyncAt + ((1000000 / 1) * 1); // 1 second // FIXME adjust ?
+                    osdFrameTimeoutAt = frameState.vsyncAt + (1000000 / 50); // 50 FPS
 
                 } else {
                     fieldState.type = FIELD_SECOND;
@@ -1985,7 +1953,8 @@ bool spracingPixelOSDInit(const struct spracingPixelOSDConfig_s *spracingPixelOS
 
     // DAC CH2 - Generate comparator reference voltage
 
-    reconfigureComparatorTargetMv();
+    uint32_t initialComparatorTargetMv = determineInitialComparatorTargetMv();
+    setComparatorTargetMv(initialComparatorTargetMv);
 
     HAL_DAC_Start(&hdac1, DAC_CHANNEL_2);
 
@@ -2023,8 +1992,143 @@ bool spracingPixelOSDInit(const struct spracingPixelOSDConfig_s *spracingPixelOS
     return true;
 }
 
+typedef enum {
+    SEARCHING_FOR_MIN_LEVEL = 0,
+    SEARCHING_FOR_MAX_LEVEL,
+    GENERATING_VIDEO,
+} pixelOsdState_t;
+
+pixelOsdState_t pixelOsdState = SEARCHING_FOR_MIN_LEVEL;
+
+typedef struct syncDetectionState_s {
+    uint32_t minimumLevelForValidFrameMv;
+    uint32_t maximumLevelForValidFrameMv;
+    uint32_t minMaxDifference;
+    uint32_t syncThresholdMv;
+} syncDetectionState_t;
+
+uint32_t pulseErrorsPerSecond = 0;
+uint32_t framesPerSecond = 0;
+
+syncDetectionState_t syncDetectionState;
+
 void spracingPixelOSDProcess(timeUs_t currentTimeUs)
 {
+    static uint32_t nextEventAt = 0;
+
+    const uint32_t tenFramesUs = (1000000 / VIDEO_LINE_LEN) * 10;
+
+    debug[0] = frameState.validFrameCounter;
+    debug[1] = frameState.totalPulseErrors;
+
+    switch(pixelOsdState) {
+        case SEARCHING_FOR_MIN_LEVEL:
+        {
+            if (nextEventAt == 0) {
+                // state transition
+                nextEventAt = currentTimeUs + tenFramesUs;
+            }
+            bool handleEventNow = cmp32(currentTimeUs, nextEventAt) > 0;
+
+            if (handleEventNow) {
+
+                if (frameState.validFrameCounter == 0) {
+                    syncDetectionState.minimumLevelForValidFrameMv += 5;
+                    setComparatorTargetMv(syncDetectionState.minimumLevelForValidFrameMv);
+
+                    nextEventAt = currentTimeUs + tenFramesUs;
+                } else {
+                    pixelOsdState = SEARCHING_FOR_MAX_LEVEL;
+                    nextEventAt = 0;
+                }
+
+            }
+            break;
+        }
+        case SEARCHING_FOR_MAX_LEVEL:
+        {
+            static uint32_t validFrameCounterAtStart;
+
+            if (nextEventAt == 0) {
+                // state transition
+                validFrameCounterAtStart = frameState.validFrameCounter;
+                syncDetectionState.maximumLevelForValidFrameMv = syncDetectionState.minimumLevelForValidFrameMv + 5;
+                setComparatorTargetMv(syncDetectionState.maximumLevelForValidFrameMv);
+                nextEventAt = currentTimeUs + tenFramesUs;
+            }
+            bool handleEventNow = cmp32(currentTimeUs, nextEventAt) > 0;
+
+            if (handleEventNow) {
+                int32_t framesSinceStart = frameState.validFrameCounter - validFrameCounterAtStart;
+
+                if (framesSinceStart > 0) {
+                    // still getting valid frames, increase targetMv
+                    syncDetectionState.maximumLevelForValidFrameMv += 5;
+                    setComparatorTargetMv(syncDetectionState.maximumLevelForValidFrameMv);
+
+                    // start again using current frame counter.
+                    validFrameCounterAtStart = frameState.validFrameCounter;
+                    nextEventAt = currentTimeUs + tenFramesUs;
+                } else {
+                    // no valid frame received
+                    syncDetectionState.maximumLevelForValidFrameMv -= 5;
+                    syncDetectionState.minMaxDifference = syncDetectionState.maximumLevelForValidFrameMv - syncDetectionState.minimumLevelForValidFrameMv;
+                    syncDetectionState.syncThresholdMv = syncDetectionState.minimumLevelForValidFrameMv + (0.4 * syncDetectionState.minMaxDifference);
+
+                    setComparatorTargetMv(syncDetectionState.syncThresholdMv);
+
+                    pixelOsdState = GENERATING_VIDEO;
+                    nextEventAt = 0;
+                }
+            }
+
+            break;
+        }
+        case GENERATING_VIDEO:
+        {
+            static uint32_t lastTimeUs;
+            static uint32_t lastTotalPulseErrors;
+            static uint32_t lastValidFrameCounter;
+
+            if (nextEventAt == 0) {
+                // state transition
+                lastTimeUs = currentTimeUs;
+                lastTotalPulseErrors = frameState.totalPulseErrors;
+                lastValidFrameCounter = frameState.validFrameCounter;
+
+                nextEventAt = currentTimeUs + 1000000; // one second
+
+            }
+            bool handleEventNow = cmp32(currentTimeUs, nextEventAt) > 0;
+
+            if (handleEventNow) {
+                uint32_t recentPulseErrors = frameState.totalPulseErrors - lastTotalPulseErrors;
+                int32_t timeDeltaUs = cmp32(currentTimeUs, lastTimeUs);
+                pulseErrorsPerSecond = recentPulseErrors * 1000000 / timeDeltaUs;
+
+                //debug[1] = lastTotalPulseErrors;
+                debug[2] = pulseErrorsPerSecond;
+
+                int32_t recentFrames = frameState.validFrameCounter - lastValidFrameCounter;
+                framesPerSecond = recentFrames * 1000000 / timeDeltaUs;
+                debug[3] = framesPerSecond;
+
+                // TODO, if too many pulseErrorsPerSecond then reset sync levels.
+                // TODO, if frame counter stops counting then reset sync levels.
+                // TODO, if time since reset sync levels is large, and no valid frame received then camera is probably
+                // disconnected, enable internal sync generation instead.
+
+                lastTimeUs = currentTimeUs;
+                lastTotalPulseErrors = frameState.totalPulseErrors;
+                lastValidFrameCounter = frameState.validFrameCounter;
+
+                nextEventAt = currentTimeUs + 1000000; // one second
+            }
+            break;
+        }
+    }
+
+#if 0
     bool osdFrameTimeoutFlag = osdFrameTimeoutAt > 0 && cmp32(currentTimeUs, osdFrameTimeoutAt) > 0;
 
     // There should be no pulse errors when the picture is generated by the FC.
@@ -2053,7 +2157,8 @@ void spracingPixelOSDProcess(timeUs_t currentTimeUs)
 
         spracingPixelOSDSyncTimerInit();
         //spracingPixelOSDSyncTriggerReset();
-        reconfigureComparatorTargetMv();
+        uint32_t newTargetMv = determineInitialComparatorTargetMv();
+        setComparatorTargetMv(newTargetMv);
         syncInit();
 
         memset(&frameState, 0x00, sizeof(frameState));
@@ -2061,6 +2166,8 @@ void spracingPixelOSDProcess(timeUs_t currentTimeUs)
 
         osdFrameTimeoutAt = currentTimeUs + (1000000 / 1) * 1; // 1 second
     }
+
+#endif
 }
 
 void spracingPixelOSDDrawDebugOverlay(void)
@@ -2073,7 +2180,7 @@ void spracingPixelOSDDrawDebugOverlay(void)
 
     static const char *videoModeNames[] = { "????", "PAL", "NTSC" };
     tfp_sprintf((char *)messageBuffer, "P:%04X V:%04X E:%04X M:%04s",
-            frameState.pulseErrors,
+            frameState.totalPulseErrors,
             frameState.validFrameCounter,
             frameState.frameStartCounter - frameState.validFrameCounter,
             videoModeNames[detectedVideoMode]
