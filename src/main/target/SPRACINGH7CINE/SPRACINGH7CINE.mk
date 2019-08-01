@@ -16,6 +16,7 @@ TARGET_SRC += \
             drivers/accgyro/accgyro_spi_icm42605.c \
             drivers/compass/compass_hmc5883l.c \
             drivers/barometer/barometer_bmp388.c \
+            drivers/vtx_rtc6705.c \
             drivers/vtx_rtc6705_soft_spi.c \
             drivers/spracing_pixel_osd.c \
             io/displayport_spracing_pixel_osd.c \
