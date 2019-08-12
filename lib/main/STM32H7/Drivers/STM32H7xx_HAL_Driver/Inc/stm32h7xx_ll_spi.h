@@ -48,6 +48,12 @@ extern "C" {
   * @{
   */
 
+typedef union {
+  __IO uint32_t u_reg32;
+  __IO uint16_t u_reg16;
+  __IO uint8_t  u_reg8;
+} reg_u;
+
 /**
   * @brief  SPI Init structures definition
   */
@@ -2391,7 +2397,7 @@ __STATIC_INLINE uint32_t LL_SPI_IsEnabledDMAReq_TX(SPI_TypeDef *SPIx)
   */
 __STATIC_INLINE uint8_t LL_SPI_ReceiveData8(SPI_TypeDef *SPIx)
 {
-  return (*((__IO uint8_t *)&SPIx->RXDR));
+  return ((reg_u *)&SPIx->RXDR)->u_reg8;
 }
 
 /**
@@ -2402,7 +2408,7 @@ __STATIC_INLINE uint8_t LL_SPI_ReceiveData8(SPI_TypeDef *SPIx)
   */
 __STATIC_INLINE uint16_t LL_SPI_ReceiveData16(SPI_TypeDef *SPIx)
 {
-  return (*((__IO uint16_t *)&SPIx->RXDR));
+  return ((reg_u *)&SPIx->RXDR)->u_reg16;
 }
 
 /**
@@ -2413,7 +2419,7 @@ __STATIC_INLINE uint16_t LL_SPI_ReceiveData16(SPI_TypeDef *SPIx)
   */
 __STATIC_INLINE uint32_t LL_SPI_ReceiveData32(SPI_TypeDef *SPIx)
 {
-  return (*((__IO uint32_t *)&SPIx->RXDR));
+  return ((reg_u *)&SPIx->RXDR)->u_reg32;
 }
 
 /**
@@ -2425,7 +2431,7 @@ __STATIC_INLINE uint32_t LL_SPI_ReceiveData32(SPI_TypeDef *SPIx)
   */
 __STATIC_INLINE void LL_SPI_TransmitData8(SPI_TypeDef *SPIx, uint8_t TxData)
 {
-  *((__IO uint8_t *)&SPIx->TXDR) = TxData;
+  ((reg_u *)&SPIx->TXDR)->u_reg16 = TxData;
 }
 
 /**
@@ -2437,7 +2443,7 @@ __STATIC_INLINE void LL_SPI_TransmitData8(SPI_TypeDef *SPIx, uint8_t TxData)
   */
 __STATIC_INLINE void LL_SPI_TransmitData16(SPI_TypeDef *SPIx, uint16_t TxData)
 {
-  *((__IO uint16_t *)&SPIx->TXDR) = TxData;
+  ((reg_u *)&SPIx->TXDR)->u_reg16 = TxData;
 }
 
 /**
@@ -2449,7 +2455,7 @@ __STATIC_INLINE void LL_SPI_TransmitData16(SPI_TypeDef *SPIx, uint16_t TxData)
   */
 __STATIC_INLINE void LL_SPI_TransmitData32(SPI_TypeDef *SPIx, uint32_t TxData)
 {
-  *((__IO uint32_t *)&SPIx->TXDR) = TxData;
+  ((reg_u *)&SPIx->TXDR)->u_reg32 = TxData;
 }
 
 /**
