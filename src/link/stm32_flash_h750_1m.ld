@@ -219,9 +219,12 @@ SECTIONS
 
   .DMA_RAM (NOLOAD) :
   {
+    . = ALIGN(32);
+    PROVIDE(dmaram_start = .);
     _sdmaram = .;
     _dmaram_start__ = _sdmaram;
     KEEP(*(.DMA_RAM))
+    PROVIDE(dmaram_end = .);
     _edmaram = .;
     _dmaram_end__ = _edmaram;
   } >D2_RAM
