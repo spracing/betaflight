@@ -67,6 +67,7 @@
 #if 1
 #define DEBUG_PULSE_STATISTICS
 #define DEBUG_PULSE_ERRORS
+#define DEBUG_OSD_EVENTS
 #else
 #define DEBUG_PIXEL_BUFFER_FILL
 #define DEBUG_LAST_HALF_LINE
@@ -2012,6 +2013,31 @@ uint32_t framesPerSecond = 0;
 
 syncDetectionState_t syncDetectionState;
 
+#ifdef DEBUG_OSD_EVENTS
+typedef struct eventLogItem_s {
+    timeUs_t us;
+    pixelOsdState_t state;
+} eventLogItem_t;
+
+eventLogItem_t eventLog[256] = {0};
+unsigned int eventLogIndex = 0;
+
+void logEvent(timeUs_t us, pixelOsdState_t state)
+{
+    eventLogIndex++;
+    if (eventLogIndex >= ARRAYLEN(eventLog)) {
+        eventLogIndex = 0;
+    }
+
+    eventLogItem_t *item = &eventLog[eventLogIndex];
+    item->state = state;
+    item->us = us;
+}
+#else
+#define logEvent(us, state) {}
+#endif
+
+
 void spracingPixelOSDProcess(timeUs_t currentTimeUs)
 {
     static uint32_t nextEventAt = 0;
@@ -2031,6 +2057,7 @@ void spracingPixelOSDProcess(timeUs_t currentTimeUs)
             bool handleEventNow = cmp32(currentTimeUs, nextEventAt) > 0;
 
             if (handleEventNow) {
+                logEvent(currentTimeUs, pixelOsdState);
 
                 if (frameState.validFrameCounter == 0) {
                     syncDetectionState.minimumLevelForValidFrameMv += 5;
@@ -2059,6 +2086,8 @@ void spracingPixelOSDProcess(timeUs_t currentTimeUs)
             bool handleEventNow = cmp32(currentTimeUs, nextEventAt) > 0;
 
             if (handleEventNow) {
+                logEvent(currentTimeUs, pixelOsdState);
+
                 int32_t framesSinceStart = frameState.validFrameCounter - validFrameCounterAtStart;
 
                 if (framesSinceStart > 0) {
@@ -2102,6 +2131,8 @@ void spracingPixelOSDProcess(timeUs_t currentTimeUs)
             bool handleEventNow = cmp32(currentTimeUs, nextEventAt) > 0;
 
             if (handleEventNow) {
+                logEvent(currentTimeUs, pixelOsdState);
+
                 uint32_t recentPulseErrors = frameState.totalPulseErrors - lastTotalPulseErrors;
                 int32_t timeDeltaUs = cmp32(currentTimeUs, lastTimeUs);
                 pulseErrorsPerSecond = recentPulseErrors * 1000000 / timeDeltaUs;
