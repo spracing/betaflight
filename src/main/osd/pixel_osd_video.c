@@ -48,7 +48,7 @@ FAST_CODE bool taskPixelOSDVideoCheck(timeUs_t currentTimeUs, timeDelta_t curren
     UNUSED(currentTimeUs);
     UNUSED(currentDeltaTimeUs);
 
-    osdServiceFlag = currentDeltaTimeUs > DELAY_60_HZ;
+    osdServiceFlag = currentDeltaTimeUs > DELAY_60_HZ || spracingPixelOSDShouldProcessNow(currentTimeUs);
 
     return (frameStartFlag || osdServiceFlag);
 }

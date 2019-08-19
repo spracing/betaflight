@@ -44,6 +44,7 @@ struct vcdProfile_s;
 struct spracingPixelOSDConfig_s;
 bool spracingPixelOSDInit(const struct spracingPixelOSDConfig_s *spracingPixelOSDConfig, const struct vcdProfile_s *vcdProfile);
 void spracingPixelOSDDrawDebugOverlay(void);
+bool spracingPixelOSDShouldProcessNow(timeUs_t currentTimeUs);
 void spracingPixelOSDProcess(timeUs_t currentTimeUs);
 
 //

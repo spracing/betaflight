@@ -2012,6 +2012,13 @@ uint32_t pulseErrorsPerSecond = 0;
 uint32_t framesPerSecond = 0;
 
 syncDetectionState_t syncDetectionState;
+static uint32_t nextEventAt = 0;
+
+bool spracingPixelOSDShouldProcessNow(timeUs_t currentTimeUs)
+{
+    bool handleEventNow = cmp32(currentTimeUs, nextEventAt) > 0;
+    return handleEventNow;
+}
 
 #ifdef DEBUG_OSD_EVENTS
 typedef struct eventLogItem_s {
@@ -2040,8 +2047,6 @@ void logEvent(timeUs_t us, pixelOsdState_t state)
 
 void spracingPixelOSDProcess(timeUs_t currentTimeUs)
 {
-    static uint32_t nextEventAt = 0;
-
     const uint32_t minimumFrameDelayUs = (VIDEO_LINE_LEN) * (PAL_LINES + 10);
 
     debug[0] = frameState.validFrameCounter;
@@ -2125,7 +2130,7 @@ void spracingPixelOSDProcess(timeUs_t currentTimeUs)
                 lastTotalPulseErrors = frameState.totalPulseErrors;
                 lastValidFrameCounter = frameState.validFrameCounter;
 
-                nextEventAt = currentTimeUs + 1000000; // one second
+                nextEventAt = currentTimeUs + minimumFrameDelayUs;
 
             }
             bool handleEventNow = cmp32(currentTimeUs, nextEventAt) > 0;
