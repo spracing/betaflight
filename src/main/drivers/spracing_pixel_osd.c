@@ -330,7 +330,7 @@ typedef struct fieldState_s {
 typedef struct frameState_s {
     uint32_t frameStartCounter;
     uint32_t validFrameCounter;
-    uint16_t lineCounter;
+    uint32_t lineCounter;
     uint16_t pulseErrors;
     uint16_t totalPulseErrors;
     frameStatus_t status;
@@ -1994,18 +1994,25 @@ bool spracingPixelOSDInit(const struct spracingPixelOSDConfig_s *spracingPixelOS
 }
 
 typedef enum {
-    SEARCHING_FOR_MIN_LEVEL = 0,
-    SEARCHING_FOR_MAX_LEVEL,
+    SEARCHING_FOR_LINE_MIN_LEVEL = 0,
+    SEARCHING_FOR_FRAME_MIN_LEVEL,
+    SEARCHING_FOR_FRAME_MAX_LEVEL,
     GENERATING_VIDEO,
 } pixelOsdState_t;
 
-pixelOsdState_t pixelOsdState = SEARCHING_FOR_MIN_LEVEL;
+pixelOsdState_t pixelOsdState = SEARCHING_FOR_LINE_MIN_LEVEL;
 
 typedef struct syncDetectionState_s {
     uint32_t minimumLevelForValidFrameMv;
     uint32_t maximumLevelForValidFrameMv;
     uint32_t minMaxDifference;
     uint32_t syncThresholdMv;
+    uint32_t lineCounterAtStart;
+
+    timeUs_t syncStartedAt;
+    timeUs_t syncCompletedAt;
+    timeUs_t syncDuration;
+
 } syncDetectionState_t;
 
 uint32_t pulseErrorsPerSecond = 0;
@@ -2047,18 +2054,63 @@ void logEvent(timeUs_t us, pixelOsdState_t state)
 
 void spracingPixelOSDProcess(timeUs_t currentTimeUs)
 {
+    const uint16_t requiredLines = 100; // ~64us * 100 = 6.4ms
+
+    const uint32_t lineCounterDelayUs = (VIDEO_LINE_LEN) * (requiredLines);
     const uint32_t minimumFrameDelayUs = (VIDEO_LINE_LEN) * (PAL_LINES + 10);
+
 
     debug[0] = frameState.validFrameCounter;
     debug[1] = frameState.totalPulseErrors;
 
     switch(pixelOsdState) {
-        case SEARCHING_FOR_MIN_LEVEL:
+        case SEARCHING_FOR_LINE_MIN_LEVEL:
+        {
+            if (nextEventAt == 0) {
+                // state transition
+
+                syncDetectionState.syncStartedAt = currentTimeUs;
+                syncDetectionState.syncCompletedAt = 0;
+                syncDetectionState.syncDuration = 0;
+
+                syncDetectionState.minimumLevelForValidFrameMv = 0;
+                syncDetectionState.lineCounterAtStart = frameState.lineCounter;
+
+                nextEventAt = currentTimeUs + lineCounterDelayUs;
+            }
+
+            bool handleEventNow = cmp32(currentTimeUs, nextEventAt) > 0;
+
+            if (handleEventNow) {
+                logEvent(currentTimeUs, pixelOsdState);
+
+                uint32_t linesSinceStart = frameState.lineCounter - syncDetectionState.lineCounterAtStart;
+
+                // FIXME this algorithm is dependent on the task being scheduled exactly.  Ideally we should calculate the time delta and base the
+                // value below on the amount of lines that could have actually been seen, and not `requiredLines`
+                bool lineThesholdAchieved = linesSinceStart < requiredLines / 4;
+
+                if (lineThesholdAchieved) {
+                    syncDetectionState.minimumLevelForValidFrameMv += 5;
+                    setComparatorTargetMv(syncDetectionState.minimumLevelForValidFrameMv);
+
+                    nextEventAt = currentTimeUs + lineCounterDelayUs;
+                    syncDetectionState.lineCounterAtStart = frameState.lineCounter;
+                } else {
+                    pixelOsdState = SEARCHING_FOR_FRAME_MIN_LEVEL;
+                    nextEventAt = 0;
+                }
+
+            }
+            break;
+        }
+        case SEARCHING_FOR_FRAME_MIN_LEVEL:
         {
             if (nextEventAt == 0) {
                 // state transition
                 nextEventAt = currentTimeUs + minimumFrameDelayUs;
             }
+
             bool handleEventNow = cmp32(currentTimeUs, nextEventAt) > 0;
 
             if (handleEventNow) {
@@ -2070,14 +2122,14 @@ void spracingPixelOSDProcess(timeUs_t currentTimeUs)
 
                     nextEventAt = currentTimeUs + minimumFrameDelayUs;
                 } else {
-                    pixelOsdState = SEARCHING_FOR_MAX_LEVEL;
+                    pixelOsdState = SEARCHING_FOR_FRAME_MAX_LEVEL;
                     nextEventAt = 0;
                 }
 
             }
             break;
         }
-        case SEARCHING_FOR_MAX_LEVEL:
+        case SEARCHING_FOR_FRAME_MAX_LEVEL:
         {
             static uint32_t validFrameCounterAtStart;
 
@@ -2112,6 +2164,9 @@ void spracingPixelOSDProcess(timeUs_t currentTimeUs)
                     setComparatorTargetMv(syncDetectionState.syncThresholdMv);
 
                     pixelOsdState = GENERATING_VIDEO;
+
+                    syncDetectionState.syncCompletedAt = currentTimeUs;
+                    syncDetectionState.syncDuration = syncDetectionState.syncCompletedAt - syncDetectionState.syncStartedAt;
                     nextEventAt = 0;
                 }
             }
