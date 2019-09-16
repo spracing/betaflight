@@ -50,8 +50,13 @@
 
 #include "drivers/spracing_pixel_osd.h"
 
+
 // Pins 8-15 of GPIOE reserved for OSD use when in GPIO OUTPUT MODE (Upper 8 bits of GPIO port)
-// Pins 8-15 on GPIOE *can* be used for other functions, just not GPIO OUTPUT.
+// Pins 8-15 on GPIOE *can* be used for other functions, just not GPIO OUTPUT
+// although using the BSRR register instead of ODR could also be implemented for greater IO flexibility
+
+#if (SPRACINGH7CINE_REV <= 1)
+// Rev A
 #define SPRACING_PIXEL_OSD_BLACK_PIN                    PE13
 #define SPRACING_PIXEL_OSD_WHITE_PIN                    PE14
 #define SPRACING_PIXEL_OSD_RESERVED_PIN                 PE15
@@ -59,10 +64,30 @@
 #define SPRACING_PIXEL_OSD_SYNC_IN_PIN                  PE11 // COMP2_INP
 #define SPRACING_PIXEL_OSD_SYNC_OUT_A_PIN               PE12 // TIM1_CH3N
 #define SPRACING_PIXEL_OSD_SYNC_OUT_B_PIN               PA8  // TIM1_CH1 / MCO / Currently Unused
+#define SPRACING_PIXEL_OSD_SYNC_OUT_PIN                 SPRACING_PIXEL_OSD_SYNC_OUT_A_PIN
+#define USE_TIM1_CH3_FOR_SYNC
+#define SYNC_TIMER_CHANNEL TIM_CHANNEL_3
 
-#define SPRACING_PIXEL_OSD_VIDEO_THRESHOLD_DEBUG_PIN    PA5
+#define SPRACING_PIXEL_OSD_VIDEO_THRESHOLD_DEBUG_PIN    PA5  // DAC1_OUT2
 #define SPRACING_PIXEL_OSD_PIXEL_DEBUG_1_PIN            PE5  // TIM15_CH1 - For DMA updates
 #define SPRACING_PIXEL_OSD_PIXEL_DEBUG_2_PIN            PE6  // TIM15_CH2 - Spare
+#else
+// Rev B
+#define SPRACING_PIXEL_OSD_WHITE_SOURCE_SELECT_PIN      PE12
+#define SPRACING_PIXEL_OSD_BLACK_PIN                    PE13
+#define SPRACING_PIXEL_OSD_MASK_ENABLE_PIN              PE14
+#define SPRACING_PIXEL_OSD_WHITE_PIN                    PE15
+
+#define SPRACING_PIXEL_OSD_SYNC_IN_PIN                  PE11 // COMP2_INP
+#define SPRACING_PIXEL_OSD_SYNC_OUT_PIN                 PA8  // TIM1_CH1
+#define USE_TIM1_CH1_FOR_SYNC
+#define SYNC_TIMER_CHANNEL TIM_CHANNEL_1
+
+#define SPRACING_PIXEL_OSD_WHITE_SOURCE_PIN             PA4  // DAC1_OUT1
+#define SPRACING_PIXEL_OSD_VIDEO_THRESHOLD_DEBUG_PIN    PA5  // DAC1_OUT2
+#define SPRACING_PIXEL_OSD_PIXEL_DEBUG_1_PIN            PE5  // TIM15_CH1 - For DMA updates
+#define SPRACING_PIXEL_OSD_PIXEL_DEBUG_2_PIN            PE6  // TIM15_CH2 - Spare
+#endif
 
 #if 1
 #define DEBUG_PULSE_STATISTICS
@@ -201,8 +226,13 @@ static void pixelDebug2Toggle(void);
 #define PIXEL_DEBUG_2_Pin GPIO_PIN_6
 #define PIXEL_DEBUG_2_GPIO_Port GPIOE
 
+#if (SPRACINGH7CINE_REV <= 1)
 #define SYNC_OUT_Pin GPIO_PIN_12
 #define SYNC_OUT_GPIO_Port GPIOE
+#else
+#define SYNC_OUT_Pin GPIO_PIN_8
+#define SYNC_OUT_GPIO_Port GPIOA
+#endif
 
 #define PIXEL_COUNT (HORIZONTAL_RESOLUTION / RESOLUTION_SCALE)
 #define PIXEL_BUFFER_SIZE PIXEL_COUNT + 1 // one more pixel which must always be transparent to reset output level during sync
@@ -215,8 +245,15 @@ static void pixelDebug2Toggle(void);
 #define PIXEL_ODR       GPIOE->ODR
 #define PIXEL_ODR_OFFSET 8 // 0 = PE0-PE7, 8 = PE8-PE15
 
+#if (SPRACINGH7CINE_REV <= 1)
 #define PIXEL_BLACK_BIT 5 // PE13
 #define PIXEL_WHITE_BIT 6 // PE14
+#else
+#define PIXEL_WHITE_SOURCE_SELECT_BIT   4 // PE12
+#define PIXEL_BLACK_BIT                 5 // PE13
+#define PIXEL_MASK_ENABLE_BIT           6 // PE14
+#define PIXEL_WHITE_BIT                 7 // PE15
+#endif
 #endif
 
 #ifdef USE_PIXEL_OUT_GPIOC
@@ -369,22 +406,29 @@ typedef struct spracingPixelOSDIO_s {
     IO_t syncInPin;
     IO_t debug1Pin;
     IO_t debug2Pin;
+    IO_t whiteSourceSelectPin;
+    IO_t maskEnablePin;
 } spracingPixelOSDIO_t;
 
 static spracingPixelOSDIO_t spracingPixelOSDIO = {
-    .blackPin           = IO_NONE,
-    .whitePin           = IO_NONE,
-    .syncInPin          = IO_NONE,
-    .debug1Pin          = IO_NONE,
-    .debug2Pin          = IO_NONE,
+    .blackPin               = IO_NONE,
+    .whitePin               = IO_NONE,
+    .syncInPin              = IO_NONE,
+    .debug1Pin              = IO_NONE,
+    .debug2Pin              = IO_NONE,
+    .whiteSourceSelectPin   = IO_NONE,
+    .maskEnablePin          = IO_NONE,
 };
 
-#define IO_PIXEL_BLACK_CFG      IO_CONFIG(GPIO_MODE_OUTPUT_OD, GPIO_SPEED_FREQ_MEDIUM,  GPIO_NOPULL)
-#define IO_PIXEL_WHITE_CFG      IO_CONFIG(GPIO_MODE_OUTPUT_PP, GPIO_SPEED_FREQ_MEDIUM,  GPIO_NOPULL)
+#define IO_PIXEL_BLACK_CFG                  IO_CONFIG(GPIO_MODE_OUTPUT_OD, GPIO_SPEED_FREQ_MEDIUM,  GPIO_NOPULL)
+#define IO_PIXEL_WHITE_CFG                  IO_CONFIG(GPIO_MODE_OUTPUT_PP, GPIO_SPEED_FREQ_MEDIUM,  GPIO_NOPULL)
 
-#define IO_PIXEL_DEBUG_CFG      IO_CONFIG(GPIO_MODE_OUTPUT_PP, GPIO_SPEED_FREQ_MEDIUM,  GPIO_PULLDOWN)
+#define IO_PIXEL_MASK_ENABLE_CFG            IO_CONFIG(GPIO_MODE_OUTPUT_PP, GPIO_SPEED_FREQ_MEDIUM,  GPIO_NOPULL)
+#define IO_PIXEL_WHITE_SOURCE_SELECT_CFG    IO_CONFIG(GPIO_MODE_OUTPUT_PP, GPIO_SPEED_FREQ_MEDIUM,  GPIO_NOPULL)
 
-#define IO_VIDEO_SYNC_IN_CFG       IO_CONFIG(GPIO_MODE_INPUT,     GPIO_SPEED_FREQ_LOW,     GPIO_NOPULL)
+#define IO_PIXEL_DEBUG_CFG                  IO_CONFIG(GPIO_MODE_OUTPUT_PP, GPIO_SPEED_FREQ_MEDIUM,  GPIO_PULLDOWN)
+
+#define IO_VIDEO_SYNC_IN_CFG                IO_CONFIG(GPIO_MODE_INPUT,     GPIO_SPEED_FREQ_LOW,     GPIO_NOPULL)
 
 TIM_HandleTypeDef htim1;
 TIM_HandleTypeDef htim2;
@@ -416,6 +460,25 @@ static void Error_Handler()
     do {} while (true);
 }
 
+static void avoidMCO1SyncClash(void)
+{
+#ifdef STM32H7
+    if ((SYNC_OUT_Pin == GPIO_PIN_8) && (SYNC_OUT_GPIO_Port == GPIOA)) {
+        // See MCO1_GPIO_PORT & MCO1_PIN in stm32h7xx_hal_rcc.c
+
+        // PA8 is MCO by default, which interferes with the comparator trigger
+        GPIO_InitTypeDef GPIO_InitStruct = {0};
+
+        HAL_GPIO_WritePin(SYNC_OUT_GPIO_Port, SYNC_OUT_Pin, GPIO_PIN_RESET);
+
+        GPIO_InitStruct.Pin = SYNC_OUT_Pin;
+        GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+        GPIO_InitStruct.Pull = GPIO_NOPULL;
+        GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+        HAL_GPIO_Init(SYNC_OUT_GPIO_Port, &GPIO_InitStruct);
+    }
+#endif
+}
 
 void HAL_TIM_MspPostInit(TIM_HandleTypeDef* htim)
 {
@@ -429,6 +492,8 @@ void HAL_TIM_MspPostInit(TIM_HandleTypeDef* htim)
       __HAL_RCC_GPIOE_CLK_ENABLE();
       /**TIM1 GPIO Configuration
       PE12     ------> TIM1_CH3N
+      OR
+      PA8      ------> TIM1_CH1
       */
       GPIO_InitStruct.Pin = SYNC_OUT_Pin;
       GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
@@ -730,7 +795,7 @@ static void spracingPixelOSDSyncTimerInit(void)
     Error_Handler();
   }
 
-  // Channel 3 for SYNC output
+  // SYNC output channel
   sConfigOC.OCMode = TIM_OCMODE_PWM1;
   sConfigOC.Pulse = _US_TO_CLOCKS(4.7);
   sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
@@ -738,7 +803,7 @@ static void spracingPixelOSDSyncTimerInit(void)
   sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
   sConfigOC.OCIdleState = TIM_OCIDLESTATE_RESET;
   sConfigOC.OCNIdleState = TIM_OCNIDLESTATE_RESET;
-  if (HAL_TIM_PWM_ConfigChannel(&htim1, &sConfigOC, TIM_CHANNEL_3) != HAL_OK)
+  if (HAL_TIM_PWM_ConfigChannel(&htim1, &sConfigOC, SYNC_TIMER_CHANNEL) != HAL_OK)
   {
     Error_Handler();
   }
@@ -905,12 +970,22 @@ typedef struct syncBufferItem_s {
     uint16_t arrValue;
     uint16_t repetitions; // timers only support 8 bit ARR.
     uint16_t cc1Value;
+#ifdef USE_TIM1_CH3_FOR_SYNC
     uint16_t cc2Value;
     uint16_t cc3Value;
+#endif
 } syncBufferItem_t;
 
-#define HALF_LINE(period, repetitions, pulse) _US_TO_CLOCKS(period / 2) - 1, (repetitions) - 1, 0, 0, _US_TO_CLOCKS(pulse) - 1
-#define FULL_LINE(period, repetitions, pulse) _US_TO_CLOCKS(period) - 1, (repetitions) - 1, 0, 0, _US_TO_CLOCKS(pulse) - 1
+#ifdef USE_TIM1_CH3_FOR_SYNC
+#define SYNC_CC(cc3Value) 0, 0, cc3Value
+#define SYNC_BUST_TRANSFER_COUNT TIM_DMABURSTLENGTH_5TRANSFERS
+#else
+#define SYNC_CC(cc1Value) cc1Value
+#define SYNC_BUST_TRANSFER_COUNT TIM_DMABURSTLENGTH_3TRANSFERS
+#endif
+
+#define HALF_LINE(period, repetitions, pulse) _US_TO_CLOCKS(period / 2) - 1, (repetitions) - 1, SYNC_CC(_US_TO_CLOCKS(pulse) - 1)
+#define FULL_LINE(period, repetitions, pulse) _US_TO_CLOCKS(period) - 1, (repetitions) - 1, SYNC_CC(_US_TO_CLOCKS(pulse) - 1)
 
 const syncBufferItem_t palSyncItems[] = {
         { HALF_LINE(VIDEO_LINE_LEN,  5,   VIDEO_SYNC_LO_BROAD)},  // start of first field
@@ -928,6 +1003,10 @@ const syncBufferItem_t palSyncItems[] = {
         // 625 lines (2.5+2.5+153+152+2.5+2.5+2+1+152+152+.5+2.5)
 };
 
+#undef SYNC_CC
+#undef HALF_LINE
+#undef FULL_LINE
+
 void syncInit(void)
 {
     hSyncOutDMA = htim1.hdma[TIM_DMA_ID_UPDATE];
@@ -940,11 +1019,11 @@ void syncInit(void)
 
 void syncStartPWM(void)
 {
-    if (HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_3) != HAL_OK)
+    if (HAL_TIM_PWM_Start(&htim1, SYNC_TIMER_CHANNEL) != HAL_OK)
     {
       Error_Handler();
     }
-    if (HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_3) != HAL_OK)
+    if (HAL_TIMEx_PWMN_Start(&htim1, SYNC_TIMER_CHANNEL) != HAL_OK)
     {
       Error_Handler();
     }
@@ -952,11 +1031,11 @@ void syncStartPWM(void)
 
 void syncStopPWM(void)
 {
-    if (HAL_TIM_PWM_Stop(&htim1, TIM_CHANNEL_3) != HAL_OK)
+    if (HAL_TIM_PWM_Stop(&htim1, SYNC_TIMER_CHANNEL) != HAL_OK)
     {
       Error_Handler();
     }
-    if (HAL_TIMEx_PWMN_Stop(&htim1, TIM_CHANNEL_3) != HAL_OK)
+    if (HAL_TIMEx_PWMN_Stop(&htim1, SYNC_TIMER_CHANNEL) != HAL_OK)
     {
       Error_Handler();
     }
@@ -971,7 +1050,7 @@ void syncStartDMA(void)
         TIM_DMABASE_ARR,
         TIM_DMA_UPDATE,
         (uint32_t *)palSyncItems,
-        TIM_DMABURSTLENGTH_5TRANSFERS,
+        SYNC_BUST_TRANSFER_COUNT,
         sizeof(palSyncItems) / 2 // 2 because each item is uint16_t, not uint32_t?
     );
 
@@ -1905,10 +1984,24 @@ bool spracingPixelOSDInit(const struct spracingPixelOSDConfig_s *spracingPixelOS
     IOInit(spracingPixelOSDIO.blackPin, OWNER_OSD, 0);
     IOConfigGPIO(spracingPixelOSDIO.blackPin, IO_PIXEL_BLACK_CFG);
 
+#ifdef SPRACING_PIXEL_OSD_MASK_ENABLE_PIN
+    spracingPixelOSDIO.maskEnablePin = IOGetByTag(IO_TAG(SPRACING_PIXEL_OSD_MASK_ENABLE_PIN));
+    IOLo(spracingPixelOSDIO.maskEnablePin);
+    IOInit(spracingPixelOSDIO.maskEnablePin, OWNER_OSD, 0);
+    IOConfigGPIO(spracingPixelOSDIO.maskEnablePin, IO_PIXEL_MASK_ENABLE_CFG);
+#endif
+
     spracingPixelOSDIO.whitePin = IOGetByTag(IO_TAG(SPRACING_PIXEL_OSD_WHITE_PIN));
     IOLo(spracingPixelOSDIO.whitePin);
     IOInit(spracingPixelOSDIO.whitePin, OWNER_OSD, 0);
     IOConfigGPIO(spracingPixelOSDIO.whitePin, IO_PIXEL_WHITE_CFG);
+
+#ifdef SPRACING_PIXEL_OSD_WHITE_SOURCE_SELECT_PIN
+    spracingPixelOSDIO.whiteSourceSelectPin = IOGetByTag(IO_TAG(SPRACING_PIXEL_OSD_WHITE_SOURCE_SELECT_PIN));
+    IOLo(spracingPixelOSDIO.whiteSourceSelectPin);
+    IOInit(spracingPixelOSDIO.whiteSourceSelectPin, OWNER_OSD, 0);
+    IOConfigGPIO(spracingPixelOSDIO.whiteSourceSelectPin, IO_PIXEL_WHITE_SOURCE_SELECT_CFG);
+#endif
 
     spracingPixelOSDIO.syncInPin = IOGetByTag(IO_TAG(SPRACING_PIXEL_OSD_SYNC_IN_PIN));
     IOLo(spracingPixelOSDIO.syncInPin);
@@ -1945,6 +2038,8 @@ bool spracingPixelOSDInit(const struct spracingPixelOSDConfig_s *spracingPixelOS
     //
     // Sync detection
     //
+
+    avoidMCO1SyncClash();
 
     MX_COMP2_Init();
     MX_DAC1_Init();

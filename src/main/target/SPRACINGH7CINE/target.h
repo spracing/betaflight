@@ -23,6 +23,11 @@
 #define TARGET_BOARD_IDENTIFIER "SP7C"
 #define USBD_PRODUCT_STRING "SPRacingH7CINE"
 
+#define SPRACINGH7CINE_REV 2 // REV B
+#ifndef SPRACINGH7CINE_REV
+#define SPRACINGH7CINE_REV 1 // REV A
+#endif
+
 #define USE_TARGET_CONFIG
 
 #define LED0_PIN                PE3
@@ -104,13 +109,19 @@
 
 #define USE_SPI
 
+#if (SPRACINGH7CINE_REV <= 1)
 // SPI2 is NC.
 #define USE_SPI_DEVICE_2
 #define SPI2_SCK_PIN            PD3
 #define SPI2_MISO_PIN           PC2
 #define SPI2_MOSI_PIN           PC3
 #define SPI2_NSS_PIN            PB12
-
+#else
+#define SPI2_SCK_PIN            NONE
+#define SPI2_MISO_PIN           NONE
+#define SPI2_MOSI_PIN           NONE
+#define SPI2_NSS_PIN            NONE
+#endif
 // SPI3 for Gyro
 #define USE_SPI_DEVICE_3
 #define SPI3_SCK_PIN            PB3
@@ -199,14 +210,15 @@
 #define USE_ADC
 #define USE_ADC_INTERNAL // ADC3
 
-#define ADC1_INSTANCE ADC1
-#define ADC2_INSTANCE ADC2 // ADC2 not used
+#define ADC1_INSTANCE ADC1 // ADC1 for Battery/Current/RSSI/Monitoring
+#define ADC2_INSTANCE ADC2 // ADC2 for VIDEO ADC
 #define ADC3_INSTANCE ADC3 // ADC3 only for core temp and vrefint
 
 #define EXTERNAL1_ADC_PIN       PC0  // ADC123 aka CURRENT_B for 2nd 4in1 ESC
 #define CURRENT_METER_ADC_PIN   PC1  // ADC12
 #define VBAT_ADC_PIN            PC4  // ADC123
 #define RSSI_ADC_PIN            PC5  // ADC12
+#define VIDEO_ADC_PIN           PC3  // ADC12
 
 #define CAM_SELECT_PIN          PE4
 
