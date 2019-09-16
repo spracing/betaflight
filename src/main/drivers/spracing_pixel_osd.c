@@ -423,8 +423,8 @@ static spracingPixelOSDIO_t spracingPixelOSDIO = {
 #define IO_PIXEL_BLACK_CFG                  IO_CONFIG(GPIO_MODE_OUTPUT_OD, GPIO_SPEED_FREQ_MEDIUM,  GPIO_NOPULL)
 #define IO_PIXEL_WHITE_CFG                  IO_CONFIG(GPIO_MODE_OUTPUT_PP, GPIO_SPEED_FREQ_MEDIUM,  GPIO_NOPULL)
 
-#define IO_PIXEL_MASK_ENABLE_CFG            IO_CONFIG(GPIO_MODE_OUTPUT_PP, GPIO_SPEED_FREQ_MEDIUM,  GPIO_NOPULL)
-#define IO_PIXEL_WHITE_SOURCE_SELECT_CFG    IO_CONFIG(GPIO_MODE_OUTPUT_PP, GPIO_SPEED_FREQ_MEDIUM,  GPIO_NOPULL)
+#define IO_PIXEL_MASK_ENABLE_CFG            IO_CONFIG(GPIO_MODE_OUTPUT_PP, GPIO_SPEED_FREQ_MEDIUM,  GPIO_PULLDOWN)
+#define IO_PIXEL_WHITE_SOURCE_SELECT_CFG    IO_CONFIG(GPIO_MODE_OUTPUT_PP, GPIO_SPEED_FREQ_MEDIUM,  GPIO_PULLDOWN)
 
 #define IO_PIXEL_DEBUG_CFG                  IO_CONFIG(GPIO_MODE_OUTPUT_PP, GPIO_SPEED_FREQ_MEDIUM,  GPIO_PULLDOWN)
 
@@ -1995,7 +1995,7 @@ bool spracingPixelOSDInit(const struct spracingPixelOSDConfig_s *spracingPixelOS
 
 #ifdef SPRACING_PIXEL_OSD_MASK_ENABLE_PIN
     spracingPixelOSDIO.maskEnablePin = IOGetByTag(IO_TAG(SPRACING_PIXEL_OSD_MASK_ENABLE_PIN));
-    IOLo(spracingPixelOSDIO.maskEnablePin);
+    IOLo(spracingPixelOSDIO.maskEnablePin); // Low = Mask disabled, High = Mask Enabled.
     IOInit(spracingPixelOSDIO.maskEnablePin, OWNER_OSD, 0);
     IOConfigGPIO(spracingPixelOSDIO.maskEnablePin, IO_PIXEL_MASK_ENABLE_CFG);
 #endif
@@ -2007,7 +2007,7 @@ bool spracingPixelOSDInit(const struct spracingPixelOSDConfig_s *spracingPixelOS
 
 #ifdef SPRACING_PIXEL_OSD_WHITE_SOURCE_SELECT_PIN
     spracingPixelOSDIO.whiteSourceSelectPin = IOGetByTag(IO_TAG(SPRACING_PIXEL_OSD_WHITE_SOURCE_SELECT_PIN));
-    IOLo(spracingPixelOSDIO.whiteSourceSelectPin);
+    IOLo(spracingPixelOSDIO.whiteSourceSelectPin); // Low = Fixed Voltage, High = Linked to DAC1_OUT1 voltage.
     IOInit(spracingPixelOSDIO.whiteSourceSelectPin, OWNER_OSD, 0);
     IOConfigGPIO(spracingPixelOSDIO.whiteSourceSelectPin, IO_PIXEL_WHITE_SOURCE_SELECT_CFG);
 #endif
