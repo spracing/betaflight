@@ -1146,7 +1146,7 @@ void pixelXferCpltCallback(struct __DMA_HandleTypeDef *hdma)
     UNUSED(hdma);
 
 #ifdef DEBUG_PIXEL_DMA
-    pixelDebug2Toggle();
+    pixelDebug1Low();
 #endif
 
 #ifdef STOP_START_PIXEL_TIMER
@@ -1195,7 +1195,7 @@ void pixelInit(void)
 static inline void pixelStartDMA(void)
 {
 #ifdef DEBUG_PIXEL_DMA
-    pixelDebug2High();
+    pixelDebug1High();
 #endif
 
     (&htim15)->Instance->CNT = 0;
