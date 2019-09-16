@@ -2098,6 +2098,7 @@ bool spracingPixelOSDInit(const struct spracingPixelOSDConfig_s *spracingPixelOS
 }
 
 typedef struct syncDetectionState_s {
+    uint32_t minimumLevelForLineThreshold;
     uint32_t minimumLevelForValidFrameMv;
     uint32_t maximumLevelForValidFrameMv;
     uint32_t minMaxDifference;
@@ -2168,6 +2169,8 @@ void spracingPixelOSDProcess(timeUs_t currentTimeUs)
                 syncDetectionState.syncCompletedAt = 0;
                 syncDetectionState.syncDuration = 0;
 
+
+                syncDetectionState.minimumLevelForLineThreshold = 0;
                 syncDetectionState.minimumLevelForValidFrameMv = 0;
                 syncDetectionState.lineCounterAtStart = frameState.lineCounter;
 
@@ -2186,8 +2189,8 @@ void spracingPixelOSDProcess(timeUs_t currentTimeUs)
                 bool lineThesholdAchieved = linesSinceStart < requiredLines / 4;
 
                 if (lineThesholdAchieved) {
-                    syncDetectionState.minimumLevelForValidFrameMv += 5;
-                    setComparatorTargetMv(syncDetectionState.minimumLevelForValidFrameMv);
+                    syncDetectionState.minimumLevelForLineThreshold += 5;
+                    setComparatorTargetMv(syncDetectionState.minimumLevelForLineThreshold);
 
                     nextEventAt = currentTimeUs + lineCounterDelayUs;
                     syncDetectionState.lineCounterAtStart = frameState.lineCounter;
@@ -2203,6 +2206,7 @@ void spracingPixelOSDProcess(timeUs_t currentTimeUs)
         {
             if (nextEventAt == 0) {
                 // state transition
+                syncDetectionState.minimumLevelForValidFrameMv = syncDetectionState.minimumLevelForLineThreshold;
                 nextEventAt = currentTimeUs + minimumFrameDelayUs;
             }
 
