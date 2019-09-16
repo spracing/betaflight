@@ -1808,7 +1808,7 @@ void pixelBuffer_fillFromFrameBuffer(uint8_t *destinationPixelBuffer, uint8_t fr
 #else
 void pixelBuffer_fillFromFrameBuffer(uint8_t *destinationPixelBuffer, uint8_t frameBufferIndex, uint16_t lineIndex)
 {
-    // Rev B has 4 IO lines for White Source, Black, Mask and White, black and white  are NOT adjacent.
+    // Rev B has 4 IO lines for White Source, Black, Mask and White, black and white are NOT adjacent so the bits cannot be copied and shifted together...
 #ifdef DEBUG_PIXEL_BUFFER_FILL
     pixelDebug2Toggle();
 #endif
@@ -1820,22 +1820,23 @@ void pixelBuffer_fillFromFrameBuffer(uint8_t *destinationPixelBuffer, uint8_t fr
     for (int i = 0; i < FRAME_BUFFER_LINE_SIZE; i++) {
         uint8_t pixelBlock = *(frameBufferLine + i);
 
-        *pixels++ =
-        (
-            (
+        uint32_t blackBits = (
                 ((pixelBlock & (0x01 << 0)) >> (BITS_PER_PIXEL * 0) << 24) |
                 ((pixelBlock & (0x01 << 2)) >> (BITS_PER_PIXEL * 1) << 16) |
                 ((pixelBlock & (0x01 << 4)) >> (BITS_PER_PIXEL * 2) << 8) |
                 ((pixelBlock & (0x01 << 6)) >> (BITS_PER_PIXEL * 3) << 0)
-            ) << (PIXEL_BLACK_BIT - FRAME_BLACK_BIT_OFFSET)
-        ) | (
-            (
+        );
+
+        uint32_t whiteBits = (
                 ((pixelBlock & (0x02 << 0)) >> (BITS_PER_PIXEL * 0) << 24) |
                 ((pixelBlock & (0x02 << 2)) >> (BITS_PER_PIXEL * 1) << 16) |
                 ((pixelBlock & (0x02 << 4)) >> (BITS_PER_PIXEL * 2) << 8) |
                 ((pixelBlock & (0x02 << 6)) >> (BITS_PER_PIXEL * 3) << 0)
-            ) << (PIXEL_WHITE_BIT - FRAME_WHITE_BIT_OFFSET)
         );
+
+        *pixels++ = blackBits << (PIXEL_BLACK_BIT - FRAME_BLACK_BIT_OFFSET)
+            | whiteBits << (PIXEL_WHITE_BIT - FRAME_WHITE_BIT_OFFSET);
+
 
     }
     destinationPixelBuffer[PIXEL_COUNT] = PIXEL_TRANSPARENT; // IMPORTANT!  The white source/black sink must be disabled before the SYNC signal, otherwise we change the sync voltage level.
