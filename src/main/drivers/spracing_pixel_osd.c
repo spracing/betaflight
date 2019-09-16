@@ -1821,17 +1821,17 @@ void pixelBuffer_fillFromFrameBuffer(uint8_t *destinationPixelBuffer, uint8_t fr
         uint8_t pixelBlock = *(frameBufferLine + i);
 
         uint32_t blackBits = (
-                ((pixelBlock & (0x01 << 0)) >> (BITS_PER_PIXEL * 0) << 24) |
-                ((pixelBlock & (0x01 << 2)) >> (BITS_PER_PIXEL * 1) << 16) |
-                ((pixelBlock & (0x01 << 4)) >> (BITS_PER_PIXEL * 2) << 8) |
-                ((pixelBlock & (0x01 << 6)) >> (BITS_PER_PIXEL * 3) << 0)
+            ((pixelBlock & (0x01 << 0)) >> (BITS_PER_PIXEL * 0) << 24) |
+            ((pixelBlock & (0x01 << 2)) >> (BITS_PER_PIXEL * 1) << 16) |
+            ((pixelBlock & (0x01 << 4)) >> (BITS_PER_PIXEL * 2) << 8) |
+            ((pixelBlock & (0x01 << 6)) >> (BITS_PER_PIXEL * 3) << 0)
         );
 
         uint32_t whiteBits = (
-                ((pixelBlock & (0x02 << 0)) >> (BITS_PER_PIXEL * 0) << 24) |
-                ((pixelBlock & (0x02 << 2)) >> (BITS_PER_PIXEL * 1) << 16) |
-                ((pixelBlock & (0x02 << 4)) >> (BITS_PER_PIXEL * 2) << 8) |
-                ((pixelBlock & (0x02 << 6)) >> (BITS_PER_PIXEL * 3) << 0)
+            ((pixelBlock & (0x02 << 0)) >> (BITS_PER_PIXEL * 0) << 24) |
+            ((pixelBlock & (0x02 << 2)) >> (BITS_PER_PIXEL * 1) << 16) |
+            ((pixelBlock & (0x02 << 4)) >> (BITS_PER_PIXEL * 2) << 8) |
+            ((pixelBlock & (0x02 << 6)) >> (BITS_PER_PIXEL * 3) << 0)
         );
 
         *pixels++ = blackBits << (PIXEL_BLACK_BIT - FRAME_BLACK_BIT_OFFSET)
@@ -2231,9 +2231,9 @@ void spracingPixelOSDProcess(timeUs_t currentTimeUs)
 
                 // FIXME this algorithm is dependent on the task being scheduled exactly.  Ideally we should calculate the time delta and base the
                 // value below on the amount of lines that could have actually been seen, and not `requiredLines`
-                bool lineThesholdAchieved = linesSinceStart < requiredLines / 4;
+                bool lineThesholdAchieved = linesSinceStart >= requiredLines / 4;
 
-                if (lineThesholdAchieved) {
+                if (!lineThesholdAchieved) {
                     syncDetectionState.minimumLevelForLineThreshold += 5;
                     setComparatorTargetMv(syncDetectionState.minimumLevelForLineThreshold);
 
