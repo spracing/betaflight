@@ -273,8 +273,6 @@ static void pixelDebug2Toggle(void);
 #define PIXEL_WHITE_BIT 1 // PB1
 #endif
 
-#define BITS_PER_PIXEL 2 // the current implementation only supports 2.
-
 #define PIXEL_ADDRESS   ((uint32_t)&(PIXEL_ODR) + (PIXEL_ODR_OFFSET / 8)) // +1 for upper 8 bits
 
 DMA_RAM uint8_t pixelBufferA[PIXEL_BUFFER_SIZE] __attribute__((aligned(32)));
@@ -298,10 +296,14 @@ uint8_t *outputPixelBuffer = NULL;
 // Frame
 //
 
-#define FRAME_PIXEL_WHITE       ((PIXEL_WHITE_ON  << 1) | (PIXEL_BLACK_OFF << 0))
-#define FRAME_PIXEL_BLACK       ((PIXEL_WHITE_OFF << 1) | (PIXEL_BLACK_ON  << 0))
-#define FRAME_PIXEL_GREY        ((PIXEL_WHITE_ON  << 1) | (PIXEL_BLACK_ON  << 0))
-#define FRAME_PIXEL_TRANSPARENT ((PIXEL_WHITE_OFF << 1) | (PIXEL_BLACK_OFF << 0))
+#define FRAME_BLACK_BIT_OFFSET 0
+#define FRAME_WHITE_BIT_OFFSET 1
+#define BITS_PER_PIXEL 2 // the current implementation only supports 2.
+
+#define FRAME_PIXEL_WHITE       ((PIXEL_WHITE_ON  << FRAME_WHITE_BIT_OFFSET) | (PIXEL_BLACK_OFF << FRAME_BLACK_BIT_OFFSET))
+#define FRAME_PIXEL_BLACK       ((PIXEL_WHITE_OFF << FRAME_WHITE_BIT_OFFSET) | (PIXEL_BLACK_ON  << FRAME_BLACK_BIT_OFFSET))
+#define FRAME_PIXEL_GREY        ((PIXEL_WHITE_ON  << FRAME_WHITE_BIT_OFFSET) | (PIXEL_BLACK_ON  << FRAME_BLACK_BIT_OFFSET))
+#define FRAME_PIXEL_TRANSPARENT ((PIXEL_WHITE_OFF << FRAME_WHITE_BIT_OFFSET) | (PIXEL_BLACK_OFF << FRAME_BLACK_BIT_OFFSET))
 
 #define FRAME_PIXEL_MASK        ((1 << 1) | (1 << 0))
 
@@ -1756,11 +1758,13 @@ void frameBuffer_erase(uint8_t *frameBuffer)
 #endif
 }
 
+#if 0
 void pixelBuffer_fillFromFrameBuffer(uint8_t *destinationPixelBuffer, uint8_t frameBufferIndex, uint16_t lineIndex)
 {
     // This method only works for BITS_PER_PIXEL == 2
+    // And only when PIXEL_BLACK_BIT == WHITE_BLACK_BIT - 1 (adjacent GPIO pins)
 
-    #ifdef DEBUG_PIXEL_BUFFER_FILL
+#ifdef DEBUG_PIXEL_BUFFER_FILL
     pixelDebug2Toggle();
 #endif
     uint8_t *frameBuffer = frameBuffers[frameBufferIndex];
@@ -1801,6 +1805,46 @@ void pixelBuffer_fillFromFrameBuffer(uint8_t *destinationPixelBuffer, uint8_t fr
     pixelDebug2Toggle();
 #endif
 }
+#else
+void pixelBuffer_fillFromFrameBuffer(uint8_t *destinationPixelBuffer, uint8_t frameBufferIndex, uint16_t lineIndex)
+{
+    // Rev B has 4 IO lines for White Source, Black, Mask and White, black and white  are NOT adjacent.
+#ifdef DEBUG_PIXEL_BUFFER_FILL
+    pixelDebug2Toggle();
+#endif
+
+    uint8_t *frameBuffer = frameBuffers[frameBufferIndex];
+    uint8_t *frameBufferLine = frameBuffer + (FRAME_BUFFER_LINE_SIZE * lineIndex);
+
+    uint32_t *pixels = (uint32_t *)destinationPixelBuffer;
+    for (int i = 0; i < FRAME_BUFFER_LINE_SIZE; i++) {
+        uint8_t pixelBlock = *(frameBufferLine + i);
+
+        *pixels++ =
+        (
+            (
+                ((pixelBlock & (0x01 << 0)) >> (BITS_PER_PIXEL * 0) << 24) |
+                ((pixelBlock & (0x01 << 2)) >> (BITS_PER_PIXEL * 1) << 16) |
+                ((pixelBlock & (0x01 << 4)) >> (BITS_PER_PIXEL * 2) << 8) |
+                ((pixelBlock & (0x01 << 6)) >> (BITS_PER_PIXEL * 3) << 0)
+            ) << (PIXEL_BLACK_BIT - FRAME_BLACK_BIT_OFFSET)
+        ) | (
+            (
+                ((pixelBlock & (0x02 << 0)) >> (BITS_PER_PIXEL * 0) << 24) |
+                ((pixelBlock & (0x02 << 2)) >> (BITS_PER_PIXEL * 1) << 16) |
+                ((pixelBlock & (0x02 << 4)) >> (BITS_PER_PIXEL * 2) << 8) |
+                ((pixelBlock & (0x02 << 6)) >> (BITS_PER_PIXEL * 3) << 0)
+            ) << (PIXEL_WHITE_BIT - FRAME_WHITE_BIT_OFFSET)
+        );
+
+    }
+    destinationPixelBuffer[PIXEL_COUNT] = PIXEL_TRANSPARENT; // IMPORTANT!  The white source/black sink must be disabled before the SYNC signal, otherwise we change the sync voltage level.
+#ifdef DEBUG_PIXEL_BUFFER_FILL
+    pixelDebug2Toggle();
+#endif
+}
+#endif
+
 
 // unoptimized, avoid over-use.
 void frameBuffer_setPixel(uint8_t *frameBuffer, uint16_t x, uint16_t y, uint8_t mode)
