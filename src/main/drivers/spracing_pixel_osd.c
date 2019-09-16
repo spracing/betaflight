@@ -1329,6 +1329,15 @@ static void MX_DAC1_Init(void)
   }
 }
 
+typedef enum {
+    SEARCHING_FOR_LINE_MIN_LEVEL = 0,
+    SEARCHING_FOR_FRAME_MIN_LEVEL,
+    SEARCHING_FOR_FRAME_MAX_LEVEL,
+    GENERATING_VIDEO,
+} pixelOsdState_t;
+
+pixelOsdState_t pixelOsdState = SEARCHING_FOR_LINE_MIN_LEVEL;
+
 
 uint32_t targetMv = 0;
 int32_t offsetMv = 0;//-28; // scope shows 328mv when targetMv is 300mv
@@ -1536,7 +1545,7 @@ void RAW_COMP_TriggerCallback(void)
             // Important start DMA *NOW* - then deal with remaining state.
             //
             bool thisLineIsVisible = nextLineIsVisible;
-            if (thisLineIsVisible) {
+            if (thisLineIsVisible && pixelOsdState == GENERATING_VIDEO) {
                 // DMA configured for next line (below) or by transfer-complete handler.
                 pixelStartDMA();
 
@@ -2087,15 +2096,6 @@ bool spracingPixelOSDInit(const struct spracingPixelOSDConfig_s *spracingPixelOS
 
     return true;
 }
-
-typedef enum {
-    SEARCHING_FOR_LINE_MIN_LEVEL = 0,
-    SEARCHING_FOR_FRAME_MIN_LEVEL,
-    SEARCHING_FOR_FRAME_MAX_LEVEL,
-    GENERATING_VIDEO,
-} pixelOsdState_t;
-
-pixelOsdState_t pixelOsdState = SEARCHING_FOR_LINE_MIN_LEVEL;
 
 typedef struct syncDetectionState_s {
     uint32_t minimumLevelForValidFrameMv;
