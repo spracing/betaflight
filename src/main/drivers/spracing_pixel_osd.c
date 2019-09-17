@@ -2234,6 +2234,9 @@ void spracingPixelOSDProcess(timeUs_t currentTimeUs)
                 bool lineThesholdAchieved = linesSinceStart >= requiredLines / 4;
 
                 if (!lineThesholdAchieved) {
+
+                    // TODO use a maximum limit for the threshold - if it fails camera is not connected.
+
                     syncDetectionState.minimumLevelForLineThreshold += 5;
                     setComparatorTargetMv(syncDetectionState.minimumLevelForLineThreshold);
 
