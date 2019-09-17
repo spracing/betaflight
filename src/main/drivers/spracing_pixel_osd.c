@@ -1262,7 +1262,7 @@ static void MX_COMP2_Init(void)
   hcomp2.Init.InvertingInput = COMP_INPUT_MINUS_DAC1_CH2;
   hcomp2.Init.NonInvertingInput = COMP_INPUT_PLUS_IO2; // COMP2 PE11
   hcomp2.Init.OutputPol = COMP_OUTPUTPOL_NONINVERTED;
-  hcomp2.Init.Hysteresis = COMP_HYSTERESIS_LOW; // LOW = fewer transistions near threshold, HIGH = more transitions near threshold.
+  hcomp2.Init.Hysteresis = COMP_HYSTERESIS_LOW; // LOW = more transitions near threshold, HIGH = fewer transitions near threshold,  H7: LOW=10mV, MEDIUM=20mV, HIGH=30mV
   hcomp2.Init.BlankingSrce = COMP_BLANKINGSRC_NONE;
   hcomp2.Init.Mode = COMP_POWERMODE_HIGHSPEED;
   hcomp2.Init.WindowMode = COMP_WINDOWMODE_DISABLE;
