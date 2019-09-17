@@ -1332,7 +1332,8 @@ static void MX_DAC1_Init(void)
 }
 
 typedef enum {
-    SEARCHING_FOR_LINE_MIN_LEVEL = 0,
+    OUTPUT_DISABLED = 0,
+    SEARCHING_FOR_LINE_MIN_LEVEL,
     SEARCHING_FOR_FRAME_MIN_LEVEL,
     SEARCHING_FOR_FRAME_MAX_LEVEL,
     GENERATING_VIDEO,
@@ -2193,6 +2194,9 @@ void logEvent(timeUs_t us, pixelOsdState_t state)
 #endif
 
 
+#define MAXIMIM_LINE_LEVEL_THRESHOLD_MV 2000
+#define MAXIMIM_FRAME_LEVEL_THRESHOLD_MV (MAXIMIM_LINE_LEVEL_THRESHOLD_MV + 1000)
+
 void spracingPixelOSDProcess(timeUs_t currentTimeUs)
 {
     const uint16_t requiredLines = 100; // ~64us * 100 = 6.4ms
@@ -2205,6 +2209,22 @@ void spracingPixelOSDProcess(timeUs_t currentTimeUs)
     debug[1] = frameState.totalPulseErrors;
 
     switch(pixelOsdState) {
+        case OUTPUT_DISABLED:
+        {
+            if (nextEventAt == 0) {
+                // state transition
+                nextEventAt = currentTimeUs + 1000000; // one second
+            }
+
+            bool handleEventNow = cmp32(currentTimeUs, nextEventAt) > 0;
+            if (handleEventNow) {
+                logEvent(currentTimeUs, pixelOsdState);
+
+                pixelOsdState = SEARCHING_FOR_LINE_MIN_LEVEL;
+                nextEventAt = 0;
+            }
+            break;
+        }
         case SEARCHING_FOR_LINE_MIN_LEVEL:
         {
             if (nextEventAt == 0) {
@@ -2234,14 +2254,16 @@ void spracingPixelOSDProcess(timeUs_t currentTimeUs)
                 bool lineThesholdAchieved = linesSinceStart >= requiredLines / 4;
 
                 if (!lineThesholdAchieved) {
+                    if (syncDetectionState.minimumLevelForLineThreshold < MAXIMIM_LINE_LEVEL_THRESHOLD_MV) {
+                        syncDetectionState.minimumLevelForLineThreshold += 5;
+                        setComparatorTargetMv(syncDetectionState.minimumLevelForLineThreshold);
 
-                    // TODO use a maximum limit for the threshold - if it fails camera is not connected.
-
-                    syncDetectionState.minimumLevelForLineThreshold += 5;
-                    setComparatorTargetMv(syncDetectionState.minimumLevelForLineThreshold);
-
-                    nextEventAt = currentTimeUs + lineCounterDelayUs;
-                    syncDetectionState.lineCounterAtStart = frameState.lineCounter;
+                        nextEventAt = currentTimeUs + lineCounterDelayUs;
+                        syncDetectionState.lineCounterAtStart = frameState.lineCounter;
+                    } else {
+                        pixelOsdState = OUTPUT_DISABLED;
+                        nextEventAt = 0;
+                    }
                 } else {
                     pixelOsdState = SEARCHING_FOR_FRAME_MIN_LEVEL;
                     nextEventAt = 0;
@@ -2264,10 +2286,16 @@ void spracingPixelOSDProcess(timeUs_t currentTimeUs)
                 logEvent(currentTimeUs, pixelOsdState);
 
                 if (frameState.validFrameCounter == 0) {
-                    syncDetectionState.minimumLevelForValidFrameMv += 5;
-                    setComparatorTargetMv(syncDetectionState.minimumLevelForValidFrameMv);
 
-                    nextEventAt = currentTimeUs + minimumFrameDelayUs;
+                    if (syncDetectionState.minimumLevelForValidFrameMv < MAXIMIM_FRAME_LEVEL_THRESHOLD_MV) {
+                        syncDetectionState.minimumLevelForValidFrameMv += 5;
+                        setComparatorTargetMv(syncDetectionState.minimumLevelForValidFrameMv);
+                        nextEventAt = currentTimeUs + minimumFrameDelayUs;
+                    } else {
+                        pixelOsdState = OUTPUT_DISABLED;
+                        nextEventAt = 0;
+                    }
+
                 } else {
                     pixelOsdState = SEARCHING_FOR_FRAME_MAX_LEVEL;
                     nextEventAt = 0;
@@ -2294,17 +2322,28 @@ void spracingPixelOSDProcess(timeUs_t currentTimeUs)
 
                 int32_t framesSinceStart = frameState.validFrameCounter - validFrameCounterAtStart;
 
+                bool levelOk = false;
+
                 if (framesSinceStart > 0) {
                     // still getting valid frames, increase targetMv
-                    syncDetectionState.maximumLevelForValidFrameMv += 5;
-                    setComparatorTargetMv(syncDetectionState.maximumLevelForValidFrameMv);
+                    if (syncDetectionState.minimumLevelForValidFrameMv < MAXIMIM_FRAME_LEVEL_THRESHOLD_MV) {
+                        syncDetectionState.maximumLevelForValidFrameMv += 5;
+                        setComparatorTargetMv(syncDetectionState.maximumLevelForValidFrameMv);
 
-                    // start again using current frame counter.
-                    validFrameCounterAtStart = frameState.validFrameCounter;
-                    nextEventAt = currentTimeUs + minimumFrameDelayUs;
+                        // start again using current frame counter.
+                        validFrameCounterAtStart = frameState.validFrameCounter;
+                        nextEventAt = currentTimeUs + minimumFrameDelayUs;
+                    } else {
+                        // use the current level, since we reached the upper threshold and we are still getting valid frames.
+                        levelOk = true;
+                    }
                 } else {
-                    // no valid frame received
+                    // no valid frame received, use the previous level
                     syncDetectionState.maximumLevelForValidFrameMv -= 5;
+                    levelOk = true;
+                }
+
+                if (levelOk) {
                     syncDetectionState.minMaxDifference = syncDetectionState.maximumLevelForValidFrameMv - syncDetectionState.minimumLevelForValidFrameMv;
                     syncDetectionState.syncThresholdMv = syncDetectionState.minimumLevelForValidFrameMv + (0.4 * syncDetectionState.minMaxDifference);
 
