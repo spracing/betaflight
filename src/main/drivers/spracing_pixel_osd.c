@@ -800,10 +800,10 @@ static void spracingPixelOSDSyncTimerInit(void)
   // SYNC output channel
   sConfigOC.OCMode = TIM_OCMODE_PWM1;
   sConfigOC.Pulse = _US_TO_CLOCKS(4.7);
-  sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
+  sConfigOC.OCPolarity = TIM_OCPOLARITY_LOW;
   sConfigOC.OCNPolarity = TIM_OCNPOLARITY_HIGH;
   sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
-  sConfigOC.OCIdleState = TIM_OCIDLESTATE_RESET;
+  sConfigOC.OCIdleState = TIM_OCIDLESTATE_SET;
   sConfigOC.OCNIdleState = TIM_OCNIDLESTATE_RESET;
   if (HAL_TIM_PWM_ConfigChannel(&htim1, &sConfigOC, SYNC_TIMER_CHANNEL) != HAL_OK)
   {
