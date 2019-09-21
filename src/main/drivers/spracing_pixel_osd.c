@@ -1548,7 +1548,7 @@ void RAW_COMP_TriggerCallback(void)
             // Important start DMA *NOW* - then deal with remaining state.
             //
             bool thisLineIsVisible = nextLineIsVisible;
-            if (thisLineIsVisible && pixelOsdState == GENERATING_VIDEO) {
+            if (thisLineIsVisible /* && pixelOsdState == GENERATING_VIDEO*/) {
                 // DMA configured for next line (below) or by transfer-complete handler.
                 pixelStartDMA();
 
