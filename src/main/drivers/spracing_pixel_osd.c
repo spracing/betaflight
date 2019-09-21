@@ -2193,6 +2193,31 @@ void logEvent(timeUs_t us, pixelOsdState_t state)
 #define logEvent(us, state) {}
 #endif
 
+void spracingPixelOSDPause(void)
+{
+    // Note: This doesn't stop everything, e.g. comparator and all timers
+
+    if (!cameraConnected) {
+        syncStopDMA();
+        syncStopPWM();
+    }
+
+    pixelStopDMA();
+}
+
+void spracingPixelOSDRestart(void)
+{
+    spracingPixelOSDSyncTimerInit();
+    //spracingPixelOSDSyncTriggerReset();
+    uint32_t newTargetMv = determineInitialComparatorTargetMv();
+    setComparatorTargetMv(newTargetMv);
+    syncInit();
+
+    memset(&frameState, 0x00, sizeof(frameState));
+    memset(&fieldState, 0x00, sizeof(fieldState));
+    memset(&syncDetectionState, 0x00, sizeof(syncDetectionState));
+}
+
 
 #define MAXIMIM_LINE_LEVEL_THRESHOLD_MV 2000
 #define MAXIMIM_FRAME_LEVEL_THRESHOLD_MV (MAXIMIM_LINE_LEVEL_THRESHOLD_MV + 1000)
@@ -2203,7 +2228,6 @@ void spracingPixelOSDProcess(timeUs_t currentTimeUs)
 
     const uint32_t lineCounterDelayUs = (VIDEO_LINE_LEN) * (requiredLines);
     const uint32_t minimumFrameDelayUs = (VIDEO_LINE_LEN) * (PAL_LINES + 10);
-
 
     debug[0] = frameState.validFrameCounter;
     debug[1] = frameState.totalPulseErrors;
@@ -2229,7 +2253,6 @@ void spracingPixelOSDProcess(timeUs_t currentTimeUs)
         {
             if (nextEventAt == 0) {
                 // state transition
-
                 syncDetectionState.syncStartedAt = currentTimeUs;
                 syncDetectionState.syncCompletedAt = 0;
                 syncDetectionState.syncDuration = 0;
@@ -2364,12 +2387,14 @@ void spracingPixelOSDProcess(timeUs_t currentTimeUs)
             static uint32_t lastTimeUs;
             static uint32_t lastTotalPulseErrors;
             static uint32_t lastValidFrameCounter;
+            static bool errorDetectionEnabled;
 
             if (nextEventAt == 0) {
                 // state transition
                 lastTimeUs = currentTimeUs;
                 lastTotalPulseErrors = frameState.totalPulseErrors;
                 lastValidFrameCounter = frameState.validFrameCounter;
+                errorDetectionEnabled = false;
 
                 nextEventAt = currentTimeUs + minimumFrameDelayUs;
 
@@ -2379,21 +2404,49 @@ void spracingPixelOSDProcess(timeUs_t currentTimeUs)
             if (handleEventNow) {
                 logEvent(currentTimeUs, pixelOsdState);
 
-                uint32_t recentPulseErrors = frameState.totalPulseErrors - lastTotalPulseErrors;
-                int32_t timeDeltaUs = cmp32(currentTimeUs, lastTimeUs);
-                pulseErrorsPerSecond = recentPulseErrors * 1000000 / timeDeltaUs;
+                if (errorDetectionEnabled) {
 
-                //debug[1] = lastTotalPulseErrors;
-                debug[2] = pulseErrorsPerSecond;
+                    // need to have had the `last*` variables initialised before it's possible to notice any change.
 
-                int32_t recentFrames = frameState.validFrameCounter - lastValidFrameCounter;
-                framesPerSecond = recentFrames * 1000000 / timeDeltaUs;
-                debug[3] = framesPerSecond;
+                    uint32_t recentPulseErrors = frameState.totalPulseErrors - lastTotalPulseErrors;
+                    int32_t timeDeltaUs = cmp32(currentTimeUs, lastTimeUs);
+                    pulseErrorsPerSecond = recentPulseErrors * 1000000 / timeDeltaUs;
 
-                // TODO, if too many pulseErrorsPerSecond then reset sync levels.
-                // TODO, if frame counter stops counting then reset sync levels.
-                // TODO, if time since reset sync levels is large, and no valid frame received then camera is probably
-                // disconnected, enable internal sync generation instead.
+                    //debug[1] = lastTotalPulseErrors;
+                    debug[2] = pulseErrorsPerSecond;
+
+                    int32_t recentFrames = frameState.validFrameCounter - lastValidFrameCounter;
+                    framesPerSecond = recentFrames * 1000000 / timeDeltaUs;
+                    debug[3] = framesPerSecond;
+
+                    // TODO, if too many pulseErrorsPerSecond then reset sync levels.
+                    // TODO, if frame counter stops counting then reset sync levels.
+                    // TODO, if time since reset sync levels is large, and no valid frame received then camera is probably
+                    // disconnected, enable internal sync generation instead.
+
+                    bool tooManyPulseErrors = pulseErrorsPerSecond > 1000;
+
+                    if (tooManyPulseErrors || (framesPerSecond == 0)) {
+                        // probably the errors are caused by having camera sync interfering with generated sync or the camera was powered off
+
+                        spracingPixelOSDPause();
+
+
+                        if (cameraConnected) {
+                            cameraConnected = false;
+                        } else {
+                            cameraConnected = true;
+                        }
+
+                        spracingPixelOSDRestart();
+
+                        pixelOsdState = SEARCHING_FOR_LINE_MIN_LEVEL;
+                        nextEventAt = 0;
+                        break;
+                    }
+                } else {
+                    errorDetectionEnabled = true;
+                }
 
                 lastTimeUs = currentTimeUs;
                 lastTotalPulseErrors = frameState.totalPulseErrors;
@@ -2427,7 +2480,6 @@ void spracingPixelOSDProcess(timeUs_t currentTimeUs)
 
             // probably the frame timeout caused by having camera sync interfering with generated sync..
             cameraConnected = true;
-
         }
 
         pixelStopDMA();
