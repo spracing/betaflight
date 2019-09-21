@@ -2242,12 +2242,10 @@ void spracingPixelOSDProcess(timeUs_t currentTimeUs)
             if (nextEventAt == 0) {
                 // state transition
                 nextEventAt = currentTimeUs + (1000000/4); // 1/4 of a second
-                if (cameraConnected) {
-                    syncDetectionFailureCount++;
-                }
+                syncDetectionFailureCount++;
 
-                if (cameraConnected && syncDetectionFailureCount > 2) {
-                    // probably the errors are caused by having camera sync interfering with generated sync or the camera was powered off
+                if (syncDetectionFailureCount > 1) {
+
 
                     spracingPixelOSDPause();
 
@@ -2424,6 +2422,7 @@ void spracingPixelOSDProcess(timeUs_t currentTimeUs)
                 lastTotalPulseErrors = frameState.totalPulseErrors;
                 lastValidFrameCounter = frameState.validFrameCounter;
                 errorDetectionEnabled = false;
+                syncDetectionFailureCount = 0;
 
                 nextEventAt = currentTimeUs + minimumFrameDelayUs;
 
