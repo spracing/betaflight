@@ -2232,12 +2232,37 @@ void spracingPixelOSDProcess(timeUs_t currentTimeUs)
     debug[0] = frameState.validFrameCounter;
     debug[1] = frameState.totalPulseErrors;
 
+    static uint8_t syncDetectionFailureCount = 0;
+
     switch(pixelOsdState) {
         case OUTPUT_DISABLED:
         {
             if (nextEventAt == 0) {
                 // state transition
-                nextEventAt = currentTimeUs + 1000000; // one second
+                nextEventAt = currentTimeUs + (1000000/4); // 1/4 of a second
+                if (cameraConnected) {
+                    syncDetectionFailureCount++;
+                }
+
+                if (cameraConnected && syncDetectionFailureCount > 2) {
+                    // probably the errors are caused by having camera sync interfering with generated sync or the camera was powered off
+
+                    spracingPixelOSDPause();
+
+
+                    if (cameraConnected) {
+                        cameraConnected = false;
+                    } else {
+                        cameraConnected = true;
+                    }
+
+                    spracingPixelOSDRestart();
+
+                    syncDetectionFailureCount = 0;
+
+                    pixelOsdState = SEARCHING_FOR_LINE_MIN_LEVEL;
+                    nextEventAt = 0;
+                }
             }
 
             bool handleEventNow = cmp32(currentTimeUs, nextEventAt) > 0;
@@ -2427,6 +2452,7 @@ void spracingPixelOSDProcess(timeUs_t currentTimeUs)
                     bool tooManyPulseErrors = pulseErrorsPerSecond > 1000;
 
                     if (tooManyPulseErrors || (framesPerSecond == 0)) {
+
                         // probably the errors are caused by having camera sync interfering with generated sync or the camera was powered off
 
                         spracingPixelOSDPause();
