@@ -2222,6 +2222,7 @@ void spracingPixelOSDRestart(void)
 #define MAXIMIM_LINE_LEVEL_THRESHOLD_MV 2000
 #define MAXIMIM_FRAME_LEVEL_THRESHOLD_MV (MAXIMIM_LINE_LEVEL_THRESHOLD_MV + 1000)
 #define MAXIMIM_FRAME_LEVEL_DIFFERENCE_MV 300
+#define MAXIMIM_LINE_LEVEL_DIFFERENCE_MV 300
 
 
 void spracingPixelOSDProcess(timeUs_t currentTimeUs)
@@ -2335,7 +2336,9 @@ void spracingPixelOSDProcess(timeUs_t currentTimeUs)
 
                 if (frameState.validFrameCounter == 0) {
 
-                    if (syncDetectionState.minimumLevelForValidFrameMv < MAXIMIM_FRAME_LEVEL_THRESHOLD_MV) {
+                    uint32_t minMaxDifference = syncDetectionState.minimumLevelForValidFrameMv - syncDetectionState.minimumLevelForLineThreshold;
+
+                    if (syncDetectionState.minimumLevelForValidFrameMv < MAXIMIM_FRAME_LEVEL_THRESHOLD_MV && minMaxDifference < MAXIMIM_LINE_LEVEL_DIFFERENCE_MV) {
                         syncDetectionState.minimumLevelForValidFrameMv += 5;
                         setComparatorTargetMv(syncDetectionState.minimumLevelForValidFrameMv);
                         nextEventAt = currentTimeUs + minimumFrameDelayUs;
