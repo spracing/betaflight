@@ -201,12 +201,12 @@
 #define ENABLE_BLACKBOX_LOGGING_ON_SDCARD_BY_DEFAULT
 
 #ifdef SPRACINGAIRBIT
-// SPRacingAIRBIT is designed specifically for SERIAL_RX SPEKTRUM1024 + LTM telemetry.
+// SPRacingAIRBIT is designed specifically for SERIAL_RX SPEKTRUM1024 + LTM telemetry or RX via MSP.
 #define USE_TELEMETRY
 #define USE_TELEMETRY_LTM
 #define USE_SERIAL_RX
 #define USE_SERIALRX_SPEKTRUM   // SRXL, DSM2 and DSMX protocol
-#undef USE_RX_MSP
+#define USE_RX_MSP
 #undef USE_PPM
 #undef USE_PWM
 #undef USE_SERIALRX_CRSF       // Team Black Sheep Crossfire protocol
