@@ -57,6 +57,8 @@ FAST_CODE void taskPixelOSDVideo(timeUs_t currentTimeUs)
 {
     // Handle the more frequent operations first
 
+    // FIXME task should be disabled when SPRacingPixelOSD is not in use.
+
     if (frameStartFlag) {
         frameStartFlag = false;
         spracingPixelOSDDrawDebugOverlay();
