@@ -326,6 +326,8 @@ uint8_t *outputPixelBuffer = NULL;
 
 #define BLOCK_TRANSPARENT ((FRAME_PIXEL_TRANSPARENT << 6) | (FRAME_PIXEL_TRANSPARENT << 4) | (FRAME_PIXEL_TRANSPARENT << 2) | (FRAME_PIXEL_TRANSPARENT << 0))
 
+#define BLOCK_DEBUG ((FRAME_PIXEL_WHITE << 6) | (FRAME_PIXEL_BLACK << 4) | (FRAME_PIXEL_GREY << 2) | (FRAME_PIXEL_TRANSPARENT << 0))
+
 #define PIXELS_PER_BYTE (8 / BITS_PER_PIXEL)
 
 #define BITS_PER_BYTE 8
@@ -1815,6 +1817,7 @@ void frameBuffer_eraseInit(void)
     }
 
     fillColor = BLOCK_TRANSPARENT << 24 | BLOCK_TRANSPARENT << 16 | BLOCK_TRANSPARENT << 8 | BLOCK_TRANSPARENT;
+    //fillColor = BLOCK_DEBUG << 24 | BLOCK_DEBUG << 16 | BLOCK_DEBUG << 8 | BLOCK_DEBUG;
 }
 
 void frameBuffer_erase(uint8_t *frameBuffer)
@@ -1907,7 +1910,6 @@ void pixelBuffer_fillFromFrameBuffer(uint8_t *destinationPixelBuffer, uint8_t fr
 }
 #else
 
-uint32_t frameBlockBits;
 
 void pixelBuffer_fillFromFrameBuffer(uint8_t *destinationPixelBuffer, uint8_t frameBufferIndex, uint16_t lineIndex)
 {
@@ -1938,12 +1940,19 @@ void pixelBuffer_fillFromFrameBuffer(uint8_t *destinationPixelBuffer, uint8_t fr
             ((frameBlock & (0x02 << 6)) >> (BITS_PER_PIXEL * 3) << 0)
         );
 
+        *pixels++ = blackBits << (PIXEL_BLACK_BIT - FRAME_BLACK_BIT_OFFSET)
+            | whiteBits << (PIXEL_WHITE_BIT - FRAME_WHITE_BIT_OFFSET)
+            | whiteBits << (PIXEL_MASK_ENABLE_BIT - FRAME_WHITE_BIT_OFFSET);
+
+        /*
         uint32_t gpioBits = 0;
         gpioBits |= blackBits << (PIXEL_BLACK_BIT - FRAME_BLACK_BIT_OFFSET);
         gpioBits |= whiteBits << (PIXEL_WHITE_BIT - FRAME_WHITE_BIT_OFFSET);
+        gpioBits |= whiteBits << (PIXEL_MASK_ENABLE_BIT - FRAME_WHITE_BIT_OFFSET);
+        */
 #else
 
-        frameBlockBits = (
+        uint32_t frameBlockBits = (
             ((frameBlock & (0x03 << 0)) >> (BITS_PER_PIXEL * 0) << 24) |
             ((frameBlock & (0x03 << 2)) >> (BITS_PER_PIXEL * 1) << 16) |
             ((frameBlock & (0x03 << 4)) >> (BITS_PER_PIXEL * 2) << 8) |
@@ -1958,13 +1967,25 @@ void pixelBuffer_fillFromFrameBuffer(uint8_t *destinationPixelBuffer, uint8_t fr
         uint32_t gpioBlackBits = (frameBlockBits << (PIXEL_BLACK_BIT - FRAME_BLACK_BIT_OFFSET)) & blackGpioBitMask;
         uint32_t gpioWhiteBits = (frameBlockBits << (PIXEL_WHITE_BIT - FRAME_WHITE_BIT_OFFSET)) & whiteGpioBitMask;
 
-        uint32_t notBlackBits = ~(gpioBlackBits) & blackGpioBitMask;
-        uint32_t frameMaskBlackBits = notBlackBits >> (PIXEL_BLACK_BIT - FRAME_BLACK_BIT_OFFSET);
-        uint32_t gpioMaskEnableBits = frameMaskBlackBits << PIXEL_MASK_ENABLE_BIT;
+        uint32_t gpioNotBlackBits = ~(gpioBlackBits) & blackGpioBitMask;
 
-        uint32_t gpioBits = gpioBlackBits | gpioWhiteBits;// | gpioMaskEnableBits;
-#endif
+        uint32_t frameMaskOnBlackBits    = gpioNotBlackBits >> (PIXEL_BLACK_BIT);
+        uint32_t frameMaskOnWhiteBits    = gpioWhiteBits >> (PIXEL_WHITE_BIT);
+
+        uint32_t gpioMaskOnBlackBits = (frameMaskOnBlackBits << PIXEL_MASK_ENABLE_BIT) & maskGpioBitMask;
+        uint32_t gpioMaskOnWhiteBits = (frameMaskOnWhiteBits << PIXEL_MASK_ENABLE_BIT) & maskGpioBitMask;
+
+        uint32_t gpioBits = gpioBlackBits | gpioWhiteBits; // works fine, not using mask
+        //uint32_t gpioBits = gpioBlackBits | gpioWhiteBits | gpioMaskOnBlackBits; // doesn't work, why?
+        //uint32_t gpioBits = gpioBlackBits | gpioWhiteBits | gpioMaskOnWhiteBits; // legible, but white pixels are BLACK.  Doesn't work when using BLOCK_DEBUG fill.
+
+        //uint32_t gpioBits = gpioBlackBits | gpioMaskOnWhiteBits; // doesn't work.  odd frame is legible during v line level detection.
+        //uint32_t gpioBits = gpioBlackBits | gpioMaskOnBlackBits; // doesn't work.
+
+        //uint32_t gpioBits = BLOCK_TRANSPARENT | gpioMaskOnBlackBits; // doesn't work.
+        //uint32_t gpioBits = BLOCK_TRANSPARENT | gpioMaskOnWhiteBits; // doesn't work.
         *pixels++ = gpioBits;
+#endif
 
     }
     destinationPixelBuffer[PIXEL_COUNT] = PIXEL_TRANSPARENT & ~(PIXEL_MASK_ON << PIXEL_MASK_ENABLE_BIT); // IMPORTANT!  The white source/black sink must be disabled before the SYNC signal, otherwise we change the sync voltage level.
