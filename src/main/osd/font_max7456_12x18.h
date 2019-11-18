@@ -20,7 +20,7 @@
 #define FONT_MAX7456_12x18_BYTES_PER_CHARACTER 64 // FIXME actually only the first 54 bytes are used.  data is currently stored this way because of the way the font generators generate there c source.
 #define FONT_MAX7456_HEIGHT 18
 #define FONT_MAX7456_WIDTH 12
-extern uint8_t *font_max7456_12x18;
+extern const uint8_t *font_max7456_12x18;
 
 extern const uint8_t font_max7456_12x18_cleanflight1[16384];
 extern const uint8_t font_max7456_12x18_betaflight[16384];
