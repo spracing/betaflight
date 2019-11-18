@@ -294,6 +294,10 @@ uint8_t *outputPixelBuffer = NULL;
 
 #define PIXEL_WHITE_ON 1
 #define PIXEL_WHITE_OFF 0
+
+#define PIXEL_MASK_ON 1
+#define PIXEL_MASK_OFF 0
+
 // black is inverted (open drain)
 #define PIXEL_BLACK_ON 0
 #define PIXEL_BLACK_OFF 1
@@ -303,6 +307,8 @@ uint8_t *outputPixelBuffer = NULL;
 #define PIXEL_GREY        ((PIXEL_WHITE_ON  << PIXEL_WHITE_BIT) | (PIXEL_BLACK_ON  << PIXEL_BLACK_BIT))
 #define PIXEL_TRANSPARENT ((PIXEL_WHITE_OFF << PIXEL_WHITE_BIT) | (PIXEL_BLACK_OFF << PIXEL_BLACK_BIT))
 
+#define PIXEL_WITH_MASK     (PIXEL_MASK_ON << PIXEL_MASK_ENABLE_BIT)
+#define PIXEL_WITHOUT_MASK  (PIXEL_MASK_OFF << PIXEL_MASK_ENABLE_BIT)
 //
 // Frame
 //
@@ -1867,30 +1873,30 @@ void pixelBuffer_fillFromFrameBuffer(uint8_t *destinationPixelBuffer, uint8_t fr
     // XXX - After compilier optimization this is slower than the implementation below.
     uint8_t *pixel = destinationPixelBuffer;
     for (int i = 0; i < FRAME_BUFFER_LINE_SIZE; i++) {
-        uint8_t pixelBlock = *(frameBufferLine + i);
+        uint8_t frameBlock = *(frameBufferLine + i);
 
         uint8_t mask = (1 << 7) | ( 1 << 6);
-        *pixel++ = (pixelBlock & mask) >> (BITS_PER_PIXEL * 3) << PIXEL_BLACK_BIT;
+        *pixel++ = (frameBlock & mask) >> (BITS_PER_PIXEL * 3) << PIXEL_BLACK_BIT;
 
         mask = mask >> BITS_PER_PIXEL;
-        *pixel++ = (pixelBlock & mask) >> (BITS_PER_PIXEL * 2) << PIXEL_BLACK_BIT;
+        *pixel++ = (frameBlock & mask) >> (BITS_PER_PIXEL * 2) << PIXEL_BLACK_BIT;
 
         mask = mask >> BITS_PER_PIXEL;
-        *pixel++ = (pixelBlock & mask) >> (BITS_PER_PIXEL * 1) << PIXEL_BLACK_BIT;
+        *pixel++ = (frameBlock & mask) >> (BITS_PER_PIXEL * 1) << PIXEL_BLACK_BIT;
 
         mask = mask >> BITS_PER_PIXEL;
-        *pixel++ = (pixelBlock & mask) >> (BITS_PER_PIXEL * 0) << PIXEL_BLACK_BIT;
+        *pixel++ = (frameBlock & mask) >> (BITS_PER_PIXEL * 0) << PIXEL_BLACK_BIT;
     }
 #else
     uint32_t *pixels = (uint32_t *)destinationPixelBuffer;
     for (int i = 0; i < FRAME_BUFFER_LINE_SIZE; i++) {
-        uint8_t pixelBlock = *(frameBufferLine + i);
+        uint8_t frameBlock = *(frameBufferLine + i);
 
         *pixels++ = (
-            ((pixelBlock & (0x03 << 0)) >> (BITS_PER_PIXEL * 0) << 24) |
-            ((pixelBlock & (0x03 << 2)) >> (BITS_PER_PIXEL * 1) << 16) |
-            ((pixelBlock & (0x03 << 4)) >> (BITS_PER_PIXEL * 2) << 8) |
-            ((pixelBlock & (0x03 << 6)) >> (BITS_PER_PIXEL * 3) << 0)
+            ((frameBlock & (0x03 << 0)) >> (BITS_PER_PIXEL * 0) << 24) |
+            ((frameBlock & (0x03 << 2)) >> (BITS_PER_PIXEL * 1) << 16) |
+            ((frameBlock & (0x03 << 4)) >> (BITS_PER_PIXEL * 2) << 8) |
+            ((frameBlock & (0x03 << 6)) >> (BITS_PER_PIXEL * 3) << 0)
         ) << PIXEL_BLACK_BIT;
     }
 #endif
@@ -1900,6 +1906,9 @@ void pixelBuffer_fillFromFrameBuffer(uint8_t *destinationPixelBuffer, uint8_t fr
 #endif
 }
 #else
+
+uint32_t frameBlockBits;
+
 void pixelBuffer_fillFromFrameBuffer(uint8_t *destinationPixelBuffer, uint8_t frameBufferIndex, uint16_t lineIndex)
 {
     // Rev B has 4 IO lines for White Source, Black, Mask and White, black and white are NOT adjacent so the bits cannot be copied and shifted together...
@@ -1912,26 +1921,53 @@ void pixelBuffer_fillFromFrameBuffer(uint8_t *destinationPixelBuffer, uint8_t fr
 
     uint32_t *pixels = (uint32_t *)destinationPixelBuffer;
     for (int i = 0; i < FRAME_BUFFER_LINE_SIZE; i++) {
-        uint8_t pixelBlock = *(frameBufferLine + i);
+        uint8_t frameBlock = *(frameBufferLine + i);
 
+#if 0 // old
         uint32_t blackBits = (
-            ((pixelBlock & (0x01 << 0)) >> (BITS_PER_PIXEL * 0) << 24) |
-            ((pixelBlock & (0x01 << 2)) >> (BITS_PER_PIXEL * 1) << 16) |
-            ((pixelBlock & (0x01 << 4)) >> (BITS_PER_PIXEL * 2) << 8) |
-            ((pixelBlock & (0x01 << 6)) >> (BITS_PER_PIXEL * 3) << 0)
+            ((frameBlock & (0x01 << 0)) >> (BITS_PER_PIXEL * 0) << 24) |
+            ((frameBlock & (0x01 << 2)) >> (BITS_PER_PIXEL * 1) << 16) |
+            ((frameBlock & (0x01 << 4)) >> (BITS_PER_PIXEL * 2) << 8) |
+            ((frameBlock & (0x01 << 6)) >> (BITS_PER_PIXEL * 3) << 0)
         );
 
         uint32_t whiteBits = (
-            ((pixelBlock & (0x02 << 0)) >> (BITS_PER_PIXEL * 0) << 24) |
-            ((pixelBlock & (0x02 << 2)) >> (BITS_PER_PIXEL * 1) << 16) |
-            ((pixelBlock & (0x02 << 4)) >> (BITS_PER_PIXEL * 2) << 8) |
-            ((pixelBlock & (0x02 << 6)) >> (BITS_PER_PIXEL * 3) << 0)
+            ((frameBlock & (0x02 << 0)) >> (BITS_PER_PIXEL * 0) << 24) |
+            ((frameBlock & (0x02 << 2)) >> (BITS_PER_PIXEL * 1) << 16) |
+            ((frameBlock & (0x02 << 4)) >> (BITS_PER_PIXEL * 2) << 8) |
+            ((frameBlock & (0x02 << 6)) >> (BITS_PER_PIXEL * 3) << 0)
         );
 
-        *pixels++ = blackBits << (PIXEL_BLACK_BIT - FRAME_BLACK_BIT_OFFSET)
-            | whiteBits << (PIXEL_WHITE_BIT - FRAME_WHITE_BIT_OFFSET);
+        uint32_t gpioBits = 0;
+        gpioBits |= blackBits << (PIXEL_BLACK_BIT - FRAME_BLACK_BIT_OFFSET);
+        gpioBits |= whiteBits << (PIXEL_WHITE_BIT - FRAME_WHITE_BIT_OFFSET);
+#else
+
+        frameBlockBits = (
+            ((frameBlock & (0x03 << 0)) >> (BITS_PER_PIXEL * 0) << 24) |
+            ((frameBlock & (0x03 << 2)) >> (BITS_PER_PIXEL * 1) << 16) |
+            ((frameBlock & (0x03 << 4)) >> (BITS_PER_PIXEL * 2) << 8) |
+            ((frameBlock & (0x03 << 6)) >> (BITS_PER_PIXEL * 3) << 0)
+        );
+
+        uint32_t blackGpioBitMask  = ((1 << 24) | (1 << 16) | (1 << 8) | (1 << 0)) << PIXEL_BLACK_BIT;
+        uint32_t whiteGpioBitMask  = ((1 << 24) | (1 << 16) | (1 << 8) | (1 << 0)) << PIXEL_WHITE_BIT;
+        uint32_t maskGpioBitMask   = ((1 << 24) | (1 << 16) | (1 << 8) | (1 << 0)) << PIXEL_MASK_ENABLE_BIT;
+
+
+        uint32_t gpioBlackBits = (frameBlockBits << (PIXEL_BLACK_BIT - FRAME_BLACK_BIT_OFFSET)) & blackGpioBitMask;
+        uint32_t gpioWhiteBits = (frameBlockBits << (PIXEL_WHITE_BIT - FRAME_WHITE_BIT_OFFSET)) & whiteGpioBitMask;
+
+        uint32_t notBlackBits = ~(gpioBlackBits) & blackGpioBitMask;
+        uint32_t frameMaskBlackBits = notBlackBits >> (PIXEL_BLACK_BIT - FRAME_BLACK_BIT_OFFSET);
+        uint32_t gpioMaskEnableBits = frameMaskBlackBits << PIXEL_MASK_ENABLE_BIT;
+
+        uint32_t gpioBits = gpioBlackBits | gpioWhiteBits;// | gpioMaskEnableBits;
+#endif
+        *pixels++ = gpioBits;
+
     }
-    destinationPixelBuffer[PIXEL_COUNT] = PIXEL_TRANSPARENT; // IMPORTANT!  The white source/black sink must be disabled before the SYNC signal, otherwise we change the sync voltage level.
+    destinationPixelBuffer[PIXEL_COUNT] = PIXEL_TRANSPARENT & ~(PIXEL_MASK_ON << PIXEL_MASK_ENABLE_BIT); // IMPORTANT!  The white source/black sink must be disabled before the SYNC signal, otherwise we change the sync voltage level.
 #ifdef DEBUG_PIXEL_BUFFER_FILL
     pixelDebug2Toggle();
 #endif
