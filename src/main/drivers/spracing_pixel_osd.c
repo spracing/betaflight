@@ -664,10 +664,10 @@ static void MX_DMA_Init(void)
         return;
     }
 
-    dmaStream_t *syncDmaRef = syncDmaSpec->ref;
+    const dmaResource_t *syncDmaRef = syncDmaSpec->ref;
     uint32_t syncDmaChannel = syncDmaSpec->channel;
 #else
-    dmaStream_t *syncDmaRef = syncTimerHardware->dmaRef;
+    const dmaResource_t *syncDmaRef = syncTimerHardware->dmaRef;
     uint32_t syncDmaChannel = syncTimerHardware->dmaChannel;
 #endif
 
@@ -693,10 +693,10 @@ static void MX_DMA_Init(void)
         return;
     }
 
-    dmaStream_t *pixelDmaRef = pixelDmaSpec->ref;
+    const dmaResource_t *pixelDmaRef = pixelDmaSpec->ref;
     uint32_t pixelDmaChannel = pixelDmaSpec->channel;
 #else
-    dmaStream_t *pixelDmaRef = pixelTimerHardware->dmaRef;
+    const dmaResource_t *pixelDmaRef = pixelTimerHardware->dmaRef;
     uint32_t pixelDmaChannel = pixelTimerHardware->dmaChannel;
 #endif
 
