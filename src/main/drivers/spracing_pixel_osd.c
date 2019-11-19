@@ -1964,25 +1964,37 @@ void pixelBuffer_fillFromFrameBuffer(uint8_t *destinationPixelBuffer, uint8_t fr
         uint32_t maskGpioBitMask   = ((1 << 24) | (1 << 16) | (1 << 8) | (1 << 0)) << PIXEL_MASK_ENABLE_BIT;
 
 
+        // gpio/frame level for black is inverted, so 0 = ON, 1 = OFF.
+
         uint32_t gpioBlackBits = (frameBlockBits << (PIXEL_BLACK_BIT - FRAME_BLACK_BIT_OFFSET)) & blackGpioBitMask;
         uint32_t gpioWhiteBits = (frameBlockBits << (PIXEL_WHITE_BIT - FRAME_WHITE_BIT_OFFSET)) & whiteGpioBitMask;
 
-        uint32_t gpioNotBlackBits = ~(gpioBlackBits) & blackGpioBitMask;
+        uint32_t gpioNotBlackBits = ~(gpioBlackBits) & blackGpioBitMask; // now 1 = ON, 0 = OFF, for each black bit.
 
-        uint32_t frameMaskOnBlackBits    = gpioNotBlackBits >> (PIXEL_BLACK_BIT);
+        uint32_t frameMaskOnBlackBits    = gpioBlackBits >> (PIXEL_BLACK_BIT);
+        uint32_t frameMaskOnNotBlackBits = gpioNotBlackBits >> (PIXEL_BLACK_BIT);
         uint32_t frameMaskOnWhiteBits    = gpioWhiteBits >> (PIXEL_WHITE_BIT);
 
         uint32_t gpioMaskOnBlackBits = (frameMaskOnBlackBits << PIXEL_MASK_ENABLE_BIT) & maskGpioBitMask;
+        uint32_t gpioMaskOnNotBlackBits = (frameMaskOnNotBlackBits << PIXEL_MASK_ENABLE_BIT) & maskGpioBitMask;
         uint32_t gpioMaskOnWhiteBits = (frameMaskOnWhiteBits << PIXEL_MASK_ENABLE_BIT) & maskGpioBitMask;
 
-        uint32_t gpioBits = gpioBlackBits | gpioWhiteBits; // works fine, not using mask
-        //uint32_t gpioBits = gpioBlackBits | gpioWhiteBits | gpioMaskOnBlackBits; // doesn't work, why?
-        //uint32_t gpioBits = gpioBlackBits | gpioWhiteBits | gpioMaskOnWhiteBits; // legible, but white pixels are BLACK.  Doesn't work when using BLOCK_DEBUG fill.
+        uint32_t gpioWhiteBitsForEachBlackOn = (frameMaskOnNotBlackBits << PIXEL_WHITE_BIT) & whiteGpioBitMask;
+
+        //uint32_t gpioBits = gpioBlackBits | gpioWhiteBits; // works fine, not using mask
+        //uint32_t gpioBits = gpioBlackBits | gpioWhiteBits | gpioMaskOnNotBlackBits; // doesn't work, why? - because voltage goes to 0 and comparator triggers!
+
+        //uint32_t gpioBits = gpioBlackBits | gpioWhiteBits | gpioMaskOnNotBlackBits | gpioWhiteBitsForEachBlackOn; // works!  Needs to be a voltage source when black so that black level is not 0v, i.e. black level must be above comparator threshold.
+        uint32_t gpioBits = gpioBlackBits | gpioWhiteBits | gpioMaskOnWhiteBits | gpioMaskOnNotBlackBits | gpioWhiteBitsForEachBlackOn; // works too, whites are a bit grey though, but 'white' level is masked correctly - white pixels always the same white regargless of camera signal.
+
+        //uint32_t gpioBits = gpioBlackBits | gpioWhiteBits | gpioMaskOnWhiteBits; // works but white pixels are a bit dark. Doesn't work when using BLOCK_DEBUG fill.
+        //uint32_t gpioBits = gpioBlackBits | gpioWhiteBits | gpioMaskOnWhiteBits | gpioMaskOnNotBlackBits; // doesn't work
+        //uint32_t gpioBits = gpioBlackBits | gpioWhiteBits | gpioMaskOnWhiteBits | gpioMaskOnBlackBits; // doesn't work,
 
         //uint32_t gpioBits = gpioBlackBits | gpioMaskOnWhiteBits; // doesn't work.  odd frame is legible during v line level detection.
-        //uint32_t gpioBits = gpioBlackBits | gpioMaskOnBlackBits; // doesn't work.
+        //uint32_t gpioBits = gpioBlackBits | gpioMaskOnNotBlackBits; // doesn't work.
 
-        //uint32_t gpioBits = BLOCK_TRANSPARENT | gpioMaskOnBlackBits; // doesn't work.
+        //uint32_t gpioBits = BLOCK_TRANSPARENT | gpioMaskOnNotBlackBits; // doesn't work.
         //uint32_t gpioBits = BLOCK_TRANSPARENT | gpioMaskOnWhiteBits; // doesn't work.
         *pixels++ = gpioBits;
 #endif
