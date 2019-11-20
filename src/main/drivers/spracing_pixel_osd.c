@@ -2537,7 +2537,7 @@ void spracingPixelOSDDrawDebugOverlay(void)
 
     static uint8_t messageBuffer[32];
 
-    const uint16_t debugY = 18 * 13;
+    uint16_t debugY = 18 * 13;
 
     static const char *videoModeNames[] = { "????", "PAL", "NTSC" };
     tfp_sprintf((char *)messageBuffer, "P:%04X V:%04X E:%04X M:%04s",
@@ -2546,7 +2546,18 @@ void spracingPixelOSDDrawDebugOverlay(void)
             frameState.frameStartCounter - frameState.validFrameCounter,
             videoModeNames[detectedVideoMode]
     );
-    const int messageLength = strlen((char *)messageBuffer);
+    int messageLength = strlen((char *)messageBuffer);
+    frameBuffer_slowWriteString(frameBuffer, (360 - (12 * messageLength)) / 2, debugY, messageBuffer, messageLength);
+
+    debugY += FONT_MAX7456_HEIGHT;
+
+    tfp_sprintf((char *)messageBuffer, "L:%03d FL:%03d FH:%03d T:%03d",
+            syncDetectionState.minimumLevelForLineThreshold,
+            syncDetectionState.minimumLevelForValidFrameMv,
+            syncDetectionState.maximumLevelForValidFrameMv,
+            syncDetectionState.syncThresholdMv
+    );
+    messageLength = strlen((char *)messageBuffer);
     frameBuffer_slowWriteString(frameBuffer, (360 - (12 * messageLength)) / 2, debugY, messageBuffer, messageLength);
 }
 
