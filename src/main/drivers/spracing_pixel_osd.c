@@ -161,6 +161,14 @@ static void pixelDebug2Toggle(void);
 #define _US_TO_CLOCKS(__us)                      ((uint32_t)((__us) * TIMER_CLOCKS_PER_US))
 
 
+//
+// It takes some time between the comparator being triggered and the IRQ handler beging called.
+// it can be measured by togging a GPIO high/low in the IRQ handler and measuring the time between
+// the input signal and the gpio being toggled.
+// Note: the value varies based on CPU clock-speed and compiler optimisations, i.e. DEBUG build = more time, faster CPU = less time.
+//
+#define VIDEO_COMPARATOR_TO_IRQ_OFFSET 0.4 // us
+
 #ifdef USE_NTSC
 #define VIDEO_LINE_LEN            63.556  // us
 #define VIDEO_SYNC_SHORT           2.000  // us
@@ -884,13 +892,13 @@ static void spracingPixelOSDSyncTimerInit(void)
 #endif
 
   // Channel 5 used to blank comparator for duration of visible portion of line
-  sConfigOC.OCMode = TIM_OCMODE_INACTIVE;
+  sConfigOC.OCMode = TIM_OCMODE_FORCED_ACTIVE;
   sConfigOC.Pulse = 0;
-  sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
-  sConfigOC.OCNPolarity = TIM_OCNPOLARITY_HIGH;
+  sConfigOC.OCPolarity = TIM_OCPOLARITY_LOW;
+  sConfigOC.OCNPolarity = TIM_OCNPOLARITY_LOW;
   sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
-  sConfigOC.OCIdleState = TIM_OCIDLESTATE_SET;
-  sConfigOC.OCNIdleState = TIM_OCNIDLESTATE_SET;
+  sConfigOC.OCIdleState = TIM_OCIDLESTATE_RESET;
+  sConfigOC.OCNIdleState = TIM_OCNIDLESTATE_RESET;
   if (HAL_TIM_OC_ConfigChannel(&htim1, &sConfigOC, TIM_CHANNEL_5) != HAL_OK)
   {
     Error_Handler();
@@ -1227,6 +1235,26 @@ void pixelConfigureDMAForNextField(void)
 
 }
 
+static inline void disableComparatorBlanking(void) {
+    __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_5, htim1.Init.Period + 1); // never reached.
+    LL_TIM_OC_SetMode((&htim1)->Instance, LL_TIM_CHANNEL_CH5, LL_TIM_OCMODE_FORCED_ACTIVE);
+    //__HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_5, htim1.Init.Period + 1);
+#ifdef DEBUG_BLANKING
+    LL_TIM_OC_SetMode((&htim1)->Instance, LL_TIM_CHANNEL_CH3, LL_TIM_OCMODE_FORCED_ACTIVE);
+    __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_3, htim1.Init.Period + 1); // never reached.
+    //__HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_3, htim1.Init.Period + 1);
+#endif
+
+
+}
+
+static inline void setBlankingPeriod(uint32_t clocks) {
+    __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_5, clocks);
+#ifdef DEBUG_BLANKING
+    __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_3, clocks);
+#endif
+}
+
 void pixelXferCpltCallback(struct __DMA_HandleTypeDef *hdma)
 {
     UNUSED(hdma);
@@ -1243,6 +1271,9 @@ void pixelXferCpltCallback(struct __DMA_HandleTypeDef *hdma)
     pixelOutputDisable();
 
     __HAL_TIM_DISABLE_DMA(&htim15, TIM_DMA_CC1);
+
+    //disableComparatorBlanking();
+
 
     pixelConfigureDMAForNextField();
 
@@ -1280,16 +1311,15 @@ void pixelGateAndBlankStart(void)
       Error_Handler();
     }
 #ifdef DEBUG_GATING
-    if (HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_2) != HAL_OK)
+    if (HAL_TIM_OC_Start(&htim1, TIM_CHANNEL_2) != HAL_OK)
     {
       Error_Handler();
     }
-    if (HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_2) != HAL_OK)
+    if (HAL_TIMEx_OCN_Start(&htim1, TIM_CHANNEL_2) != HAL_OK)
     {
       Error_Handler();
     }
 #endif
-
 
     // OC5 used as comparator blanking
     if (HAL_TIM_OC_Start(&htim1, TIM_CHANNEL_5) != HAL_OK)
@@ -1334,6 +1364,8 @@ static void pixelStopDMA(void)
     pixelDMAActive = false;
 
     pixelOutputDisable();
+
+    disableComparatorBlanking();
 }
 
 //
@@ -1377,7 +1409,8 @@ static void MX_COMP2_Init(void)
   hcomp2.Init.NonInvertingInput = COMP_INPUT_PLUS_IO2; // COMP2 PE11
   hcomp2.Init.OutputPol = COMP_OUTPUTPOL_INVERTED;
   hcomp2.Init.Hysteresis = COMP_HYSTERESIS_LOW; // LOW = more transitions near threshold, HIGH = fewer transitions near threshold,  H7: LOW=10mV, MEDIUM=20mV, HIGH=30mV
-  hcomp2.Init.BlankingSrce = COMP_BLANKINGSRC_NONE;
+  //hcomp2.Init.BlankingSrce = COMP_BLANKINGSRC_NONE; // during pixel output this this will be COMP_BLANKINGSRC_TIM1_OC5.
+  hcomp2.Init.BlankingSrce = COMP_BLANKINGSRC_TIM1_OC5;
   hcomp2.Init.Mode = COMP_POWERMODE_HIGHSPEED;
   hcomp2.Init.WindowMode = COMP_WINDOWMODE_DISABLE;
   hcomp2.Init.TriggerMode = COMP_TRIGGERMODE_IT_RISING_FALLING;
@@ -1582,6 +1615,8 @@ void RAW_COMP_TriggerCallback(void)
         pixelDebug2High();
 #endif
 
+        disableComparatorBlanking();
+
         //
         // check pulse lengths in order from shortest to longest.
         //
@@ -1654,6 +1689,21 @@ void RAW_COMP_TriggerCallback(void)
                 pixelStartDMA();
 
                 visibleLineIndex++;
+
+                //
+                // blank the comparator if the line is visible and later when the DMA completes, disable blanking.
+                //
+
+                // Now = rising pulse of HSYNC.
+
+                LL_TIM_OC_SetMode((&htim1)->Instance, LL_TIM_CHANNEL_CH5, LL_TIM_OCMODE_FORCED_INACTIVE);
+                LL_TIM_OC_SetMode((&htim1)->Instance, LL_TIM_CHANNEL_CH3, LL_TIM_OCMODE_FORCED_INACTIVE);
+
+                setBlankingPeriod(((&htim1)->Instance->CNT + _US_TO_CLOCKS(VIDEO_LINE_LEN - VIDEO_FRONT_PORCH - VIDEO_SYNC_HSYNC - VIDEO_COMPARATOR_TO_IRQ_OFFSET)) % (&htim1)->Instance->ARR);
+
+                LL_TIM_OC_SetMode((&htim1)->Instance, LL_TIM_CHANNEL_CH5, TIM_OCMODE_ACTIVE);
+                LL_TIM_OC_SetMode((&htim1)->Instance, LL_TIM_CHANNEL_CH3, TIM_OCMODE_ACTIVE);
+
             }
 
             switch(frameState.status) {
@@ -1982,10 +2032,10 @@ void pixelBuffer_fillFromFrameBuffer(uint8_t *destinationPixelBuffer, uint8_t fr
         uint32_t gpioWhiteBitsForEachBlackOn = (frameMaskOnNotBlackBits << PIXEL_WHITE_BIT) & whiteGpioBitMask;
 
         //uint32_t gpioBits = gpioBlackBits | gpioWhiteBits; // works fine, not using mask
-        //uint32_t gpioBits = gpioBlackBits | gpioWhiteBits | gpioMaskOnNotBlackBits; // doesn't work, why? - because voltage goes to 0 and comparator triggers!
+        uint32_t gpioBits = gpioBlackBits | gpioWhiteBits | gpioMaskOnNotBlackBits; // doesn't work, why? - because voltage goes to 0 and comparator triggers!
 
         //uint32_t gpioBits = gpioBlackBits | gpioWhiteBits | gpioMaskOnNotBlackBits | gpioWhiteBitsForEachBlackOn; // works!  Needs to be a voltage source when black so that black level is not 0v, i.e. black level must be above comparator threshold.
-        uint32_t gpioBits = gpioBlackBits | gpioWhiteBits | gpioMaskOnWhiteBits | gpioMaskOnNotBlackBits | gpioWhiteBitsForEachBlackOn; // works too, whites are a bit grey though, but 'white' level is masked correctly - white pixels always the same white regargless of camera signal.
+        //uint32_t gpioBits = gpioBlackBits | gpioWhiteBits | gpioMaskOnWhiteBits | gpioMaskOnNotBlackBits | gpioWhiteBitsForEachBlackOn; // works too, whites are a bit grey though, but 'white' level is masked correctly - white pixels always the same white regargless of camera signal.
 
         //uint32_t gpioBits = gpioBlackBits | gpioWhiteBits | gpioMaskOnWhiteBits; // works but white pixels are a bit dark. Doesn't work when using BLOCK_DEBUG fill.
         //uint32_t gpioBits = gpioBlackBits | gpioWhiteBits | gpioMaskOnWhiteBits | gpioMaskOnNotBlackBits; // doesn't work
@@ -2287,11 +2337,6 @@ bool spracingPixelOSDInit(const struct spracingPixelOSDConfig_s *spracingPixelOS
       Error_Handler();
     }
 
-    if(HAL_COMP_Start_IT(&hcomp2) != HAL_OK)
-    {
-      Error_Handler();
-    }
-
     //
     // Sync generation
     //
@@ -2314,6 +2359,12 @@ bool spracingPixelOSDInit(const struct spracingPixelOSDConfig_s *spracingPixelOS
     pixelInit();
 
     pixelGateAndBlankStart(); // Requires that TIM1 is initialised.
+
+    // IRQ handler requires that timers are initialised.
+    if(HAL_COMP_Start_IT(&hcomp2) != HAL_OK)
+    {
+      Error_Handler();
+    }
 
     return true;
 }
@@ -2468,6 +2519,8 @@ void spracingPixelOSDProcess(timeUs_t currentTimeUs)
 
                 // always reset comparator target.
                 setComparatorTargetMv(syncDetectionState.minimumLevelForLineThreshold);
+
+                disableComparatorBlanking();
 
                 nextEventAt = currentTimeUs + lineCounterDelayUs;
             }
