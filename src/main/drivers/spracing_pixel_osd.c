@@ -2286,6 +2286,8 @@ void spracingPixelOSDProcess(timeUs_t currentTimeUs)
 
                 syncDetectionState.minimumLevelForLineThreshold = 0;
                 syncDetectionState.minimumLevelForValidFrameMv = 0;
+                syncDetectionState.maximumLevelForValidFrameMv = 0;
+
                 syncDetectionState.lineCounterAtStart = frameState.lineCounter;
 
                 nextEventAt = currentTimeUs + lineCounterDelayUs;
