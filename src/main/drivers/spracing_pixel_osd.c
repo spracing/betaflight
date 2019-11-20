@@ -71,6 +71,8 @@
 #define SPRACING_PIXEL_OSD_VIDEO_THRESHOLD_DEBUG_PIN    PA5  // DAC1_OUT2
 #define SPRACING_PIXEL_OSD_PIXEL_DEBUG_1_PIN            PE5  // TIM15_CH1 - For DMA updates
 #define SPRACING_PIXEL_OSD_PIXEL_DEBUG_2_PIN            PE6  // TIM15_CH2 - Spare
+#define SPRACING_PIXEL_OSD_PIXEL_GATING_DEBUG_PIN       PB0 // TIM1_CH2N // actual gating is on CH4
+#define SPRACING_PIXEL_OSD_PIXEL_BLANKING_DEBUG_PIN     PB1 // TIM1_CH3N // actual blanking is on CH5
 #else
 // Rev B
 #define SPRACING_PIXEL_OSD_WHITE_SOURCE_SELECT_PIN      PE12
@@ -87,6 +89,8 @@
 #define SPRACING_PIXEL_OSD_VIDEO_THRESHOLD_DEBUG_PIN    PA5  // DAC1_OUT2
 #define SPRACING_PIXEL_OSD_PIXEL_DEBUG_1_PIN            PE5  // TIM15_CH1 - For DMA updates
 #define SPRACING_PIXEL_OSD_PIXEL_DEBUG_2_PIN            PE6  // TIM15_CH2 - Spare
+#define SPRACING_PIXEL_OSD_PIXEL_GATING_DEBUG_PIN       PB0 // TIM1_CH2N // actual gating is on CH4
+#define SPRACING_PIXEL_OSD_PIXEL_BLANKING_DEBUG_PIN     PB1 // TIM1_CH3N // actual blanking is on CH5
 #endif
 
 #if 1
@@ -94,6 +98,8 @@
 #define DEBUG_PULSE_ERRORS
 #define DEBUG_OSD_EVENTS
 #define DEBUG_PIXEL_DMA
+#define DEBUG_BLANKING
+#define DEBUG_GATING
 #else
 #define DEBUG_PIXEL_BUFFER_FILL
 #define DEBUG_LAST_HALF_LINE
@@ -225,6 +231,11 @@ static void pixelDebug2Toggle(void);
 #define PIXEL_DEBUG_1_GPIO_Port GPIOE
 #define PIXEL_DEBUG_2_Pin GPIO_PIN_6
 #define PIXEL_DEBUG_2_GPIO_Port GPIOE
+
+#define GATING_DEBUG_Pin GPIO_PIN_0
+#define GATING_DEBUG_GPIO_Port GPIOB
+#define BLANKING_DEBUG_Pin GPIO_PIN_1
+#define BLANKING_DEBUG_GPIO_Port GPIOB
 
 #if (SPRACINGH7CINE_REV <= 1)
 #define SYNC_OUT_Pin GPIO_PIN_12
@@ -408,6 +419,12 @@ typedef struct spracingPixelOSDIO_s {
     IO_t syncInPin;
     IO_t debug1Pin;
     IO_t debug2Pin;
+#ifdef DEBUG_BLANKING
+    IO_t blankingDebugPin;
+#endif
+#ifdef DEBUG_GATING
+    IO_t gatingDebugPin;
+#endif
     IO_t whiteSourceSelectPin;
     IO_t maskEnablePin;
 } spracingPixelOSDIO_t;
@@ -418,6 +435,12 @@ static spracingPixelOSDIO_t spracingPixelOSDIO = {
     .syncInPin              = IO_NONE,
     .debug1Pin              = IO_NONE,
     .debug2Pin              = IO_NONE,
+#ifdef DEBUG_BLANKING
+    .blankingDebugPin       = IO_NONE,
+#endif
+#ifdef DEBUG_GATING
+    .gatingDebugPin         = IO_NONE,
+#endif
     .whiteSourceSelectPin   = IO_NONE,
     .maskEnablePin          = IO_NONE,
 };
@@ -492,6 +515,10 @@ void HAL_TIM_MspPostInit(TIM_HandleTypeDef* htim)
   /* USER CODE END TIM1_MspPostInit 0 */
 
       __HAL_RCC_GPIOE_CLK_ENABLE();
+#if defined(DEBUG_GATING) || defined(DEBUG_BLANKING)
+      __HAL_RCC_GPIOB_CLK_ENABLE();
+#endif
+
       /**TIM1 GPIO Configuration
       PE12     ------> TIM1_CH3N
       OR
@@ -503,6 +530,24 @@ void HAL_TIM_MspPostInit(TIM_HandleTypeDef* htim)
       GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
       GPIO_InitStruct.Alternate = GPIO_AF1_TIM1;
       HAL_GPIO_Init(SYNC_OUT_GPIO_Port, &GPIO_InitStruct);
+
+#ifdef DEBUG_GATING
+      GPIO_InitStruct.Pin = GATING_DEBUG_Pin;
+      GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+      GPIO_InitStruct.Pull = GPIO_PULLDOWN;
+      GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+      GPIO_InitStruct.Alternate = GPIO_AF1_TIM1;
+      HAL_GPIO_Init(GATING_DEBUG_GPIO_Port, &GPIO_InitStruct);
+#endif
+
+#ifdef DEBUG_BLANKING
+      GPIO_InitStruct.Pin = BLANKING_DEBUG_Pin;
+      GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+      GPIO_InitStruct.Pull = GPIO_PULLDOWN;
+      GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+      GPIO_InitStruct.Alternate = GPIO_AF1_TIM1;
+      HAL_GPIO_Init(BLANKING_DEBUG_GPIO_Port, &GPIO_InitStruct);
+#endif
 
   /* USER CODE BEGIN TIM1_MspPostInit 1 */
 
@@ -814,6 +859,7 @@ static void spracingPixelOSDSyncTimerInit(void)
   // offset can be between 0 and 4, 4 = (VIDEO_LINE_LEN(~64) - hsync(4.7) - back porch(5.8) - front porch (1.5)) - OVERLAY_LENGTH
   sConfigOC.Pulse = _US_TO_CLOCKS((4.7 + 5.8) + (2.0)); // start of picture data + offset
   sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
+  sConfigOC.OCNPolarity = TIM_OCNPOLARITY_HIGH;
   sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
   sConfigOC.OCIdleState = TIM_OCIDLESTATE_RESET;
   sConfigOC.OCNIdleState = TIM_OCNIDLESTATE_RESET;
@@ -821,6 +867,36 @@ static void spracingPixelOSDSyncTimerInit(void)
   {
     Error_Handler();
   }
+
+#ifdef DEBUG_GATING
+  if (HAL_TIM_OC_ConfigChannel(&htim1, &sConfigOC, TIM_CHANNEL_2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+#endif
+
+  // Channel 5 used to blank comparator for duration of visible portion of line
+  sConfigOC.OCMode = TIM_OCMODE_INACTIVE;
+  sConfigOC.Pulse = 0;
+  sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
+  sConfigOC.OCNPolarity = TIM_OCNPOLARITY_HIGH;
+  sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
+  sConfigOC.OCIdleState = TIM_OCIDLESTATE_SET;
+  sConfigOC.OCNIdleState = TIM_OCNIDLESTATE_SET;
+  if (HAL_TIM_OC_ConfigChannel(&htim1, &sConfigOC, TIM_CHANNEL_5) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+#ifdef DEBUG_BLANKING
+  if (HAL_TIM_OC_ConfigChannel(&htim1, &sConfigOC, TIM_CHANNEL_3) != HAL_OK)
+  {
+    Error_Handler();
+  }
+#endif
+
+
+
   sBreakDeadTimeConfig.OffStateRunMode = TIM_OSSR_DISABLE;
   sBreakDeadTimeConfig.OffStateIDLEMode = TIM_OSSI_DISABLE;
   sBreakDeadTimeConfig.LockLevel = TIM_LOCKLEVEL_OFF;
@@ -1186,12 +1262,42 @@ void pixelInit(void)
     {
       Error_Handler();
     }
+}
 
+void pixelGateAndBlankStart(void)
+{
     // OC4REF used to gate TIM15
     if (HAL_TIM_OC_Start(&htim1, TIM_CHANNEL_4) != HAL_OK)
     {
       Error_Handler();
     }
+#ifdef DEBUG_GATING
+    if (HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_2) != HAL_OK)
+    {
+      Error_Handler();
+    }
+    if (HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_2) != HAL_OK)
+    {
+      Error_Handler();
+    }
+#endif
+
+
+    // OC5 used as comparator blanking
+    if (HAL_TIM_OC_Start(&htim1, TIM_CHANNEL_5) != HAL_OK)
+    {
+      Error_Handler();
+    }
+#ifdef DEBUG_BLANKING
+    if (HAL_TIM_OC_Start(&htim1, TIM_CHANNEL_3) != HAL_OK)
+    {
+      Error_Handler();
+    }
+    if (HAL_TIMEx_OCN_Start(&htim1, TIM_CHANNEL_3) != HAL_OK)
+    {
+      Error_Handler();
+    }
+#endif
 }
 
 static inline void pixelStartDMA(void)
@@ -1341,20 +1447,7 @@ typedef enum {
 
 pixelOsdState_t pixelOsdState = SEARCHING_FOR_LINE_MIN_LEVEL;
 
-
 uint32_t targetMv = 0;
-int32_t offsetMv = 0;//-28; // scope shows 328mv when targetMv is 300mv
-
-uint32_t determineInitialComparatorTargetMv(void)
-{
-    if (cameraConnected) {
-        targetMv = 0;
-    } else {
-        targetMv = 700;
-    }
-
-    return targetMv;
-}
 
 void setComparatorTargetMv(uint32_t newTargetMv)
 {
@@ -1380,7 +1473,7 @@ void setComparatorTargetMv(uint32_t newTargetMv)
     targetMv = newTargetMv;
 
     // TODO get measured VREF via ADC and use instead of VIDEO_DAC_VCC here?
-    uint32_t dacComparatorRaw = ((targetMv + offsetMv) * 0x0FFF) / (VIDEO_DAC_VCC * 1000);
+    uint32_t dacComparatorRaw = (targetMv * 0x0FFF) / (VIDEO_DAC_VCC * 1000);
 
     HAL_DAC_SetValue(&hdac1, DAC_CHANNEL_2, DAC_ALIGN_12B_R, dacComparatorRaw);
 }
@@ -1837,8 +1930,6 @@ void pixelBuffer_fillFromFrameBuffer(uint8_t *destinationPixelBuffer, uint8_t fr
 
         *pixels++ = blackBits << (PIXEL_BLACK_BIT - FRAME_BLACK_BIT_OFFSET)
             | whiteBits << (PIXEL_WHITE_BIT - FRAME_WHITE_BIT_OFFSET);
-
-
     }
     destinationPixelBuffer[PIXEL_COUNT] = PIXEL_TRANSPARENT; // IMPORTANT!  The white source/black sink must be disabled before the SYNC signal, otherwise we change the sync voltage level.
 #ifdef DEBUG_PIXEL_BUFFER_FILL
@@ -2063,6 +2154,20 @@ bool spracingPixelOSDInit(const struct spracingPixelOSDConfig_s *spracingPixelOS
     IOInit(spracingPixelOSDIO.syncInPin, OWNER_OSD, 0);
     IOConfigGPIO(spracingPixelOSDIO.syncInPin, IO_VIDEO_SYNC_IN_CFG);
 
+#ifdef DEBUG_BLANKING
+    spracingPixelOSDIO.blankingDebugPin = IOGetByTag(IO_TAG(SPRACING_PIXEL_OSD_PIXEL_BLANKING_DEBUG_PIN));
+    IOLo(spracingPixelOSDIO.blankingDebugPin);
+    IOInit(spracingPixelOSDIO.blankingDebugPin, OWNER_OSD, 0);
+    IOConfigGPIO(spracingPixelOSDIO.blankingDebugPin, IO_PIXEL_DEBUG_CFG);
+#endif
+
+#ifdef DEBUG_GATING
+    spracingPixelOSDIO.gatingDebugPin = IOGetByTag(IO_TAG(SPRACING_PIXEL_OSD_PIXEL_GATING_DEBUG_PIN));
+    IOLo(spracingPixelOSDIO.gatingDebugPin);
+    IOInit(spracingPixelOSDIO.gatingDebugPin, OWNER_OSD, 0);
+    IOConfigGPIO(spracingPixelOSDIO.gatingDebugPin, IO_PIXEL_DEBUG_CFG);
+#endif
+
     spracingPixelOSDIO.debug1Pin = IOGetByTag(IO_TAG(SPRACING_PIXEL_OSD_PIXEL_DEBUG_1_PIN));
     IOLo(spracingPixelOSDIO.debug1Pin);
     IOInit(spracingPixelOSDIO.debug1Pin, OWNER_OSD, 0);
@@ -2104,8 +2209,7 @@ bool spracingPixelOSDInit(const struct spracingPixelOSDConfig_s *spracingPixelOS
 
     // DAC CH2 - Generate comparator reference voltage
 
-    uint32_t initialComparatorTargetMv = determineInitialComparatorTargetMv();
-    setComparatorTargetMv(initialComparatorTargetMv);
+    setComparatorTargetMv(0);
 
     HAL_DAC_Start(&hdac1, DAC_CHANNEL_2);
 
@@ -2138,7 +2242,9 @@ bool spracingPixelOSDInit(const struct spracingPixelOSDConfig_s *spracingPixelOS
     pixelBuffer_createTestPattern1(pixelBufferA, 16);
     pixelBuffer_createTestPattern1(pixelBufferB, 8);
 
-    pixelInit(); // Requires that TIM1 is initialised.
+    pixelInit();
+
+    pixelGateAndBlankStart(); // Requires that TIM1 is initialised.
 
     return true;
 }
@@ -2160,7 +2266,7 @@ typedef struct syncDetectionState_s {
 uint32_t pulseErrorsPerSecond = 0;
 uint32_t framesPerSecond = 0;
 
-syncDetectionState_t syncDetectionState;
+syncDetectionState_t syncDetectionState = { 0 };
 static uint32_t nextEventAt = 0;
 
 bool spracingPixelOSDShouldProcessNow(timeUs_t currentTimeUs)
@@ -2208,9 +2314,10 @@ void spracingPixelOSDPause(void)
 void spracingPixelOSDRestart(void)
 {
     spracingPixelOSDSyncTimerInit();
+    pixelGateAndBlankStart();
+
     //spracingPixelOSDSyncTriggerReset();
-    uint32_t newTargetMv = determineInitialComparatorTargetMv();
-    setComparatorTargetMv(newTargetMv);
+    setComparatorTargetMv(0);
     syncInit();
 
     memset(&frameState, 0x00, sizeof(frameState));
@@ -2221,7 +2328,7 @@ void spracingPixelOSDRestart(void)
 
 #define MAXIMIM_LINE_LEVEL_THRESHOLD_MV 2000
 #define MAXIMIM_FRAME_LEVEL_THRESHOLD_MV (MAXIMIM_LINE_LEVEL_THRESHOLD_MV + 1000)
-#define MAXIMIM_FRAME_LEVEL_DIFFERENCE_MV 300
+#define MAXIMIM_FRAME_LEVEL_DIFFERENCE_MV 400 // was 300
 #define MAXIMIM_LINE_LEVEL_DIFFERENCE_MV 300
 
 
@@ -2290,6 +2397,9 @@ void spracingPixelOSDProcess(timeUs_t currentTimeUs)
 
                 syncDetectionState.lineCounterAtStart = frameState.lineCounter;
 
+                // always reset comparator target.
+                setComparatorTargetMv(syncDetectionState.minimumLevelForLineThreshold);
+
                 nextEventAt = currentTimeUs + lineCounterDelayUs;
             }
 
@@ -2353,7 +2463,6 @@ void spracingPixelOSDProcess(timeUs_t currentTimeUs)
                     pixelOsdState = SEARCHING_FOR_FRAME_MAX_LEVEL;
                     nextEventAt = 0;
                 }
-
             }
             break;
         }
@@ -2520,8 +2629,7 @@ void spracingPixelOSDProcess(timeUs_t currentTimeUs)
 
         spracingPixelOSDSyncTimerInit();
         //spracingPixelOSDSyncTriggerReset();
-        uint32_t newTargetMv = determineInitialComparatorTargetMv();
-        setComparatorTargetMv(newTargetMv);
+        setComparatorTargetMv(0);
         syncInit();
 
         memset(&frameState, 0x00, sizeof(frameState));
@@ -2561,6 +2669,7 @@ void spracingPixelOSDDrawDebugOverlay(void)
     );
     messageLength = strlen((char *)messageBuffer);
     frameBuffer_slowWriteString(frameBuffer, (360 - (12 * messageLength)) / 2, debugY, messageBuffer, messageLength);
+
 }
 
 #endif // USE_SPRACING_PIXEL_OSD
