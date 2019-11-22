@@ -776,7 +776,7 @@ static void spracingPixelOSDSyncTriggerReset(void)
         sSlaveConfig.InputTrigger = TIM_TS_ITR0;
     }
 
-    sSlaveConfig.TriggerPolarity = TIM_TRIGGERPOLARITY_INVERTED;
+    sSlaveConfig.TriggerPolarity = TIM_TRIGGERPOLARITY_NONINVERTED;
     sSlaveConfig.TriggerPrescaler = TIM_TRIGGERPRESCALER_DIV1;
     sSlaveConfig.TriggerFilter = 0;
     if (HAL_TIM_SlaveConfigSynchronization(&htim1, &sSlaveConfig) != HAL_OK)
@@ -1375,7 +1375,7 @@ static void MX_COMP2_Init(void)
   hcomp2.Instance = COMP2;
   hcomp2.Init.InvertingInput = COMP_INPUT_MINUS_DAC1_CH2;
   hcomp2.Init.NonInvertingInput = COMP_INPUT_PLUS_IO2; // COMP2 PE11
-  hcomp2.Init.OutputPol = COMP_OUTPUTPOL_NONINVERTED;
+  hcomp2.Init.OutputPol = COMP_OUTPUTPOL_INVERTED;
   hcomp2.Init.Hysteresis = COMP_HYSTERESIS_LOW; // LOW = more transitions near threshold, HIGH = fewer transitions near threshold,  H7: LOW=10mV, MEDIUM=20mV, HIGH=30mV
   hcomp2.Init.BlankingSrce = COMP_BLANKINGSRC_NONE;
   hcomp2.Init.Mode = COMP_POWERMODE_HIGHSPEED;
@@ -1531,7 +1531,7 @@ void RAW_COMP_TriggerCallback(void)
     uint16_t currentCompare = (&htim2)->Instance->CCR4;
     pulseLength = currentCompare - previousCompare;
 
-    compState.fallingEdge = (HAL_COMP_GetOutputLevel(hcomp) == COMP_OUTPUT_LEVEL_LOW);
+    compState.fallingEdge = (HAL_COMP_GetOutputLevel(hcomp) == COMP_OUTPUT_LEVEL_HIGH);
     if (compState.fallingEdge) {
 #ifdef DEBUG_COMP_TRIGGER
         compState.triggerLowCount++;
