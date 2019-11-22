@@ -333,8 +333,9 @@ uint8_t *outputPixelBuffer = NULL;
 #define FRAME_PIXEL_MASK        ((1 << 1) | (1 << 0))
 
 #define BLOCK_TRANSPARENT ((FRAME_PIXEL_TRANSPARENT << 6) | (FRAME_PIXEL_TRANSPARENT << 4) | (FRAME_PIXEL_TRANSPARENT << 2) | (FRAME_PIXEL_TRANSPARENT << 0))
-
+#define BLOCK_BLACK ((FRAME_PIXEL_BLACK << 6) | (FRAME_PIXEL_BLACK << 4) | (FRAME_PIXEL_BLACK << 2) | (FRAME_PIXEL_BLACK  << 0))
 #define BLOCK_DEBUG ((FRAME_PIXEL_WHITE << 6) | (FRAME_PIXEL_BLACK << 4) | (FRAME_PIXEL_GREY << 2) | (FRAME_PIXEL_TRANSPARENT << 0))
+#define BLOCK_FILL BLOCK_TRANSPARENT
 
 #define PIXELS_PER_BYTE (8 / BITS_PER_PIXEL)
 
@@ -1866,8 +1867,7 @@ void frameBuffer_eraseInit(void)
       Error_Handler();
     }
 
-    fillColor = BLOCK_TRANSPARENT << 24 | BLOCK_TRANSPARENT << 16 | BLOCK_TRANSPARENT << 8 | BLOCK_TRANSPARENT;
-    //fillColor = BLOCK_DEBUG << 24 | BLOCK_DEBUG << 16 | BLOCK_DEBUG << 8 | BLOCK_DEBUG;
+    fillColor = BLOCK_FILL << 24 | BLOCK_FILL << 16 | BLOCK_FILL << 8 | BLOCK_FILL;
 }
 
 void frameBuffer_erase(uint8_t *frameBuffer)
@@ -2032,9 +2032,9 @@ void pixelBuffer_fillFromFrameBuffer(uint8_t *destinationPixelBuffer, uint8_t fr
         uint32_t gpioWhiteBitsForEachBlackOn = (frameMaskOnNotBlackBits << PIXEL_WHITE_BIT) & whiteGpioBitMask;
 
         //uint32_t gpioBits = gpioBlackBits | gpioWhiteBits; // works fine, not using mask
-        uint32_t gpioBits = gpioBlackBits | gpioWhiteBits | gpioMaskOnNotBlackBits; // doesn't work, why? - because voltage goes to 0 and comparator triggers!
+        //uint32_t gpioBits = gpioBlackBits | gpioWhiteBits | gpioMaskOnNotBlackBits; // doesn't work, why? - because voltage goes to 0 and comparator triggers!
 
-        //uint32_t gpioBits = gpioBlackBits | gpioWhiteBits | gpioMaskOnNotBlackBits | gpioWhiteBitsForEachBlackOn; // works!  Needs to be a voltage source when black so that black level is not 0v, i.e. black level must be above comparator threshold.
+        uint32_t gpioBits = gpioBlackBits | gpioWhiteBits | gpioMaskOnNotBlackBits | gpioWhiteBitsForEachBlackOn; // works!  Needs to be a voltage source when black so that black level is not 0v, i.e. black level must be above comparator threshold.
         //uint32_t gpioBits = gpioBlackBits | gpioWhiteBits | gpioMaskOnWhiteBits | gpioMaskOnNotBlackBits | gpioWhiteBitsForEachBlackOn; // works too, whites are a bit grey though, but 'white' level is masked correctly - white pixels always the same white regargless of camera signal.
 
         //uint32_t gpioBits = gpioBlackBits | gpioWhiteBits | gpioMaskOnWhiteBits; // works but white pixels are a bit dark. Doesn't work when using BLOCK_DEBUG fill.
