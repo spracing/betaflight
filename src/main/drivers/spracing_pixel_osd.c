@@ -95,16 +95,16 @@
 
 #if 1
 #define DEBUG_PULSE_STATISTICS
-#define DEBUG_PULSE_ERRORS
+//#define DEBUG_PULSE_ERRORS      // debug led 2
+#define DEBUG_COMP_TRIGGER      // debug led 2
 #define DEBUG_OSD_EVENTS
-#define DEBUG_PIXEL_DMA
-#define DEBUG_BLANKING
-#define DEBUG_GATING
+#define DEBUG_PIXEL_DMA         // debug led 1
+#define DEBUG_BLANKING          // signal on M8
+#define DEBUG_GATING            // signal on M7
 #else
 #define DEBUG_PIXEL_BUFFER_FILL
 #define DEBUG_LAST_HALF_LINE
 #define DEBUG_PIXEL_BUFFER
-#define DEBUG_COMP_TRIGGER
 #define DEBUG_SYNC_PWM
 #define DEBUG_FIELD_START
 #define DEBUG_SHORT_PULSE
