@@ -1442,8 +1442,9 @@ void HAL_DAC_MspInit(DAC_HandleTypeDef* hdac)
     __HAL_RCC_GPIOA_CLK_ENABLE();
     /**DAC1 GPIO Configuration
     PA5     ------> DAC1_OUT2
+    PA4     ------> DAC1_OUT1
     */
-    GPIO_InitStruct.Pin = GPIO_PIN_5;
+    GPIO_InitStruct.Pin = GPIO_PIN_4|GPIO_PIN_5;
     GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
     GPIO_InitStruct.Pull = GPIO_NOPULL;
     HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
@@ -1466,7 +1467,7 @@ static void MX_DAC1_Init(void)
   {
     Error_Handler();
   }
-  /** DAC channel OUT2 config
+  /** DAC channel OUT1/2 config
   */
   sConfig.DAC_SampleAndHold = DAC_SAMPLEANDHOLD_DISABLE;
   sConfig.DAC_Trigger = DAC_TRIGGER_NONE;
@@ -1477,6 +1478,23 @@ static void MX_DAC1_Init(void)
   {
     Error_Handler();
   }
+  sConfig.DAC_SampleAndHold = DAC_SAMPLEANDHOLD_DISABLE;
+  sConfig.DAC_Trigger = DAC_TRIGGER_NONE;
+  sConfig.DAC_OutputBuffer = DAC_OUTPUTBUFFER_ENABLE;
+  sConfig.DAC_ConnectOnChipPeripheral = DAC_CHIPCONNECT_DISABLE;
+  sConfig.DAC_UserTrimming = DAC_TRIMMING_FACTORY;
+  if (HAL_DAC_ConfigChannel(&hdac1, &sConfig, DAC_CHANNEL_1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+}
+
+void setWhiteVoltageMv(uint32_t whiteMv)
+{
+    // TODO get measured VREF via ADC and use instead of VIDEO_DAC_VCC here?
+    uint32_t dacWhiteRaw = (whiteMv * 0x0FFF) / (VIDEO_DAC_VCC * 1000);
+
+    HAL_DAC_SetValue(&hdac1, DAC_CHANNEL_1, DAC_ALIGN_12B_R, dacWhiteRaw);
 }
 
 typedef enum {
@@ -2011,6 +2029,7 @@ void pixelBuffer_fillFromFrameBuffer(uint8_t *destinationPixelBuffer, uint8_t fr
 
         uint32_t blackGpioBitMask  = ((1 << 24) | (1 << 16) | (1 << 8) | (1 << 0)) << PIXEL_BLACK_BIT;
         uint32_t whiteGpioBitMask  = ((1 << 24) | (1 << 16) | (1 << 8) | (1 << 0)) << PIXEL_WHITE_BIT;
+        uint32_t whiteSourceSelectGpioBitMask  = ((1 << 24) | (1 << 16) | (1 << 8) | (1 << 0)) << PIXEL_WHITE_SOURCE_SELECT_BIT;
         uint32_t maskGpioBitMask   = ((1 << 24) | (1 << 16) | (1 << 8) | (1 << 0)) << PIXEL_MASK_ENABLE_BIT;
 
 
@@ -2018,6 +2037,7 @@ void pixelBuffer_fillFromFrameBuffer(uint8_t *destinationPixelBuffer, uint8_t fr
 
         uint32_t gpioBlackBits = (frameBlockBits << (PIXEL_BLACK_BIT - FRAME_BLACK_BIT_OFFSET)) & blackGpioBitMask;
         uint32_t gpioWhiteBits = (frameBlockBits << (PIXEL_WHITE_BIT - FRAME_WHITE_BIT_OFFSET)) & whiteGpioBitMask;
+        uint32_t gpioWhiteSourceSelectBits = (frameBlockBits << (PIXEL_WHITE_SOURCE_SELECT_BIT - FRAME_WHITE_BIT_OFFSET)) & whiteSourceSelectGpioBitMask;
 
         uint32_t gpioNotBlackBits = ~(gpioBlackBits) & blackGpioBitMask; // now 1 = ON, 0 = OFF, for each black bit.
 
@@ -2031,21 +2051,44 @@ void pixelBuffer_fillFromFrameBuffer(uint8_t *destinationPixelBuffer, uint8_t fr
 
         uint32_t gpioWhiteBitsForEachBlackOn = (frameMaskOnNotBlackBits << PIXEL_WHITE_BIT) & whiteGpioBitMask;
 
-        //uint32_t gpioBits = gpioBlackBits | gpioWhiteBits; // works fine, not using mask
+        uint32_t gpioWhiteSourceSelectBitsForEachBlackOn = (frameMaskOnNotBlackBits << PIXEL_WHITE_SOURCE_SELECT_BIT) & whiteSourceSelectGpioBitMask;
+
+
+        //
+        // GOOD
+        //
+
+        // Black = unmasked, White = fixed,unmasked.
+        //uint32_t gpioBits = gpioBlackBits | gpioWhiteBits; // works fine
+
+        // Black = Masked, White = fixed,unmasked
+        //uint32_t gpioBits = gpioBlackBits | gpioWhiteBits | gpioMaskOnNotBlackBits | gpioWhiteBitsForEachBlackOn; // works!  Needs to be a voltage source when black so that black level is not 0v, i.e. black level must be above comparator threshold.
+
+        // Black = Masked, White = fixed,masked
+        //uint32_t gpioBits = gpioBlackBits | gpioWhiteBits | gpioMaskOnWhiteBits | gpioMaskOnNotBlackBits | gpioWhiteBitsForEachBlackOn; // works, but whites are a bit grey
+
+        // Black = unmasked, White = DAC,unmasked.
+        //uint32_t gpioBits = gpioBlackBits | gpioWhiteSourceSelectBits; // works
+
+        // Black = masked, White = DAC,masked.
+        uint32_t gpioBits = gpioBlackBits | gpioMaskOnWhiteBits | gpioWhiteSourceSelectBits | gpioMaskOnNotBlackBits | gpioWhiteSourceSelectBitsForEachBlackOn; // works, but whites are a bit grey.
+
+        //
+        // BAD
+        //
+        // Black = unmasked, White = fixed, masked.
+        //uint32_t gpioBits = gpioBlackBits | gpioWhiteBits | gpioMaskOnWhiteBits; // works but white pixels are a bit dark, visible black shadow on right hand side of white pixels as mask is turned off, voltage after whites goes quite low.
+
+
         //uint32_t gpioBits = gpioBlackBits | gpioWhiteBits | gpioMaskOnNotBlackBits; // doesn't work, why? - because voltage goes to 0 and comparator triggers!
-
-        uint32_t gpioBits = gpioBlackBits | gpioWhiteBits | gpioMaskOnNotBlackBits | gpioWhiteBitsForEachBlackOn; // works!  Needs to be a voltage source when black so that black level is not 0v, i.e. black level must be above comparator threshold.
-        //uint32_t gpioBits = gpioBlackBits | gpioWhiteBits | gpioMaskOnWhiteBits | gpioMaskOnNotBlackBits | gpioWhiteBitsForEachBlackOn; // works too, whites are a bit grey though, but 'white' level is masked correctly - white pixels always the same white regargless of camera signal.
-
-        //uint32_t gpioBits = gpioBlackBits | gpioWhiteBits | gpioMaskOnWhiteBits; // works but white pixels are a bit dark. Doesn't work when using BLOCK_DEBUG fill.
+        //uint32_t gpioBits = gpioBlackBits | gpioMaskOnWhiteBits; // doesn't work.  odd frame is legible during v line level detection.
+        //uint32_t gpioBits = gpioBlackBits | gpioMaskOnNotBlackBits; // doesn't work.
+        //uint32_t gpioBits = BLOCK_TRANSPARENT | gpioMaskOnNotBlackBits; // doesn't work.
+        //uint32_t gpioBits = BLOCK_TRANSPARENT | gpioMaskOnWhiteBits; // doesn't work.
         //uint32_t gpioBits = gpioBlackBits | gpioWhiteBits | gpioMaskOnWhiteBits | gpioMaskOnNotBlackBits; // doesn't work
         //uint32_t gpioBits = gpioBlackBits | gpioWhiteBits | gpioMaskOnWhiteBits | gpioMaskOnBlackBits; // doesn't work,
 
-        //uint32_t gpioBits = gpioBlackBits | gpioMaskOnWhiteBits; // doesn't work.  odd frame is legible during v line level detection.
-        //uint32_t gpioBits = gpioBlackBits | gpioMaskOnNotBlackBits; // doesn't work.
 
-        //uint32_t gpioBits = BLOCK_TRANSPARENT | gpioMaskOnNotBlackBits; // doesn't work.
-        //uint32_t gpioBits = BLOCK_TRANSPARENT | gpioMaskOnWhiteBits; // doesn't work.
         *pixels++ = gpioBits;
 #endif
 
@@ -2329,8 +2372,14 @@ bool spracingPixelOSDInit(const struct spracingPixelOSDConfig_s *spracingPixelOS
     // DAC CH2 - Generate comparator reference voltage
 
     setComparatorTargetMv(0);
-
     HAL_DAC_Start(&hdac1, DAC_CHANNEL_2);
+
+    // DAC CH1 - White voltage
+
+    setWhiteVoltageMv(3000);
+    HAL_DAC_Start(&hdac1, DAC_CHANNEL_1);
+
+
 
     if (HAL_TIM_IC_Start(&htim2, TIM_CHANNEL_4) != HAL_OK)
     {
