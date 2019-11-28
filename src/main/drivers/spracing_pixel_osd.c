@@ -2055,31 +2055,42 @@ void pixelBuffer_fillFromFrameBuffer(uint8_t *destinationPixelBuffer, uint8_t fr
 
         uint32_t gpioWhiteSourceSelectBitsForEachBlackOn = (frameMaskOnNotBlackBits << PIXEL_WHITE_SOURCE_SELECT_BIT) & whiteSourceSelectGpioBitMask;
 
+        uint32_t gpioBlackBitsForEachWhiteOn = ~(frameMaskOnWhiteBits << PIXEL_BLACK_BIT) & blackGpioBitMask;
 
         //
         // GOOD
         //
 
-        // Black = unmasked, White = fixed,unmasked.
+        // Black = unmasked,unmasked White = fixed,unmasked.
         //uint32_t gpioBits = gpioBlackBits | gpioWhiteBits; // works fine
 
-        // Black = Masked, White = fixed,unmasked
-        //uint32_t gpioBits = gpioBlackBits | gpioWhiteBits | gpioMaskOnNotBlackBits | gpioWhiteBitsForEachBlackOn; // works!  Needs to be a voltage source when black so that black level is not 0v, i.e. black level must be above comparator threshold.
+        // Black = fixed, masked, White = fixed,unmasked
+        //uint32_t gpioBits = gpioBlackBits | gpioWhiteBits | gpioMaskOnNotBlackBits | gpioWhiteBitsForEachBlackOn; // works
 
-        // Black = Masked, White = fixed,masked
-        //uint32_t gpioBits = gpioBlackBits | gpioWhiteBits | gpioMaskOnWhiteBits | gpioMaskOnNotBlackBits | gpioWhiteBitsForEachBlackOn; // works, but whites are a bit grey
+        // Black = fixed, masked, White = fixed,masked
+        //uint32_t gpioBits = gpioBlackBits | gpioWhiteBits | gpioMaskOnWhiteBits | gpioMaskOnNotBlackBits | gpioWhiteBitsForEachBlackOn; // works
+
+        // Black = DAC, masked, White = fixed,masked
+        uint32_t gpioBits = gpioBlackBits | gpioWhiteBits | gpioMaskOnWhiteBits | gpioMaskOnNotBlackBits | gpioWhiteSourceSelectBitsForEachBlackOn;
+
+        // Black = white,Masked, White = black,fixed,masked
+        //uint32_t gpioBits = gpioBlackBitsForEachWhiteOn | gpioWhiteBits | gpioMaskOnWhiteBits | gpioMaskOnNotBlackBits | gpioWhiteBitsForEachBlackOn; // works, produces blacks that are light grey and whites that are dark grey.
 
         // Black = unmasked, White = DAC,unmasked.
         //uint32_t gpioBits = gpioBlackBits | gpioWhiteSourceSelectBits; // works
 
-        // Black = masked, White = DAC,masked.
-        uint32_t gpioBits = gpioBlackBits | gpioMaskOnWhiteBits | gpioWhiteSourceSelectBits | gpioMaskOnNotBlackBits | gpioWhiteSourceSelectBitsForEachBlackOn; // works, but whites are a bit grey.
+        // Black = fixed,masked, White = DAC,masked.
+        //uint32_t gpioBits = gpioBlackBits | gpioMaskOnWhiteBits | gpioWhiteSourceSelectBits | gpioMaskOnNotBlackBits | gpioWhiteBitsForEachBlackOn; // inverted black/white
+
+        // Black = DAC,masked, White = DAC,masked.
+        //uint32_t gpioBits = gpioBlackBits | gpioMaskOnWhiteBits | gpioWhiteSourceSelectBits | gpioMaskOnNotBlackBits | gpioWhiteSourceSelectBitsForEachBlackOn; // works
 
         //
         // BAD
         //
         // Black = unmasked, White = fixed, masked.
         //uint32_t gpioBits = gpioBlackBits | gpioWhiteBits | gpioMaskOnWhiteBits; // works but white pixels are a bit dark, visible black shadow on right hand side of white pixels as mask is turned off, voltage after whites goes quite low.
+        //uint32_t gpioBits = gpioBlackBitsForEachWhiteOn | gpioWhiteBits | gpioMaskOnWhiteBits | gpioMaskOnNotBlackBits; // works but blacks are 0v.
 
 
         //uint32_t gpioBits = gpioBlackBits | gpioWhiteBits | gpioMaskOnNotBlackBits; // doesn't work, why? - because voltage goes to 0 and comparator triggers!
