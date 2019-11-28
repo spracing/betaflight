@@ -1491,7 +1491,7 @@ static void MX_DAC1_Init(void)
   }
 }
 
-void setWhiteVoltageMv(uint32_t whiteMv)
+void setVideoSourceVoltageMv(uint32_t whiteMv)
 {
     // TODO get measured VREF via ADC and use instead of VIDEO_DAC_VCC here?
     uint32_t dacWhiteRaw = (whiteMv * 0x0FFF) / (VIDEO_DAC_VCC * 1000);
@@ -2399,7 +2399,7 @@ bool spracingPixelOSDInit(const struct spracingPixelOSDConfig_s *spracingPixelOS
 
     // DAC CH1 - White voltage
 
-    setWhiteVoltageMv(3000);
+    setVideoSourceVoltageMv(2500);
     HAL_DAC_Start(&hdac1, DAC_CHANNEL_1);
 
 
@@ -2706,6 +2706,8 @@ void spracingPixelOSDProcess(timeUs_t currentTimeUs)
                     syncDetectionState.syncThresholdMv = syncDetectionState.minimumLevelForValidFrameMv + (0.4 * syncDetectionState.minMaxDifference);
 
                     setComparatorTargetMv(syncDetectionState.syncThresholdMv);
+
+                    setVideoSourceVoltageMv(syncDetectionState.syncThresholdMv + 1700);
 
                     pixelOsdState = GENERATING_VIDEO;
 
