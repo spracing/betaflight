@@ -102,6 +102,7 @@
 #define DEBUG_BLANKING          // signal on M8
 #define DEBUG_GATING            // signal on M7
 #else
+#define DEBUG_PATTERN_BARS
 #define DEBUG_PIXEL_BUFFER_FILL
 #define DEBUG_LAST_HALF_LINE
 #define DEBUG_PIXEL_BUFFER
@@ -272,6 +273,7 @@ static void pixelDebug2Toggle(void);
 #define PIXEL_BLACK_BIT                 5 // PE13
 #define PIXEL_MASK_ENABLE_BIT           6 // PE14
 #define PIXEL_WHITE_BIT                 7 // PE15
+#define PIXEL_CONTROL_FIRST_BIT PIXEL_WHITE_SOURCE_SELECT_BIT
 #endif
 #endif
 
@@ -2088,8 +2090,29 @@ void pixelBuffer_fillFromFrameBuffer(uint8_t *destinationPixelBuffer, uint8_t fr
         //uint32_t gpioBits = gpioBlackBits | gpioWhiteBits | gpioMaskOnWhiteBits | gpioMaskOnNotBlackBits; // doesn't work
         //uint32_t gpioBits = gpioBlackBits | gpioWhiteBits | gpioMaskOnWhiteBits | gpioMaskOnBlackBits; // doesn't work,
 
+#ifdef DEBUG_PATTERN_BARS
+        const int lineOffset = 32;
+        const int linesPerPattern = 4;
+        const int patternCount = 16; // 4 IO lines = 16 combinations
+        if (lineIndex < lineOffset || lineIndex >= lineOffset + (patternCount * linesPerPattern)) {
+            *pixels++ = gpioBits;
+        } else {
 
+            uint8_t pattern = (((lineIndex - lineOffset) / linesPerPattern) % patternCount);
+
+            bool patternCauses0VSignal = (pattern == 4 || pattern == 6);
+            if (patternCauses0VSignal) {
+                pattern = BLOCK_FILL;
+            }
+
+            uint32_t patternBits = (pattern << 24) | (pattern << 16) | (pattern << 8) | (pattern << 0);
+            uint32_t gpioPatternBits = patternBits << PIXEL_CONTROL_FIRST_BIT;
+            *pixels++ = gpioPatternBits;
+        }
+#else
         *pixels++ = gpioBits;
+#endif // DEBUG_PATTERN_BARS
+
 #endif
 
     }
