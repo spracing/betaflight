@@ -95,8 +95,8 @@
 
 #if 1
 #define DEBUG_PULSE_STATISTICS
-//#define DEBUG_PULSE_ERRORS      // debug led 2
-#define DEBUG_COMP_TRIGGER      // debug led 2
+#define DEBUG_PULSE_ERRORS      // debug led 2
+//#define DEBUG_COMP_TRIGGER      // debug led 2
 #define DEBUG_OSD_EVENTS
 #define DEBUG_PIXEL_DMA         // debug led 1
 #define DEBUG_BLANKING          // signal on M8
