@@ -2468,7 +2468,10 @@ bool spracingPixelOSDInit(const struct spracingPixelOSDConfig_s *spracingPixelOS
     //frameBuffer_createTestPattern1(frameBuffers[0]);
     //frameBuffer_createTestPattern1(frameBuffers[1]);
 
-    frameBuffer_createTestPattern2(frameBuffers[0]);
+    //frameBuffer_createTestPattern2(frameBuffers[0]);
+
+    framebuffer_drawRectangle(frameBuffers[0], 0, 0, PIXEL_COUNT - 1, PAL_VISIBLE_LINES - 1, FRAME_PIXEL_WHITE);
+
 
     frameBuffer_slowWriteString(frameBuffers[0], 50, 150, (uint8_t*)"SP RACING PIXEL OSD", 19);
 
