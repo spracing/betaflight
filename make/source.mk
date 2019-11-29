@@ -169,6 +169,7 @@ COMMON_SRC = \
             io/pidaudio.c \
             osd/osd.c \
             osd/osd_elements.c \
+            osd/osd_elements_pixel.c \
             osd/pixel_osd_video.c \
             sensors/barometer.c \
             sensors/rangefinder.c \

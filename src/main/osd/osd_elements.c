@@ -112,6 +112,7 @@
 
 #include "osd/osd.h"
 #include "osd/osd_elements.h"
+#include "osd/osd_elements_pixel.h"
 
 #include "pg/motor.h"
 
@@ -572,6 +573,8 @@ static void osdElementAntiGravity(osdElementParms_t *element)
 #ifdef USE_ACC
 static void osdElementArtificialHorizon(osdElementParms_t *element)
 {
+#ifndef USE_SPRACING_PIXEL_OSD
+
     // Get pitch and roll limits in tenths of degrees
     const int maxPitch = osdConfig()->ahMaxPitch * 10;
     const int maxRoll = osdConfig()->ahMaxRoll * 10;
@@ -591,7 +594,19 @@ static void osdElementArtificialHorizon(osdElementParms_t *element)
             osdDisplayWriteChar(element, element->elemPosX + x, element->elemPosY + (y / AH_SYMBOL_COUNT), DISPLAYPORT_ATTR_NONE, (SYM_AH_BAR9_0 + (y % AH_SYMBOL_COUNT)));
         }
     }
+#else
+    const int afhWidth = 9 * FONT_MAX7456_WIDTH;
+    const int afhHeight = 7 * FONT_MAX7456_HEIGHT;
 
+    // elemPosX = center, element->elemPosY = top.
+    simple_artificial_horizon(
+        attitude.values.roll, -1 * attitude.values.pitch,
+        (element->elemPosX+1) * FONT_MAX7456_WIDTH, (element->elemPosY+1) * FONT_MAX7456_HEIGHT + (afhHeight/2),
+        afhWidth, afhHeight,
+        30,
+        2
+    );
+#endif
     element->drawElement = false;  // element already drawn
 }
 #endif // USE_ACC
