@@ -32,6 +32,7 @@
 
 #include "build/debug.h"
 
+#include "common/maths.h"
 #include "common/printf.h"
 
 #include "drivers/dma.h"
@@ -2134,6 +2135,8 @@ void pixelBuffer_fillFromFrameBuffer(uint8_t *destinationPixelBuffer, uint8_t fr
 }
 #endif
 
+// Macro to swap two variables using XOR swap.
+#define SWAP_XOR(a, b) { a ^= b; b ^= a; a ^= b; }
 
 // unoptimized, avoid over-use.
 void frameBuffer_setPixel(uint8_t *frameBuffer, uint16_t x, uint16_t y, uint8_t mode)
@@ -2150,6 +2153,84 @@ void frameBuffer_setPixel(uint8_t *frameBuffer, uint16_t x, uint16_t y, uint8_t 
     uint8_t withMaskCleared = before & mask;
     lineBuffer[x / PIXELS_PER_BYTE] = withMaskCleared |
             (mode << pixelBitOffset);
+}
+
+void framebuffer_drawVerticalLine(uint8_t *frameBuffer, uint16_t x, uint16_t y0, uint16_t y1, uint8_t mode)
+{
+   unsigned int a;
+   if(y0 > y1)
+   {
+       SWAP_XOR(y0, y1);
+   }
+
+   uint8_t pixelOffsetInBlock = (PIXELS_PER_BYTE - 1) - (x % PIXELS_PER_BYTE);
+
+   uint8_t pixelBitOffset = BITS_PER_PIXEL * pixelOffsetInBlock;
+
+   uint8_t mask = ~(FRAME_PIXEL_MASK << pixelBitOffset);
+
+   uint16_t blockOffset = x / PIXELS_PER_BYTE;
+
+   uint16_t lineCount = y1 - y0;
+   uint8_t *firstBlock = frameBuffer + (y0 * FRAME_BUFFER_LINE_SIZE) + blockOffset;
+   uint8_t *lastBlock = firstBlock + (lineCount * FRAME_BUFFER_LINE_SIZE);
+
+   for (uint8_t *block = firstBlock; block <= lastBlock; block += FRAME_BUFFER_LINE_SIZE) {
+       uint8_t blockValue = *block;
+       uint8_t blockValueWithMaskCleared = blockValue & mask;
+       *block = blockValueWithMaskCleared | (mode << pixelBitOffset);
+   }
+}
+
+void framebuffer_drawLine(uint8_t *frameBuffer, uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1, uint8_t mode)
+{
+    // Based on http://en.wikipedia.org/wiki/Bresenham%27s_line_algorithm
+    bool steep = ABS(y1 - y0) > ABS(x1 - x0);
+    if (steep) {
+        SWAP_XOR(x0, y0);
+        SWAP_XOR(x1, y1);
+    }
+    if(x0 > x1)
+    {
+        SWAP_XOR(x0, x1);
+        SWAP_XOR(y0, y1);
+    }
+    int deltax = x1 - x0;
+    int deltay = ABS(y1 - y0);
+    int error = deltax / 2;
+    int ystep;
+    int y = y0;
+    int x;
+    if (y0 < y1) {
+        ystep = 1;
+    } else {
+        ystep = -1;
+    }
+    for (x = x0; x < x1; x++) {
+
+        if (steep) {
+            if (x >= 0 && y >= 0 && x < 288 && y < 720/2) {
+                frameBuffer_setPixel(frameBuffer, y, x, mode);
+            }
+        } else {
+            if (x >= 0 && y >= 0 && x < 720/2 && y < 288) {
+                frameBuffer_setPixel(frameBuffer, x, y, mode);
+            }
+        }
+        error -= deltay;
+        if (error < 0) {
+            y     += ystep;
+            error += deltax;
+        }
+    }
+}
+
+void framebuffer_drawRectangle(uint8_t *frameBuffer, uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1, uint8_t mode)
+{
+    framebuffer_drawLine(frameBuffer, x0, y0, x1, y0, mode); // top
+    framebuffer_drawLine(frameBuffer, x0, y0, x0, y1, mode); // left
+    framebuffer_drawLine(frameBuffer, x1, y0, x1, y1, mode); // right
+    framebuffer_drawLine(frameBuffer, x0, y1, x1, y1, mode); // bottom
 }
 
 void frameBuffer_createTestPattern1(uint8_t *frameBuffer)
