@@ -133,6 +133,8 @@ void targetConfiguration(void)
         mac->linkedTo = tmac->linkedTo;
     }
 
+    servoConfigMutable()->channelForwardingStartChannel = 5;
+
 #endif
 }
 #endif
