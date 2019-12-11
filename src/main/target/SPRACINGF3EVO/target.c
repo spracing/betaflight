@@ -48,6 +48,15 @@ const timerHardware_t timerHardware[USABLE_TIMER_CHANNEL_COUNT] = {
     DEF_TIM(TIM2,  CH3, PA2,  TIM_USE_MOTOR,                     0), // PWM6 [TIM2_CH3 (D1_CH1)] [TIM15_CH1  (D1_CH5)]
     DEF_TIM(TIM2,  CH1, PA0,  TIM_USE_MOTOR,                     0), // PWM7 [TIM2_CH1 (D1_CH5)]
     DEF_TIM(TIM15, CH2, PA3,  TIM_USE_MOTOR,                     0), // PWM8 [TIM2_CH4 (D1_CH7)]
+#elif defined(SPRACINGAIRBIT)
+    DEF_TIM(TIM2,  CH1, PA0,  TIM_USE_MOTOR,                     0), // PWM1 [TIM2_CH1 (D1_CH5)]
+    DEF_TIM(TIM2,  CH2, PA1,  TIM_USE_MOTOR,                     0), // PWM2 [TIM2_CH2 (D1_CH7)] [TIM15_CH1N (D1_CH5)]
+    DEF_TIM(TIM2,  CH3, PA2,  TIM_USE_MOTOR,                     0), // PWM3 [TIM2_CH3 (D1_CH1)] [TIM15_CH1  (D1_CH5)]
+    DEF_TIM(TIM15, CH2, PA3,  TIM_USE_MOTOR,                     0), // PWM4 [TIM2_CH4 (D1_CH7)]
+    DEF_TIM(TIM3,  CH3, PB0,  TIM_USE_SERVO,                     0), // SERVO1
+    DEF_TIM(TIM3,  CH4, PB1,  TIM_USE_SERVO,                     0), // SERVO2
+    DEF_TIM(TIM3,  CH2, PA7,  TIM_USE_SERVO,                     0), // SERVO3
+    DEF_TIM(TIM16, CH1, PA6,  TIM_USE_CAMERA_CONTROL,            0), // CAM_OSD [TIM16_CH1  (D1_CH3 / D1_CH6)] [TIM3_CH1 (D1_CH6)]
 #else // SPRACINGF3EVO / SPRACINGF3MQ / SPRACINGAIRBIT
     DEF_TIM(TIM2,  CH1, PA0,  TIM_USE_MOTOR,                     0), // PWM1 [TIM2_CH1 (D1_CH5)]
     DEF_TIM(TIM2,  CH2, PA1,  TIM_USE_MOTOR,                     0), // PWM2 [TIM2_CH2 (D1_CH7)] [TIM15_CH1N (D1_CH5)]
