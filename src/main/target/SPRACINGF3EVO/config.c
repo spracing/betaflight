@@ -27,6 +27,7 @@
 
 #include "flight/pid.h"
 #include "flight/servos.h"
+#include "flight/imu.h"
 #include "fc/rc_modes.h"
 
 #include "pg/sdcard.h"
@@ -136,6 +137,8 @@ void targetConfiguration(void)
     servoConfigMutable()->channelForwardingStartChannel = 5;
 
     motorConfigMutable()->minthrottle = 1030;
+
+    imuConfigMutable()->small_angle = 180;
 
 #endif
 }
