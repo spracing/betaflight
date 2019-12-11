@@ -23,9 +23,11 @@
 #ifdef USE_TARGET_CONFIG
 
 #include "common/axis.h"
+#include "common/maths.h"
 
 #include "flight/pid.h"
 #include "flight/servos.h"
+#include "fc/rc_modes.h"
 
 #include "pg/sdcard.h"
 #include "pg/motor.h"
@@ -50,6 +52,21 @@ typedef struct targetServoParam_t {
 static targetServoParam_t targetServoParams[] = {
     { 0, 1000, 2000, 1500, 100, 6 },
     { 1, 1000, 2000, 1500, 100, 5 },
+};
+
+typedef struct targetActivationCondition_s {
+    uint8_t index;
+    boxId_e modeId;
+    uint8_t auxChannelIndex;
+    uint16_t startValue;
+    uint16_t endValue;
+    modeLogic_e modeLogic;
+    boxId_e linkedTo;
+} targetModeActivationCondition_t;
+
+static targetModeActivationCondition_t targetModeActivationConditions[] = {
+    {0, 0, 0, 1650, 2100, 0, 0},
+    {1, 1, 0, 900, 2100, 0, 0},
 };
 
 #endif
@@ -101,6 +118,19 @@ void targetConfiguration(void)
         servo->middle = params->middle;
         servo->rate = params->rate;
         servo->forwardFromChannel = params->forwardFromChannel;
+    }
+
+    for (uint32_t i = 0; i < ARRAYLEN(targetModeActivationConditions); i++) {
+        targetModeActivationCondition_t *tmac = &targetModeActivationConditions[i];
+
+        uint32_t tmacIndex = tmac->index;
+        modeActivationCondition_t *mac = modeActivationConditionsMutable(tmacIndex);
+        mac->modeId = tmac->modeId;
+        mac->auxChannelIndex = tmac->auxChannelIndex;
+        mac->range.startStep = CHANNEL_VALUE_TO_STEP(tmac->startValue);
+        mac->range.endStep = CHANNEL_VALUE_TO_STEP(tmac->endValue);
+        mac->modeLogic = tmac->modeLogic;
+        mac->linkedTo = tmac->linkedTo;
     }
 
 #endif
