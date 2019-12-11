@@ -22,6 +22,10 @@
 
 #include "pg/pg.h"
 
+
+#ifndef FC_DEFAULT_FEATURE_OVERRIDES
+#define FC_DEFAULT_FEATURE_OVERRIDES 0
+#endif
 #ifndef DEFAULT_FEATURES
 #define DEFAULT_FEATURES 0
 #endif
