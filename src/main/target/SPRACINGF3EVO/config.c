@@ -25,6 +25,7 @@
 #include "common/axis.h"
 
 #include "flight/pid.h"
+#include "flight/servos.h"
 
 #include "pg/sdcard.h"
 #include "pg/motor.h"
@@ -36,8 +37,22 @@
 static targetSerialPortFunction_t targetSerialPortFunction[] = {
     { SERIAL_PORT_USART1, FUNCTION_RX_SERIAL | FUNCTION_TELEMETRY_LTM},
 };
-#endif
 
+typedef struct targetServoParam_t {
+    uint8_t servoIndex;
+    int16_t min;
+    int16_t max;
+    int16_t middle;
+    int8_t rate;
+    int8_t forwardFromChannel;
+} targetServoParam_t;
+
+static targetServoParam_t targetServoParams[] = {
+    { 0, 1000, 2000, 1500, 100, 6 },
+    { 1, 1000, 2000, 1500, 100, 5 },
+};
+
+#endif
 
 #if defined(SPRACINGF3MQ) || defined(SPRACINGAIRBIT)
 #ifdef BRUSHED_MOTORS_PWM_RATE
@@ -74,6 +89,18 @@ void targetConfiguration(void)
     serialPortConfig_t *ltmUART = serialFindPortConfiguration(SERIAL_PORT_USART1);
     if (ltmUART) {
         ltmUART->telemetry_baudrateIndex = BAUD_115200;
+    }
+
+    for (uint32_t i = 0; i < ARRAYLEN(targetServoParams); i++) {
+        targetServoParam_t *params = &targetServoParams[i];
+
+        uint32_t servoIndex = params->servoIndex;
+        servoParam_t *servo = servoParamsMutable(servoIndex);
+        servo->min = params->min;
+        servo->max = params->max;
+        servo->middle = params->middle;
+        servo->rate = params->rate;
+        servo->forwardFromChannel = params->forwardFromChannel;
     }
 
 #endif
