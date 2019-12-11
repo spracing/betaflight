@@ -30,9 +30,11 @@
 #include "flight/imu.h"
 #include "fc/rc_modes.h"
 #include "sensors/battery.h"
+#include "io/beeper.h"
 
 #include "pg/sdcard.h"
 #include "pg/motor.h"
+#include "pg/beeper.h"
 
 #include "config_helper.h"
 
@@ -145,6 +147,20 @@ void targetConfiguration(void)
     batteryConfigMutable()->vbatmincellvoltage = 320;
     batteryConfigMutable()->vbatwarningcellvoltage = 330;
 
+    beeperConfigMutable()->beeper_off_flags =
+        BEEPER_GET_FLAG(BEEPER_RX_LOST_LANDING) |
+        BEEPER_GET_FLAG(BEEPER_ARMING_GPS_FIX) |
+        BEEPER_GET_FLAG(BEEPER_BAT_CRIT_LOW) |
+        BEEPER_GET_FLAG(BEEPER_GPS_STATUS) |
+        BEEPER_GET_FLAG(BEEPER_ACC_CALIBRATION) |
+        BEEPER_GET_FLAG(BEEPER_ACC_CALIBRATION_FAIL) |
+        BEEPER_GET_FLAG(BEEPER_READY_BEEP) |
+        BEEPER_GET_FLAG(BEEPER_DISARM_REPEAT) |
+        BEEPER_GET_FLAG(BEEPER_USB) |
+        BEEPER_GET_FLAG(BEEPER_BLACKBOX_ERASE) |
+        BEEPER_GET_FLAG(BEEPER_CRASH_FLIP_MODE) |
+        BEEPER_GET_FLAG(BEEPER_CAM_CONNECTION_OPEN) |
+        BEEPER_GET_FLAG(BEEPER_CAM_CONNECTION_CLOSE);
 #endif
 }
 #endif
