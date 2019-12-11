@@ -29,6 +29,7 @@
 #include "flight/servos.h"
 #include "flight/imu.h"
 #include "fc/rc_modes.h"
+#include "sensors/battery.h"
 
 #include "pg/sdcard.h"
 #include "pg/motor.h"
@@ -139,6 +140,10 @@ void targetConfiguration(void)
     motorConfigMutable()->minthrottle = 1030;
 
     imuConfigMutable()->small_angle = 180;
+
+    batteryConfigMutable()->vbatmaxcellvoltage = 450;
+    batteryConfigMutable()->vbatmincellvoltage = 320;
+    batteryConfigMutable()->vbatwarningcellvoltage = 330;
 
 #endif
 }
