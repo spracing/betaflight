@@ -34,7 +34,7 @@
 #if defined(SPRACINGAIRBIT)
 
 static targetSerialPortFunction_t targetSerialPortFunction[] = {
-    { SERIAL_PORT_USART1, FUNCTION_RX_SERIAL },
+    { SERIAL_PORT_USART1, FUNCTION_RX_SERIAL | FUNCTION_TELEMETRY_LTM},
 };
 #endif
 
@@ -70,6 +70,12 @@ void targetConfiguration(void)
 
 #ifdef SPRACINGAIRBIT
     targetSerialPortFunctionConfig(targetSerialPortFunction, ARRAYLEN(targetSerialPortFunction));
+
+    serialPortConfig_t *ltmUART = serialFindPortConfiguration(SERIAL_PORT_USART1);
+    if (ltmUART) {
+        ltmUART->telemetry_baudrateIndex = BAUD_115200;
+    }
+
 #endif
 }
 #endif
