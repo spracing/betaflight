@@ -135,6 +135,8 @@ void targetConfiguration(void)
 
     servoConfigMutable()->channelForwardingStartChannel = 5;
 
+    motorConfigMutable()->minthrottle = 1030;
+
 #endif
 }
 #endif
