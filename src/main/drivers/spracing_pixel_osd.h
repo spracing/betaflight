@@ -25,6 +25,8 @@
 #pragma once
 
 #include "common/time.h"
+#include "drivers/display.h"
+
 
 //
 // General
@@ -43,6 +45,15 @@ struct spracingPixelOSDConfig_s;
 bool spracingPixelOSDInit(const struct spracingPixelOSDConfig_s *spracingPixelOSDConfig, const struct vcdProfile_s *vcdProfile);
 void spracingPixelOSDDrawDebugOverlay(void);
 void spracingPixelOSDProcess(timeUs_t currentTimeUs);
+
+//
+// Layer
+//
+bool spracingPixelOSDLayerSupported(displayPortLayer_e layer);
+bool spracingPixelOSDLayerSelect(displayPortLayer_e layer);
+bool spracingPixelOSDLayerCopy(displayPortLayer_e destLayer, displayPortLayer_e sourceLayer);
+
+
 //
 // Frame Buffer
 //

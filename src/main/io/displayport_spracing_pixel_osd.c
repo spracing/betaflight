@@ -34,6 +34,7 @@
 
 #include "drivers/display.h"
 #include "drivers/spracing_pixel_osd.h"
+#include "drivers/osd.h"
 
 #include "config/config.h"
 
@@ -104,9 +105,10 @@ static int screenSize(const displayPort_t *displayPort)
     return (16 * 30); // TODO
 }
 
-static int writeString(displayPort_t *displayPort, uint8_t x, uint8_t y, const char *s)
+static int writeString(displayPort_t *displayPort, uint8_t x, uint8_t y, uint8_t attr, const char *s)
 {
     UNUSED(displayPort);
+    UNUSED(attr);
 
     uint8_t *frameBuffer = frameBuffer_getBuffer(0);
 
@@ -115,9 +117,10 @@ static int writeString(displayPort_t *displayPort, uint8_t x, uint8_t y, const c
     return 0;
 }
 
-static int writeChar(displayPort_t *displayPort, uint8_t x, uint8_t y, uint8_t c)
+static int writeChar(displayPort_t *displayPort, uint8_t x, uint8_t y, uint8_t attr, uint8_t c)
 {
     UNUSED(displayPort);
+    UNUSED(attr);
 
     uint8_t *frameBuffer = frameBuffer_getBuffer(0);
     frameBuffer_slowWriteCharacter(frameBuffer, x * FONT_MAX7456_WIDTH, y * FONT_MAX7456_HEIGHT, c);
@@ -163,6 +166,33 @@ static uint32_t txBytesFree(const displayPort_t *displayPort)
     return UINT32_MAX;
 }
 
+static bool layerSupported(displayPort_t *displayPort, displayPortLayer_e layer)
+{
+    UNUSED(displayPort);
+    return spracingPixelOSDLayerSupported(layer);
+}
+
+static bool layerSelect(displayPort_t *displayPort, displayPortLayer_e layer)
+{
+    UNUSED(displayPort);
+    return spracingPixelOSDLayerSelect(layer);
+}
+
+static bool layerCopy(displayPort_t *displayPort, displayPortLayer_e destLayer, displayPortLayer_e sourceLayer)
+{
+    UNUSED(displayPort);
+    return spracingPixelOSDLayerCopy(destLayer, sourceLayer);
+}
+
+static bool writeFontCharacter(displayPort_t *instance, uint16_t addr, const osdCharacter_t *chr)
+{
+    UNUSED(instance);
+    UNUSED(chr);
+    UNUSED(addr);
+
+    return false;
+}
+
 static const displayPortVTable_t spracingPixelOSDVTable = {
     .grab = grab,
     .release = release,
@@ -176,6 +206,10 @@ static const displayPortVTable_t spracingPixelOSDVTable = {
     .resync = resync,
     .isSynced = isSynced,
     .txBytesFree = txBytesFree,
+    .layerSupported = layerSupported,
+    .layerSelect = layerSelect,
+    .layerCopy = layerCopy,
+    .writeFontCharacter = writeFontCharacter,
 };
 
 displayPort_t *spracingPixelOSDDisplayPortInit(const vcdProfile_t *vcdProfile)

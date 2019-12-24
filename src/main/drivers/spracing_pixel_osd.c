@@ -41,6 +41,8 @@
 #include "drivers/timer.h"
 #include "drivers/time.h"
 
+#include "drivers/display.h"
+
 #include "pg/spracing_pixel_osd.h"
 #include "pg/vcd.h"
 
@@ -1809,6 +1811,36 @@ void frameBuffer_slowWriteString(uint8_t *frameBuffer, uint16_t x, uint16_t y, c
         frameBuffer_slowWriteCharacter(frameBuffer, fx, y, c);
         fx+= 12; // font width
     }
+}
+
+//
+// Layer support
+//
+// Foreground only for now.
+
+bool spracingPixelOSDLayerSupported(displayPortLayer_e layer)
+{
+    if (layer == DISPLAYPORT_LAYER_FOREGROUND) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
+bool spracingPixelOSDLayerSelect(displayPortLayer_e layer)
+{
+    if (spracingPixelOSDLayerSupported(layer)) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
+bool spracingPixelOSDLayerCopy(displayPortLayer_e destLayer, displayPortLayer_e sourceLayer)
+{
+    UNUSED(sourceLayer);
+    UNUSED(destLayer);
+    return false;
 }
 
 //
