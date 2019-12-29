@@ -2626,8 +2626,8 @@ void spracingPixelOSDProcess(timeUs_t currentTimeUs)
     const uint32_t lineCounterDelayUs = (VIDEO_LINE_LEN) * (requiredLines);
     const uint32_t minimumFrameDelayUs = (VIDEO_LINE_LEN) * (PAL_LINES + 10);
 
-    debug[0] = frameState.validFrameCounter;
-    debug[1] = frameState.totalPulseErrors;
+    DEBUG_SET(DEBUG_SPRACING_PIXEL_OSD, 0, frameState.validFrameCounter);
+    DEBUG_SET(DEBUG_SPRACING_PIXEL_OSD, 0, frameState.totalPulseErrors);
 
     static uint8_t syncDetectionFailureCount = 0;
 
@@ -2845,12 +2845,13 @@ void spracingPixelOSDProcess(timeUs_t currentTimeUs)
                     int32_t timeDeltaUs = cmp32(currentTimeUs, lastTimeUs);
                     pulseErrorsPerSecond = recentPulseErrors * 1000000 / timeDeltaUs;
 
-                    //debug[1] = lastTotalPulseErrors;
-                    debug[2] = pulseErrorsPerSecond;
 
                     int32_t recentFrames = frameState.validFrameCounter - lastValidFrameCounter;
                     framesPerSecond = recentFrames * 1000000 / timeDeltaUs;
-                    debug[3] = framesPerSecond;
+
+                    //DEBUG_SET(DEBUG_SPRACING_PIXEL_OSD, 2, lastTotalPulseErrors);
+                    DEBUG_SET(DEBUG_SPRACING_PIXEL_OSD, 2, pulseErrorsPerSecond);
+                    DEBUG_SET(DEBUG_SPRACING_PIXEL_OSD, 3, framesPerSecond);
 
                     // TODO, if too many pulseErrorsPerSecond then reset sync levels.
                     // TODO, if frame counter stops counting then reset sync levels.
