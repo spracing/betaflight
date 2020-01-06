@@ -51,48 +51,9 @@
 
 #include "drivers/spracing_pixel_osd.h"
 
-
-// Pins 8-15 of GPIOE reserved for OSD use when in GPIO OUTPUT MODE (Upper 8 bits of GPIO port)
-// Pins 8-15 on GPIOE *can* be used for other functions, just not GPIO OUTPUT
-// although using the BSRR register instead of ODR could also be implemented for greater IO flexibility
-
-#if (SPRACINGH7CINE_REV <= 1)
-// Rev A
-#define SPRACING_PIXEL_OSD_BLACK_PIN                    PE13
-#define SPRACING_PIXEL_OSD_WHITE_PIN                    PE14
-#define SPRACING_PIXEL_OSD_RESERVED_PIN                 PE15
-
-#define SPRACING_PIXEL_OSD_SYNC_IN_PIN                  PE11 // COMP2_INP
-#define SPRACING_PIXEL_OSD_SYNC_OUT_A_PIN               PE12 // TIM1_CH3N
-#define SPRACING_PIXEL_OSD_SYNC_OUT_B_PIN               PA8  // TIM1_CH1 / MCO / Currently Unused
-#define SPRACING_PIXEL_OSD_SYNC_OUT_PIN                 SPRACING_PIXEL_OSD_SYNC_OUT_A_PIN
-#define USE_TIM1_CH3_FOR_SYNC
-#define SYNC_TIMER_CHANNEL TIM_CHANNEL_3
-
-#define SPRACING_PIXEL_OSD_VIDEO_THRESHOLD_DEBUG_PIN    PA5  // DAC1_OUT2
-#define SPRACING_PIXEL_OSD_PIXEL_DEBUG_1_PIN            PE5  // TIM15_CH1 - For DMA updates
-#define SPRACING_PIXEL_OSD_PIXEL_DEBUG_2_PIN            PE6  // TIM15_CH2 - Spare
-#define SPRACING_PIXEL_OSD_PIXEL_GATING_DEBUG_PIN       PB0 // TIM1_CH2N // actual gating is on CH4
-#define SPRACING_PIXEL_OSD_PIXEL_BLANKING_DEBUG_PIN     PB1 // TIM1_CH3N // actual blanking is on CH5
-#else
-// Rev B
-#define SPRACING_PIXEL_OSD_WHITE_SOURCE_SELECT_PIN      PE12
-#define SPRACING_PIXEL_OSD_BLACK_PIN                    PE13
-#define SPRACING_PIXEL_OSD_MASK_ENABLE_PIN              PE14
-#define SPRACING_PIXEL_OSD_WHITE_PIN                    PE15
-
-#define SPRACING_PIXEL_OSD_SYNC_IN_PIN                  PE11 // COMP2_INP
-#define SPRACING_PIXEL_OSD_SYNC_OUT_PIN                 PA8  // TIM1_CH1
-#define USE_TIM1_CH1_FOR_SYNC
-#define SYNC_TIMER_CHANNEL TIM_CHANNEL_1
-
-#define SPRACING_PIXEL_OSD_WHITE_SOURCE_PIN             PA4  // DAC1_OUT1
-#define SPRACING_PIXEL_OSD_VIDEO_THRESHOLD_DEBUG_PIN    PA5  // DAC1_OUT2
-#define SPRACING_PIXEL_OSD_PIXEL_DEBUG_1_PIN            PE5  // TIM15_CH1 - For DMA updates
-#define SPRACING_PIXEL_OSD_PIXEL_DEBUG_2_PIN            PE6  // TIM15_CH2 - Spare
-#define SPRACING_PIXEL_OSD_PIXEL_GATING_DEBUG_PIN       PB0 // TIM1_CH2N // actual gating is on CH4
-#define SPRACING_PIXEL_OSD_PIXEL_BLANKING_DEBUG_PIN     PB1 // TIM1_CH3N // actual blanking is on CH5
-#endif
+// All 8 pins of the OSD GPIO port are reserved for OSD use if any are using GPIO OUTPUT MODE
+// The 8 pins on the OSD GPIO port *can* be used for other functions, just not GPIO OUTPUT, e.g. mixing QUADSPI_BK2 and 4 GPIO pins on GPIOE on the H750 is fine.
+// Note: using the BSRR register instead of ODR could also be implemented for greater IO flexibility.
 
 #if 1
 #define DEBUG_PULSE_STATISTICS
@@ -232,67 +193,21 @@ static void pixelDebug2Toggle(void);
 // Pixel Generation
 //
 
-#define BLACK_SINK_Pin GPIO_PIN_13
-#define BLACK_SINK_GPIO_Port GPIOE
-#define WHITE_SOURCE_Pin GPIO_PIN_14
-#define WHITE_SOURCE_GPIO_Port GPIOE
-
-#define PIXEL_DEBUG_1_Pin GPIO_PIN_5
-#define PIXEL_DEBUG_1_GPIO_Port GPIOE
-#define PIXEL_DEBUG_2_Pin GPIO_PIN_6
-#define PIXEL_DEBUG_2_GPIO_Port GPIOE
-
-#define GATING_DEBUG_Pin GPIO_PIN_0
-#define GATING_DEBUG_GPIO_Port GPIOB
-#define BLANKING_DEBUG_Pin GPIO_PIN_1
-#define BLANKING_DEBUG_GPIO_Port GPIOB
-
-#if (SPRACINGH7CINE_REV <= 1)
-#define SYNC_OUT_Pin GPIO_PIN_12
-#define SYNC_OUT_GPIO_Port GPIOE
-#else
-#define SYNC_OUT_Pin GPIO_PIN_8
-#define SYNC_OUT_GPIO_Port GPIOA
-#endif
-
 #define PIXEL_COUNT (HORIZONTAL_RESOLUTION / RESOLUTION_SCALE)
 #define PIXEL_BUFFER_SIZE PIXEL_COUNT + 1 // one more pixel which must always be transparent to reset output level during sync
-
-#define USE_PIXEL_OUT_GPIOE
 
 // NOTE: for optimal CPU usage the current design requires that the pixel black and white GPIO bits are adjacent.
 // BLACK bit must be before WHITE bit.
 #ifdef USE_PIXEL_OUT_GPIOE
 #define PIXEL_ODR       GPIOE->ODR
-#define PIXEL_ODR_OFFSET 8 // 0 = PE0-PE7, 8 = PE8-PE15
-
-#if (SPRACINGH7CINE_REV <= 1)
-#define PIXEL_BLACK_BIT 5 // PE13
-#define PIXEL_WHITE_BIT 6 // PE14
-#else
-#define PIXEL_WHITE_SOURCE_SELECT_BIT   4 // PE12
-#define PIXEL_BLACK_BIT                 5 // PE13
-#define PIXEL_MASK_ENABLE_BIT           6 // PE14
-#define PIXEL_WHITE_BIT                 7 // PE15
-#define PIXEL_CONTROL_FIRST_BIT PIXEL_WHITE_SOURCE_SELECT_BIT
-#endif
 #endif
 
 #ifdef USE_PIXEL_OUT_GPIOC
 #define PIXEL_ODR       GPIOC->ODR
-#define PIXEL_ODR_OFFSET 8
-
-#define PIXEL_BLACK_BIT 6 // PC14
-#define PIXEL_WHITE_BIT 7 // PC15
 #endif
 
 #ifdef USE_PIXEL_OUT_GPIOB
 #define PIXEL_ODR       GPIOB->ODR
-#define PIXEL_ODR_OFFSET 0
-//#define PIXEL_BLACK_BIT 6 // PB6
-//#define PIXEL_WHITE_BIT 7 // PB7
-#define PIXEL_BLACK_BIT 0 // PB0
-#define PIXEL_WHITE_BIT 1 // PB1
 #endif
 
 #define PIXEL_ADDRESS   ((uint32_t)&(PIXEL_ODR) + (PIXEL_ODR_OFFSET / 8)) // +1 for upper 8 bits
@@ -1224,6 +1139,8 @@ void pixelOutputDisable(void)
 
     // turn off black/white
     HAL_GPIO_WritePin(WHITE_SOURCE_GPIO_Port, WHITE_SOURCE_Pin, GPIO_PIN_RESET);
+
+    // TODO reset mask and white source select
 }
 
 void pixelConfigureDMAForNextField(void)
