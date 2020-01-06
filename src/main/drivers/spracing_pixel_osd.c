@@ -2157,7 +2157,6 @@ void frameBuffer_setPixel(uint8_t *frameBuffer, uint16_t x, uint16_t y, uint8_t 
 
 void framebuffer_drawVerticalLine(uint8_t *frameBuffer, uint16_t x, uint16_t y0, uint16_t y1, uint8_t mode)
 {
-   unsigned int a;
    if(y0 > y1)
    {
        SWAP_XOR(y0, y1);
