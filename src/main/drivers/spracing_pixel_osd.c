@@ -2396,6 +2396,11 @@ static inline void pixelDebug2Toggle(void)
 //
 // Init
 //
+static bool spracingPixelOSDInitialised = false;
+
+bool spracingPixelOSDIsInitialised(void) {
+    return spracingPixelOSDInitialised;
+}
 
 bool spracingPixelOSDInit(const struct spracingPixelOSDConfig_s *spracingPixelOSDConfig, const struct vcdProfile_s *vcdProfile)
 {
@@ -2532,6 +2537,8 @@ bool spracingPixelOSDInit(const struct spracingPixelOSDConfig_s *spracingPixelOS
     {
       Error_Handler();
     }
+
+    spracingPixelOSDInitialised = true;
 
     return true;
 }

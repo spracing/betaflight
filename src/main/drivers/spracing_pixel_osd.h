@@ -43,6 +43,7 @@ extern volatile videoMode_t detectedVideoMode; // unstable value
 struct vcdProfile_s;
 struct spracingPixelOSDConfig_s;
 bool spracingPixelOSDInit(const struct spracingPixelOSDConfig_s *spracingPixelOSDConfig, const struct vcdProfile_s *vcdProfile);
+bool spracingPixelOSDIsInitialised(void);
 void spracingPixelOSDDrawDebugOverlay(void);
 bool spracingPixelOSDShouldProcessNow(timeUs_t currentTimeUs);
 void spracingPixelOSDProcess(timeUs_t currentTimeUs);
