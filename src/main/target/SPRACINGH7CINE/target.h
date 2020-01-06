@@ -95,8 +95,8 @@
 #define UART5_TX_PIN            PB13
 
 #define USE_UART6
-#define UART6_RX_PIN            PC7 // aka M7
-#define UART6_TX_PIN            PC6 // aka M8
+#define UART6_RX_PIN            PC7
+#define UART6_TX_PIN            PC6
 
 #define USE_UART8
 #define UART8_RX_PIN            PE0
