@@ -54,11 +54,11 @@ const timerHardware_t timerHardware[USABLE_TIMER_CHANNEL_COUNT] = {
     // Switched between Camera 1/2.
     DEF_TIM(TIM4,  CH3, PD14, TIM_USE_CAMERA_CONTROL,      0,  13,  13 ),
 
-    DEF_TIM(TIM15, CH1, PE5,  TIM_USE_VIDEO_SYNC,          0,  14, 14 ), // Pixel DMA
+    DEF_TIM(TIM15, CH1, PE5,  TIM_USE_VIDEO_PIXEL,         0,  15, 15 ), // Pixel DMA
 #if (SPRACINGH7CINE_REV <= 1)
-    DEF_TIM(TIM1,  CH3N,PE12, TIM_USE_VIDEO_PIXEL,         0,  15, 15 ), // Sync
+    DEF_TIM(TIM1,  CH3N,PE12, TIM_USE_VIDEO_SYNC,          0,  14, 14 ), // Sync
 #else
-    DEF_TIM(TIM1,  CH1, PA8, TIM_USE_VIDEO_PIXEL,          0,  15, 15 ), // Sync
+    DEF_TIM(TIM1,  CH1, PA8,  TIM_USE_VIDEO_SYNC,          0,  14, 14 ), // Sync
 #endif
 };
 
