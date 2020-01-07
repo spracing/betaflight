@@ -30,18 +30,25 @@
 #include "io/serial.h"
 #include "osd/osd.h"
 #include "pg/pg.h"
+#include "pg/pinio.h"
 #include "pg/piniobox.h"
+#include "msp/msp_box.h"
 
 static targetSerialPortFunction_t targetSerialPortFunction[] = {
-    { SERIAL_PORT_USART1, FUNCTION_MSP },
+    { SERIAL_PORT_USART1, FUNCTION_RX_SERIAL },
+    { SERIAL_PORT_USART2, FUNCTION_VTX_SMARTAUDIO },
+    { SERIAL_PORT_USART3, FUNCTION_RCDEVICE },
+    { SERIAL_PORT_UART4, FUNCTION_ESC_SENSOR },
+    { SERIAL_PORT_UART5, FUNCTION_TELEMETRY_SMARTPORT },
+    { SERIAL_PORT_USART8, FUNCTION_GPS },
 };
 
 void targetConfiguration(void)
 {
-    osdConfigMutable()->core_temp_alarm = 85;
     targetSerialPortFunctionConfig(targetSerialPortFunction, ARRAYLEN(targetSerialPortFunction));
 
-    pinioBoxConfigMutable()->permanentId[0] = 40;
+    pinioConfigMutable()->config[0] = PINIO_CONFIG_MODE_OUT_PP | PINIO_CONFIG_OUT_INVERTED;
+    pinioBoxConfigMutable()->permanentId[0] = findBoxByBoxId(BOXUSER1)->permanentId;
 }
 
 #endif
