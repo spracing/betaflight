@@ -31,6 +31,7 @@
 #include "osd/osd.h"
 #include "pg/pg.h"
 #include "pg/piniobox.h"
+#include "msp/msp_box.h"
 
 static targetSerialPortFunction_t targetSerialPortFunction[] = {
     { SERIAL_PORT_USART1, FUNCTION_MSP },
@@ -38,10 +39,9 @@ static targetSerialPortFunction_t targetSerialPortFunction[] = {
 
 void targetConfiguration(void)
 {
-    osdConfigMutable()->core_temp_alarm = 85;
     targetSerialPortFunctionConfig(targetSerialPortFunction, ARRAYLEN(targetSerialPortFunction));
 
-    pinioBoxConfigMutable()->permanentId[0] = 40;
+    pinioBoxConfigMutable()->permanentId[0] = findBoxByBoxId(BOXUSER1)->permanentId;
 }
 
 #endif
