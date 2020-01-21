@@ -15,6 +15,16 @@
 #define PAL_VISIBLE_LINES 288  // MAX7456 (16 rows * 18 character height)
 #define NTSC_VISIBLE_LINES 234 // MAX7456 (13 rows * 18 character height)
 
+//
+// Timing
+//
+
+#define TIMER_BUS_CLOCK   200000000
+#define TIMER_CLOCK  100000000
+
+#define TIMER_CLOCKS_PER_US                      (TIMER_CLOCK / 1000000)
+#define _US_TO_CLOCKS(__us)                      ((uint32_t)((__us) * TIMER_CLOCKS_PER_US))
+
 
 //
 // DEBUG

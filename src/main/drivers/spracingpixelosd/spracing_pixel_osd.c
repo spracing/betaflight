@@ -53,6 +53,8 @@
 #include "framebuffer.h"
 #include "pixelbuffer.h"
 #include "pixeltiming.h"
+#include "videotiming.h"
+#include "syncgeneration.h"
 #include "io.h"
 #include "glue.h"
 
@@ -91,13 +93,6 @@
 // Timing
 //
 
-#define TIMER_BUS_CLOCK   200000000
-#define TIMER_CLOCK  100000000
-
-#define TIMER_CLOCKS_PER_US                      (TIMER_CLOCK / 1000000)
-#define _US_TO_CLOCKS(__us)                      ((uint32_t)((__us) * TIMER_CLOCKS_PER_US))
-
-
 //
 // It takes some time between the comparator being triggered and the IRQ handler beging called.
 // it can be measured by togging a GPIO high/low in the IRQ handler and measuring the time between
@@ -105,63 +100,6 @@
 // Note: the value varies based on CPU clock-speed and compiler optimisations, i.e. DEBUG build = more time, faster CPU = less time.
 //
 #define VIDEO_COMPARATOR_TO_IRQ_OFFSET 0.4 // us
-
-#ifdef USE_NTSC
-#define VIDEO_LINE_LEN            63.556  // us
-#define VIDEO_SYNC_SHORT           2.000  // us
-#define VIDEO_SYNC_HSYNC           4.700  // us
-#define VIDEO_BLANKING            10.900  // us
-#define VIDEO_FRONT_PORCH          1.500  // us
-#else
-#define VIDEO_LINE_LEN            64.000  // us
-#define VIDEO_SYNC_SHORT           2.000  // us
-#define VIDEO_SYNC_HSYNC           4.700  // us
-#define VIDEO_BLANKING            12.000  // us
-#define VIDEO_FRONT_PORCH          1.650  // us
-#endif
-#define VIDEO_FIELD_ODD            1
-#define VIDEO_FIELD_EVEN           (1-VIDEO_FIELD_ODD)
-#define VIDEO_FIRST_FIELD          VIDEO_FIELD_ODD     // ODD (NTSC)
-#define VIDEO_SECOND_FIELD         (1-(VIDEO_FIRST_FIELD))
-
-// timing for high level (from shortest to longest period)
-// (1) [HI] BROAD SYNC: t ~ VIDEO_SYNC_HSYNC
-// (2) [HI] VSYNC+DATA: t ~ (VIDEO_LINE_LEN / 2) - VIDEO_SYNC_HSYNC
-// (3) [HI] SHORT SYNC: t ~ (VIDEO_LINE_LEN / 2) - VIDEO_SYNC_SHORT
-// (4) [HI] VIDEO DATA: t ~ VIDEO_LINE_LEN - VIDEO_SYNC_HSYNC
-//
-#define VIDEO_SYNC_HI_BROAD     (VIDEO_SYNC_HSYNC)
-#define VIDEO_SYNC_HI_VSYNC     ((VIDEO_LINE_LEN / 2.0) - VIDEO_SYNC_HSYNC)
-#define VIDEO_SYNC_HI_SHORT     ((VIDEO_LINE_LEN / 2.0) - VIDEO_SYNC_SHORT)
-#define VIDEO_ACTIVE            (VIDEO_LINE_LEN - VIDEO_BLANKING)
-#define VIDEO_SYNC_HI_DATA      (VIDEO_LINE_LEN)
-//
-// -> valid vsync = .... (1)---[xxx(2)xxx]---(3)------(4)
-//
-#define VIDEO_SYNC_VSYNC_MIN        _US_TO_CLOCKS(VIDEO_SYNC_HI_VSYNC - (VIDEO_SYNC_HI_VSYNC - VIDEO_SYNC_HI_BROAD)/2.0)
-#define VIDEO_SYNC_VSYNC_MAX        _US_TO_CLOCKS(VIDEO_SYNC_HI_VSYNC + (VIDEO_SYNC_HI_SHORT - VIDEO_SYNC_HI_VSYNC)/2.0)
-
-// timing for low level (from shortest to longest period)
-// (1) [LO] SHORT SYNC: t ~ 2.0us
-// (2) [LO] HSYNC     : t ~ 4.7us
-// (3) [LO] BROAD     : t ~ (VIDEO_LINE_LEN / 2) - VIDEO_SYNC_HSYNC
-//
-//
-// short sync =  (1)xxx]---(2)------(3)
-//
-#define VIDEO_SYNC_SHORT_MIN    _US_TO_CLOCKS(VIDEO_SYNC_SHORT / 2.0)
-#define VIDEO_SYNC_SHORT_MAX    _US_TO_CLOCKS(VIDEO_SYNC_SHORT +  (VIDEO_SYNC_HSYNC - VIDEO_SYNC_SHORT)/2.0)
-//
-// hsync      =  (1)---[xxx(2)xxx]---(3)
-//
-#define VIDEO_SYNC_HSYNC_MIN    _US_TO_CLOCKS(VIDEO_SYNC_HSYNC - (VIDEO_SYNC_HSYNC - VIDEO_SYNC_SHORT)/2.0)
-#define VIDEO_SYNC_HSYNC_MAX    _US_TO_CLOCKS(VIDEO_SYNC_HSYNC + (VIDEO_SYNC_LO_BROAD - VIDEO_SYNC_HSYNC)/2.0)
-//
-// broad      = (1)------(2)---[xxx(3)]
-//
-#define VIDEO_SYNC_LO_BROAD       (VIDEO_LINE_LEN / 2.0) - VIDEO_SYNC_HSYNC
-#define VIDEO_SYNC_LO_BROAD_MIN   _US_TO_CLOCKS(VIDEO_SYNC_LO_BROAD - VIDEO_SYNC_HSYNC/2.0)
-#define VIDEO_SYNC_LO_BROAD_MAX   _US_TO_CLOCKS(VIDEO_SYNC_LO_BROAD + VIDEO_SYNC_HSYNC/2.0)
 
 extern uint8_t *fillPixelBuffer;
 extern uint8_t *outputPixelBuffer;
@@ -257,20 +195,7 @@ DMA_HandleTypeDef hdma_tim15_ch1;
 typedef DMA_Stream_TypeDef dmaStream_t;
 
 //
-// Sync Generation
-//
-
-bool syncDMAActive = false;
-DMA_HandleTypeDef *hSyncOutDMA;
-
-void syncInit(void);
-void syncStartDMA(void);
-void syncStopDMA(void);
-void syncStartPWM(void);
-void syncStopPWM(void);
-
-//
-//
+// Init
 //
 
 static void avoidMCO1SyncClash(void)
@@ -826,107 +751,9 @@ static void spracingPixelOsdPixelTimerInit(void)
   }
 }
 
-
 //
-// Sync Generation
+// Sync blanking
 //
-
-typedef struct syncBufferItem_s {
-    // the order and size of these structure is fixed.  the data is transferred by DMA to the timer peripheral, starting with the ARR register
-    uint16_t arrValue;
-    uint16_t repetitions; // timers only support 8 bit ARR.
-    uint16_t cc1Value;
-#ifdef USE_TIM1_CH3_FOR_SYNC
-    uint16_t cc2Value;
-    uint16_t cc3Value;
-#endif
-} syncBufferItem_t;
-
-#ifdef USE_TIM1_CH3_FOR_SYNC
-#define SYNC_CC(cc3Value) 0, 0, cc3Value
-#define SYNC_BUST_TRANSFER_COUNT TIM_DMABURSTLENGTH_5TRANSFERS
-#else
-#define SYNC_CC(cc1Value) cc1Value
-#define SYNC_BUST_TRANSFER_COUNT TIM_DMABURSTLENGTH_3TRANSFERS
-#endif
-
-#define HALF_LINE(period, repetitions, pulse) _US_TO_CLOCKS(period / 2) - 1, (repetitions) - 1, SYNC_CC(_US_TO_CLOCKS(pulse) - 1)
-#define FULL_LINE(period, repetitions, pulse) _US_TO_CLOCKS(period) - 1, (repetitions) - 1, SYNC_CC(_US_TO_CLOCKS(pulse) - 1)
-
-const syncBufferItem_t palSyncItems[] = {
-        { HALF_LINE(VIDEO_LINE_LEN,  5,   VIDEO_SYNC_LO_BROAD)},  // start of first field
-        { HALF_LINE(VIDEO_LINE_LEN,  5,   VIDEO_SYNC_SHORT)},
-        { FULL_LINE(VIDEO_LINE_LEN,  153, VIDEO_SYNC_HSYNC)},     // start of picture data
-        { FULL_LINE(VIDEO_LINE_LEN,  152, VIDEO_SYNC_HSYNC)},
-        { HALF_LINE(VIDEO_LINE_LEN,  5,   VIDEO_SYNC_SHORT)},
-        { HALF_LINE(VIDEO_LINE_LEN,  5,   VIDEO_SYNC_LO_BROAD)},  // start of second field
-        { HALF_LINE(VIDEO_LINE_LEN,  4,   VIDEO_SYNC_SHORT)},
-        { FULL_LINE(VIDEO_LINE_LEN,  1,   VIDEO_SYNC_SHORT)},     // second half of a line
-        { FULL_LINE(VIDEO_LINE_LEN,  152, VIDEO_SYNC_HSYNC)},     // start of picture data
-        { FULL_LINE(VIDEO_LINE_LEN,  152, VIDEO_SYNC_HSYNC)},
-        { HALF_LINE(VIDEO_LINE_LEN,  1,   VIDEO_SYNC_HSYNC)},     // first half of a line/frame
-        { HALF_LINE(VIDEO_LINE_LEN,  5,   VIDEO_SYNC_SHORT)},
-        // 625 lines (2.5+2.5+153+152+2.5+2.5+2+1+152+152+.5+2.5)
-};
-
-#undef SYNC_CC
-#undef HALF_LINE
-#undef FULL_LINE
-
-void syncInit(void)
-{
-    hSyncOutDMA = htim1.hdma[TIM_DMA_ID_UPDATE];
-
-    if (!cameraConnected) {
-        syncStartPWM();
-        syncStartDMA();
-    }
-}
-
-void syncStartPWM(void)
-{
-    if (HAL_TIM_PWM_Start(&htim1, SYNC_TIMER_CHANNEL) != HAL_OK)
-    {
-      Error_Handler();
-    }
-    if (HAL_TIMEx_PWMN_Start(&htim1, SYNC_TIMER_CHANNEL) != HAL_OK)
-    {
-      Error_Handler();
-    }
-}
-
-void syncStopPWM(void)
-{
-    if (HAL_TIM_PWM_Stop(&htim1, SYNC_TIMER_CHANNEL) != HAL_OK)
-    {
-      Error_Handler();
-    }
-    if (HAL_TIMEx_PWMN_Stop(&htim1, SYNC_TIMER_CHANNEL) != HAL_OK)
-    {
-      Error_Handler();
-    }
-
-    //HAL_GPIO_WritePin(SYNC_OUT_GPIO_Port, SYNC_OUT_Pin, GPIO_PIN_RESET); // XXX - In GPIO AF TIM mode this has no effect, PWM IDLE state is what matters.
-}
-
-void syncStartDMA(void)
-{
-    HAL_TIM_DMABurst_MultiWriteStart(
-        &htim1,
-        TIM_DMABASE_ARR,
-        TIM_DMA_UPDATE,
-        (uint32_t *)palSyncItems,
-        SYNC_BUST_TRANSFER_COUNT,
-        sizeof(palSyncItems) / 2 // 2 because each item is uint16_t, not uint32_t?
-    );
-
-    syncDMAActive = true;
-}
-
-void syncStopDMA(void)
-{
-    HAL_TIM_DMABurst_WriteStop(&htim1, TIM_DMA_UPDATE);
-}
 
 static inline void disableComparatorBlanking(void) {
     __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_5, htim1.Init.Period + 1); // never reached.
@@ -937,8 +764,6 @@ static inline void disableComparatorBlanking(void) {
     __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_3, htim1.Init.Period + 1); // never reached.
     //__HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_3, htim1.Init.Period + 1);
 #endif
-
-
 }
 
 static inline void setBlankingPeriod(uint32_t clocks) {
