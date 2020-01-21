@@ -35,7 +35,7 @@
 
 #include "build/build_config.h"
 
-#include "drivers/spracing_pixel_osd.h"
+#include "drivers/spracingpixelosd/spracing_pixel_osd.h"
 
 #include "pixel_osd_video.h"
 

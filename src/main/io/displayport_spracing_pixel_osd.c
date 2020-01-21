@@ -33,7 +33,7 @@
 #include "common/utils.h"
 
 #include "drivers/display.h"
-#include "drivers/spracing_pixel_osd.h"
+#include "drivers/spracingpixelosd/spracing_pixel_osd.h"
 #include "drivers/osd.h"
 
 #include "config/config.h"

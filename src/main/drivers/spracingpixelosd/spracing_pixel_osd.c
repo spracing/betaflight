@@ -49,7 +49,7 @@
 
 #include "osd/font_max7456_12x18.h"
 
-#include "drivers/spracing_pixel_osd.h"
+#include "drivers/spracingpixelosd/spracing_pixel_osd.h"
 
 // All 8 pins of the OSD GPIO port are reserved for OSD use if any are using GPIO OUTPUT MODE
 // The 8 pins on the OSD GPIO port *can* be used for other functions, just not GPIO OUTPUT, e.g. mixing QUADSPI_BK2 and 4 GPIO pins on GPIOE on the H750 is fine.

@@ -2,7 +2,7 @@
 
 #include "common/maths.h"
 #include "osd/osd_elements_pixel.h"
-#include "drivers/spracing_pixel_osd.h"
+#include "drivers/spracingpixelosd/spracing_pixel_osd.h"
 
 
 

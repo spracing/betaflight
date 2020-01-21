@@ -45,7 +45,7 @@
 #include "drivers/transponder_ir.h"
 #include "drivers/usb_io.h"
 #include "drivers/vtx_common.h"
-#include "drivers/spracing_pixel_osd.h"
+#include "drivers/spracingpixelosd/spracing_pixel_osd.h"
 
 #include "config/config.h"
 #include "fc/core.h"
