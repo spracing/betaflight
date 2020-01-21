@@ -1,3 +1,6 @@
+/*
+ * Author: Dominic Clifton - Sync generation, Sync Detection, Video Overlay and first-cut of working OSD system.
+ */
 
 #include "platform.h"
 
