@@ -1,4 +1,4 @@
-FEATURES       += VCP ONBOARDFLASH SDCARD_SDIO
+FEATURES       += VCP ONBOARDFLASH SDCARD_SDIO SPRACING_PIXEL_OSD
 
 ifneq ($(EXST),)
 EXST = yes
@@ -15,9 +15,3 @@ TARGET_SRC += \
             drivers/accgyro/accgyro_spi_mpu6500.c \
             drivers/compass/compass_hmc5883l.c \
             drivers/barometer/barometer_bmp388.c \
-            drivers/spracingpixelosd/spracing_pixel_osd.c \
-            io/displayport_spracing_pixel_osd.c \
-            osd/font_max7456_12x18.c \
-            osd/font_max7456_12x18_betaflight.c \
-            osd/font_max7456_12x18_cleanflight1.c \
-

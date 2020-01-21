@@ -55,23 +55,3 @@ bool spracingPixelOSDLayerSupported(displayPortLayer_e layer);
 bool spracingPixelOSDLayerSelect(displayPortLayer_e layer);
 bool spracingPixelOSDLayerCopy(displayPortLayer_e destLayer, displayPortLayer_e sourceLayer);
 
-
-//
-// Frame Buffer
-//
-
-extern volatile bool frameStartFlag;
-
-void frameBuffer_erase(uint8_t *frameBuffer);
-
-uint8_t *frameBuffer_getBuffer(uint8_t index);
-
-//
-// Drawing
-//
-
-void frameBuffer_slowWriteString(uint8_t *frameBuffer, uint16_t x, uint16_t y, const uint8_t *message, uint8_t messageLength);
-void frameBuffer_slowWriteCharacter(uint8_t *frameBuffer, uint16_t x, uint16_t y, uint8_t characterIndex);
-void framebuffer_drawVerticalLine(uint8_t *frameBuffer, uint16_t x, uint16_t y0, uint16_t y1, uint8_t mode);
-void framebuffer_drawLine(uint8_t *frameBuffer, uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1, uint8_t mode);
-void framebuffer_drawRectangle(uint8_t *frameBuffer, uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1, uint8_t mode);

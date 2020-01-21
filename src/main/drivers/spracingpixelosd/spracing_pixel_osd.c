@@ -49,30 +49,16 @@
 
 #include "osd/font_max7456_12x18.h"
 
+#include "configuration.h"
+#include "framebuffer.h"
+#include "pixelbuffer.h"
+#include "glue.h"
+
 #include "drivers/spracingpixelosd/spracing_pixel_osd.h"
 
 // All 8 pins of the OSD GPIO port are reserved for OSD use if any are using GPIO OUTPUT MODE
 // The 8 pins on the OSD GPIO port *can* be used for other functions, just not GPIO OUTPUT, e.g. mixing QUADSPI_BK2 and 4 GPIO pins on GPIOE on the H750 is fine.
 // Note: using the BSRR register instead of ODR could also be implemented for greater IO flexibility.
-
-#if 1
-#define DEBUG_PULSE_STATISTICS
-#define DEBUG_PULSE_ERRORS      // debug led 2
-//#define DEBUG_COMP_TRIGGER      // debug led 2
-#define DEBUG_OSD_EVENTS
-#define DEBUG_PIXEL_DMA         // debug led 1
-#define DEBUG_BLANKING          // signal on M8
-#define DEBUG_GATING            // signal on M7
-#else
-#define DEBUG_PATTERN_BARS
-#define DEBUG_PIXEL_BUFFER_FILL
-#define DEBUG_LAST_HALF_LINE
-#define DEBUG_PIXEL_BUFFER
-#define DEBUG_SYNC_PWM
-#define DEBUG_FIELD_START
-#define DEBUG_SHORT_PULSE
-#define DEBUG_FIRST_SYNC_PULSE
-#endif
 
 static void pixelDebug1Set(bool state);
 static void pixelDebug2Set(bool state);
@@ -94,9 +80,6 @@ static void pixelDebug2Toggle(void);
 // Output Specification
 //
 
-#define PAL_VISIBLE_LINES 288  // MAX7456 (16 rows * 18 character height)
-#define NTSC_VISIBLE_LINES 234 // MAX7456 (13 rows * 18 character height)
-
 // 48us * 80mhz = 3840 clocks.  3840 clocks / 720 = 5.33 clocks per pixel.
 // resolution scale of 2 = 10.77 clocks per pixel = 360 pixels.
 // 5 * 720 = 3600 clocks / 80 = 45us.
@@ -108,8 +91,6 @@ static void pixelDebug2Toggle(void);
 
 #define CLOCKS_PER_PIXEL 6.6
 
-#define HORIZONTAL_RESOLUTION 720
-#define RESOLUTION_SCALE 2
 #define OVERLAY_LENGTH ((CLOCKS_PER_PIXEL * HORIZONTAL_RESOLUTION) / TIMER_CLOCKS_PER_US) // us
 
 
@@ -193,7 +174,6 @@ static void pixelDebug2Toggle(void);
 // Pixel Generation
 //
 
-#define PIXEL_COUNT (HORIZONTAL_RESOLUTION / RESOLUTION_SCALE)
 #define PIXEL_BUFFER_SIZE PIXEL_COUNT + 1 // one more pixel which must always be transparent to reset output level during sync
 
 // NOTE: for optimal CPU usage the current design requires that the pixel black and white GPIO bits are adjacent.
@@ -217,54 +197,6 @@ DMA_RAM uint8_t pixelBufferB[PIXEL_BUFFER_SIZE] __attribute__((aligned(32)));
 
 uint8_t *fillPixelBuffer = NULL;
 uint8_t *outputPixelBuffer = NULL;
-
-#define PIXEL_WHITE_ON 1
-#define PIXEL_WHITE_OFF 0
-
-#define PIXEL_MASK_ON 1
-#define PIXEL_MASK_OFF 0
-
-// black is inverted (open drain)
-#define PIXEL_BLACK_ON 0
-#define PIXEL_BLACK_OFF 1
-
-#define PIXEL_WHITE       ((PIXEL_WHITE_ON  << PIXEL_WHITE_BIT) | (PIXEL_BLACK_OFF << PIXEL_BLACK_BIT))
-#define PIXEL_BLACK       ((PIXEL_WHITE_OFF << PIXEL_WHITE_BIT) | (PIXEL_BLACK_ON  << PIXEL_BLACK_BIT))
-#define PIXEL_GREY        ((PIXEL_WHITE_ON  << PIXEL_WHITE_BIT) | (PIXEL_BLACK_ON  << PIXEL_BLACK_BIT))
-#define PIXEL_TRANSPARENT ((PIXEL_WHITE_OFF << PIXEL_WHITE_BIT) | (PIXEL_BLACK_OFF << PIXEL_BLACK_BIT))
-
-#define PIXEL_WITH_MASK     (PIXEL_MASK_ON << PIXEL_MASK_ENABLE_BIT)
-#define PIXEL_WITHOUT_MASK  (PIXEL_MASK_OFF << PIXEL_MASK_ENABLE_BIT)
-//
-// Frame
-//
-
-#define FRAME_BLACK_BIT_OFFSET 0
-#define FRAME_WHITE_BIT_OFFSET 1
-#define BITS_PER_PIXEL 2 // the current implementation only supports 2.
-
-#define FRAME_PIXEL_WHITE       ((PIXEL_WHITE_ON  << FRAME_WHITE_BIT_OFFSET) | (PIXEL_BLACK_OFF << FRAME_BLACK_BIT_OFFSET))
-#define FRAME_PIXEL_BLACK       ((PIXEL_WHITE_OFF << FRAME_WHITE_BIT_OFFSET) | (PIXEL_BLACK_ON  << FRAME_BLACK_BIT_OFFSET))
-#define FRAME_PIXEL_GREY        ((PIXEL_WHITE_ON  << FRAME_WHITE_BIT_OFFSET) | (PIXEL_BLACK_ON  << FRAME_BLACK_BIT_OFFSET))
-#define FRAME_PIXEL_TRANSPARENT ((PIXEL_WHITE_OFF << FRAME_WHITE_BIT_OFFSET) | (PIXEL_BLACK_OFF << FRAME_BLACK_BIT_OFFSET))
-
-#define FRAME_PIXEL_MASK        ((1 << 1) | (1 << 0))
-
-#define BLOCK_TRANSPARENT ((FRAME_PIXEL_TRANSPARENT << 6) | (FRAME_PIXEL_TRANSPARENT << 4) | (FRAME_PIXEL_TRANSPARENT << 2) | (FRAME_PIXEL_TRANSPARENT << 0))
-#define BLOCK_BLACK ((FRAME_PIXEL_BLACK << 6) | (FRAME_PIXEL_BLACK << 4) | (FRAME_PIXEL_BLACK << 2) | (FRAME_PIXEL_BLACK  << 0))
-#define BLOCK_DEBUG ((FRAME_PIXEL_WHITE << 6) | (FRAME_PIXEL_BLACK << 4) | (FRAME_PIXEL_GREY << 2) | (FRAME_PIXEL_TRANSPARENT << 0))
-#define BLOCK_FILL BLOCK_TRANSPARENT
-
-#define PIXELS_PER_BYTE (8 / BITS_PER_PIXEL)
-
-#define BITS_PER_BYTE 8
-
-#define FRAME_BUFFER_LINE_SIZE ((PIXEL_COUNT / BITS_PER_BYTE) * BITS_PER_PIXEL)
-#define FRAME_BUFFER_SIZE (FRAME_BUFFER_LINE_SIZE * PAL_VISIBLE_LINES)
-
-DMA_RAM uint8_t frameBuffers[2][FRAME_BUFFER_SIZE] __attribute__((aligned(32)));
-
-void pixelBuffer_fillFromFrameBuffer(uint8_t *destinationPixelBuffer, uint8_t frameBufferIndex, uint16_t lineIndex);
 
 //
 // Sync Detection/Timing
@@ -414,11 +346,6 @@ void syncStopPWM(void);
 //
 //
 //
-
-static void Error_Handler()
-{
-    do {} while (true);
-}
 
 static void avoidMCO1SyncClash(void)
 {
@@ -1079,53 +1006,6 @@ void syncStopDMA(void)
 // Pixel Generation
 //
 
-void pixelBuffer_createTestPattern1(uint8_t *destinationPixelBuffer, uint8_t bands)
-{
-    uint8_t pattern = 0;
-    uint8_t patterns = 8;
-    uint8_t bandWidth = PIXEL_COUNT / bands;
-    for (int i = 0; i < PIXEL_COUNT; i++) {
-        uint8_t band = i / bandWidth;
-
-        pattern = band % patterns;
-
-        uint8_t pixelValue = 0x00;
-
-        if (pattern == 0) {
-            pixelValue = PIXEL_BLACK;
-            if (i & 1) {
-                pixelValue = PIXEL_WHITE;
-            }
-        } else if (pattern == 1) {
-            pixelValue = PIXEL_WHITE;
-        } else if (pattern == 2) {
-            pixelValue = PIXEL_TRANSPARENT;
-            if (i & 1) {
-                pixelValue = PIXEL_BLACK;
-            }
-        } else if (pattern == 3) {
-            pixelValue = PIXEL_TRANSPARENT;
-        } else if (pattern == 4) {
-            pixelValue = PIXEL_GREY;
-        } else if (pattern == 5) {
-            pixelValue = PIXEL_TRANSPARENT;
-            if (i & 1) {
-                pixelValue = PIXEL_WHITE;
-            }
-        } else if (pattern == 6) {
-            pixelValue = PIXEL_WHITE;
-            if (i & 1) {
-                pixelValue = PIXEL_BLACK;
-            }
-        } else if (pattern == 7){
-            pixelValue = PIXEL_BLACK;
-        }
-
-        destinationPixelBuffer[i] = pixelValue;
-    }
-    destinationPixelBuffer[PIXEL_COUNT] = PIXEL_TRANSPARENT; // IMPORTANT!  The white source/black sink must be disabled before the SYNC signal, otherwise we change the sync voltage level.
-}
-
 
 DMA_HandleTypeDef *hPixelOutDMA;
 bool pixelDMAActive = false;
@@ -1766,476 +1646,6 @@ void COMP1_IRQHandler(void)
 }
 
 //
-// Frame
-//
-
-uint8_t *frameBuffer_getBuffer(uint8_t index)
-{
-    uint8_t *frameBuffer = frameBuffers[index];
-    return frameBuffer;
-}
-
-DMA_RAM uint32_t fillColor __attribute__((aligned(32)));
-static MDMA_HandleTypeDef     frameBuffer_MDMA_Handle_Erase = { 0 };
-
-void frameBuffer_eraseInit(void)
-{
-    __HAL_RCC_MDMA_CLK_ENABLE();
-
-    frameBuffer_MDMA_Handle_Erase.Instance = MDMA_Channel0;
-    frameBuffer_MDMA_Handle_Erase.Init.Request              = MDMA_REQUEST_SW;
-    frameBuffer_MDMA_Handle_Erase.Init.TransferTriggerMode  = MDMA_REPEAT_BLOCK_TRANSFER;
-    frameBuffer_MDMA_Handle_Erase.Init.Priority             = MDMA_PRIORITY_HIGH;
-    frameBuffer_MDMA_Handle_Erase.Init.Endianness           = MDMA_LITTLE_ENDIANNESS_PRESERVE;
-
-    frameBuffer_MDMA_Handle_Erase.Init.DataAlignment        = MDMA_DATAALIGN_PACKENABLE;
-    frameBuffer_MDMA_Handle_Erase.Init.BufferTransferLength = 128;
-
-    frameBuffer_MDMA_Handle_Erase.Init.DestinationInc       = MDMA_DEST_INC_WORD;
-    frameBuffer_MDMA_Handle_Erase.Init.DestDataSize         = MDMA_DEST_DATASIZE_WORD;
-    frameBuffer_MDMA_Handle_Erase.Init.DestBurst            = MDMA_DEST_BURST_SINGLE;
-    frameBuffer_MDMA_Handle_Erase.Init.DestBlockAddressOffset    = 0;
-
-    frameBuffer_MDMA_Handle_Erase.Init.SourceInc            = MDMA_SRC_INC_DISABLE;
-    frameBuffer_MDMA_Handle_Erase.Init.SourceDataSize       = MDMA_SRC_DATASIZE_WORD;
-    frameBuffer_MDMA_Handle_Erase.Init.SourceBurst          = MDMA_SOURCE_BURST_SINGLE;
-    frameBuffer_MDMA_Handle_Erase.Init.SourceBlockAddressOffset  = 0;
-
-    if (HAL_MDMA_Init(&frameBuffer_MDMA_Handle_Erase) != HAL_OK) {
-      Error_Handler();
-    }
-
-    fillColor = BLOCK_FILL << 24 | BLOCK_FILL << 16 | BLOCK_FILL << 8 | BLOCK_FILL;
-}
-
-void frameBuffer_erase(uint8_t *frameBuffer)
-{
-#if 0
-    memset(frameBuffer, BLOCK_TRANSPARENT, FRAME_BUFFER_SIZE);
-#else
-    uint32_t hal_status;
-
-    uint32_t bytesRemaining = FRAME_BUFFER_SIZE;
-
-    while (bytesRemaining > 0) {
-
-        uint32_t bytesToFill = 4096 * sizeof(fillColor); // 4096 is maximum block count.
-        if (bytesRemaining < bytesToFill) {
-            bytesToFill = bytesRemaining;
-        }
-
-        uint32_t offset = FRAME_BUFFER_SIZE - bytesRemaining;
-
-        hal_status = HAL_MDMA_Start(&frameBuffer_MDMA_Handle_Erase, (uint32_t)&fillColor,
-                                                  (uint32_t)frameBuffer + offset,
-                                                  sizeof(fillColor),
-                                                  bytesToFill / sizeof(fillColor));
-        if(hal_status != HAL_OK)
-        {
-          /* Transfer Error */
-          Error_Handler();
-        }
-
-        const uint32_t eraseTimeoutTicks = 1000;
-        hal_status = HAL_MDMA_PollForTransfer(&frameBuffer_MDMA_Handle_Erase, HAL_MDMA_FULL_TRANSFER, eraseTimeoutTicks);
-        if(hal_status != HAL_OK)
-        {
-          /* Transfer Error */
-          Error_Handler();
-        }
-
-        bytesRemaining -= bytesToFill;
-    }
-#endif
-}
-
-#if 0
-void pixelBuffer_fillFromFrameBuffer(uint8_t *destinationPixelBuffer, uint8_t frameBufferIndex, uint16_t lineIndex)
-{
-    // This method only works for BITS_PER_PIXEL == 2
-    // And only when PIXEL_BLACK_BIT == WHITE_BLACK_BIT - 1 (adjacent GPIO pins)
-
-#ifdef DEBUG_PIXEL_BUFFER_FILL
-    pixelDebug2Toggle();
-#endif
-    uint8_t *frameBuffer = frameBuffers[frameBufferIndex];
-    uint8_t *frameBufferLine = frameBuffer + (FRAME_BUFFER_LINE_SIZE * lineIndex);
-#if USE_SLOW_PIXEL_BUFFER_FILL_METHOD
-    // XXX - After compilier optimization this is slower than the implementation below.
-    uint8_t *pixel = destinationPixelBuffer;
-    for (int i = 0; i < FRAME_BUFFER_LINE_SIZE; i++) {
-        uint8_t frameBlock = *(frameBufferLine + i);
-
-        uint8_t mask = (1 << 7) | ( 1 << 6);
-        *pixel++ = (frameBlock & mask) >> (BITS_PER_PIXEL * 3) << PIXEL_BLACK_BIT;
-
-        mask = mask >> BITS_PER_PIXEL;
-        *pixel++ = (frameBlock & mask) >> (BITS_PER_PIXEL * 2) << PIXEL_BLACK_BIT;
-
-        mask = mask >> BITS_PER_PIXEL;
-        *pixel++ = (frameBlock & mask) >> (BITS_PER_PIXEL * 1) << PIXEL_BLACK_BIT;
-
-        mask = mask >> BITS_PER_PIXEL;
-        *pixel++ = (frameBlock & mask) >> (BITS_PER_PIXEL * 0) << PIXEL_BLACK_BIT;
-    }
-#else
-    uint32_t *pixels = (uint32_t *)destinationPixelBuffer;
-    for (int i = 0; i < FRAME_BUFFER_LINE_SIZE; i++) {
-        uint8_t frameBlock = *(frameBufferLine + i);
-
-        *pixels++ = (
-            ((frameBlock & (0x03 << 0)) >> (BITS_PER_PIXEL * 0) << 24) |
-            ((frameBlock & (0x03 << 2)) >> (BITS_PER_PIXEL * 1) << 16) |
-            ((frameBlock & (0x03 << 4)) >> (BITS_PER_PIXEL * 2) << 8) |
-            ((frameBlock & (0x03 << 6)) >> (BITS_PER_PIXEL * 3) << 0)
-        ) << PIXEL_BLACK_BIT;
-    }
-#endif
-    destinationPixelBuffer[PIXEL_COUNT] = PIXEL_TRANSPARENT; // IMPORTANT!  The white source/black sink must be disabled before the SYNC signal, otherwise we change the sync voltage level.
-#ifdef DEBUG_PIXEL_BUFFER_FILL
-    pixelDebug2Toggle();
-#endif
-}
-#else
-
-
-void pixelBuffer_fillFromFrameBuffer(uint8_t *destinationPixelBuffer, uint8_t frameBufferIndex, uint16_t lineIndex)
-{
-    // Rev B has 4 IO lines for White Source, Black, Mask and White, black and white are NOT adjacent so the bits cannot be copied and shifted together...
-#ifdef DEBUG_PIXEL_BUFFER_FILL
-    pixelDebug2Toggle();
-#endif
-
-    uint8_t *frameBuffer = frameBuffers[frameBufferIndex];
-    uint8_t *frameBufferLine = frameBuffer + (FRAME_BUFFER_LINE_SIZE * lineIndex);
-
-    uint32_t *pixels = (uint32_t *)destinationPixelBuffer;
-    for (int i = 0; i < FRAME_BUFFER_LINE_SIZE; i++) {
-        uint8_t frameBlock = *(frameBufferLine + i);
-
-#if 0 // old
-        uint32_t blackBits = (
-            ((frameBlock & (0x01 << 0)) >> (BITS_PER_PIXEL * 0) << 24) |
-            ((frameBlock & (0x01 << 2)) >> (BITS_PER_PIXEL * 1) << 16) |
-            ((frameBlock & (0x01 << 4)) >> (BITS_PER_PIXEL * 2) << 8) |
-            ((frameBlock & (0x01 << 6)) >> (BITS_PER_PIXEL * 3) << 0)
-        );
-
-        uint32_t whiteBits = (
-            ((frameBlock & (0x02 << 0)) >> (BITS_PER_PIXEL * 0) << 24) |
-            ((frameBlock & (0x02 << 2)) >> (BITS_PER_PIXEL * 1) << 16) |
-            ((frameBlock & (0x02 << 4)) >> (BITS_PER_PIXEL * 2) << 8) |
-            ((frameBlock & (0x02 << 6)) >> (BITS_PER_PIXEL * 3) << 0)
-        );
-
-        *pixels++ = blackBits << (PIXEL_BLACK_BIT - FRAME_BLACK_BIT_OFFSET)
-            | whiteBits << (PIXEL_WHITE_BIT - FRAME_WHITE_BIT_OFFSET)
-            | whiteBits << (PIXEL_MASK_ENABLE_BIT - FRAME_WHITE_BIT_OFFSET);
-
-        /*
-        uint32_t gpioBits = 0;
-        gpioBits |= blackBits << (PIXEL_BLACK_BIT - FRAME_BLACK_BIT_OFFSET);
-        gpioBits |= whiteBits << (PIXEL_WHITE_BIT - FRAME_WHITE_BIT_OFFSET);
-        gpioBits |= whiteBits << (PIXEL_MASK_ENABLE_BIT - FRAME_WHITE_BIT_OFFSET);
-        */
-#else
-
-        uint32_t frameBlockBits = (
-            ((frameBlock & (0x03 << 0)) >> (BITS_PER_PIXEL * 0) << 24) |
-            ((frameBlock & (0x03 << 2)) >> (BITS_PER_PIXEL * 1) << 16) |
-            ((frameBlock & (0x03 << 4)) >> (BITS_PER_PIXEL * 2) << 8) |
-            ((frameBlock & (0x03 << 6)) >> (BITS_PER_PIXEL * 3) << 0)
-        );
-
-        uint32_t blackGpioBitMask  = ((1 << 24) | (1 << 16) | (1 << 8) | (1 << 0)) << PIXEL_BLACK_BIT;
-        uint32_t whiteGpioBitMask  = ((1 << 24) | (1 << 16) | (1 << 8) | (1 << 0)) << PIXEL_WHITE_BIT;
-        uint32_t whiteSourceSelectGpioBitMask  = ((1 << 24) | (1 << 16) | (1 << 8) | (1 << 0)) << PIXEL_WHITE_SOURCE_SELECT_BIT;
-        uint32_t maskGpioBitMask   = ((1 << 24) | (1 << 16) | (1 << 8) | (1 << 0)) << PIXEL_MASK_ENABLE_BIT;
-
-
-        // gpio/frame level for black is inverted, so 0 = ON, 1 = OFF.
-
-        uint32_t gpioBlackBits = (frameBlockBits << (PIXEL_BLACK_BIT - FRAME_BLACK_BIT_OFFSET)) & blackGpioBitMask;
-        uint32_t gpioWhiteBits = (frameBlockBits << (PIXEL_WHITE_BIT - FRAME_WHITE_BIT_OFFSET)) & whiteGpioBitMask;
-        uint32_t gpioWhiteSourceSelectBits = (frameBlockBits << (PIXEL_WHITE_SOURCE_SELECT_BIT - FRAME_WHITE_BIT_OFFSET)) & whiteSourceSelectGpioBitMask;
-
-        uint32_t gpioNotBlackBits = ~(gpioBlackBits) & blackGpioBitMask; // now 1 = ON, 0 = OFF, for each black bit.
-
-        uint32_t frameMaskOnBlackBits    = gpioBlackBits >> (PIXEL_BLACK_BIT);
-        uint32_t frameMaskOnNotBlackBits = gpioNotBlackBits >> (PIXEL_BLACK_BIT);
-        uint32_t frameMaskOnWhiteBits    = gpioWhiteBits >> (PIXEL_WHITE_BIT);
-
-        uint32_t gpioMaskOnBlackBits = (frameMaskOnBlackBits << PIXEL_MASK_ENABLE_BIT) & maskGpioBitMask;
-        uint32_t gpioMaskOnNotBlackBits = (frameMaskOnNotBlackBits << PIXEL_MASK_ENABLE_BIT) & maskGpioBitMask;
-        uint32_t gpioMaskOnWhiteBits = (frameMaskOnWhiteBits << PIXEL_MASK_ENABLE_BIT) & maskGpioBitMask;
-
-        uint32_t gpioWhiteBitsForEachBlackOn = (frameMaskOnNotBlackBits << PIXEL_WHITE_BIT) & whiteGpioBitMask;
-
-        uint32_t gpioWhiteSourceSelectBitsForEachBlackOn = (frameMaskOnNotBlackBits << PIXEL_WHITE_SOURCE_SELECT_BIT) & whiteSourceSelectGpioBitMask;
-
-        uint32_t gpioBlackBitsForEachWhiteOn = ~(frameMaskOnWhiteBits << PIXEL_BLACK_BIT) & blackGpioBitMask;
-
-        //
-        // GOOD
-        //
-
-        // Black = unmasked,unmasked White = fixed,unmasked.
-        //uint32_t gpioBits = gpioBlackBits | gpioWhiteBits; // works fine
-
-        // Black = fixed, masked, White = fixed,unmasked
-        //uint32_t gpioBits = gpioBlackBits | gpioWhiteBits | gpioMaskOnNotBlackBits | gpioWhiteBitsForEachBlackOn; // works
-
-        // Black = fixed, masked, White = fixed,masked
-        //uint32_t gpioBits = gpioBlackBits | gpioWhiteBits | gpioMaskOnWhiteBits | gpioMaskOnNotBlackBits | gpioWhiteBitsForEachBlackOn; // works
-
-        // Black = DAC, masked, White = fixed,masked
-        uint32_t gpioBits = gpioBlackBits | gpioWhiteBits | gpioMaskOnWhiteBits | gpioMaskOnNotBlackBits | gpioWhiteSourceSelectBitsForEachBlackOn;
-
-        // Black = white,Masked, White = black,fixed,masked
-        //uint32_t gpioBits = gpioBlackBitsForEachWhiteOn | gpioWhiteBits | gpioMaskOnWhiteBits | gpioMaskOnNotBlackBits | gpioWhiteBitsForEachBlackOn; // works, produces blacks that are light grey and whites that are dark grey.
-
-        // Black = unmasked, White = DAC,unmasked.
-        //uint32_t gpioBits = gpioBlackBits | gpioWhiteSourceSelectBits; // works
-
-        // Black = fixed,masked, White = DAC,masked.
-        //uint32_t gpioBits = gpioBlackBits | gpioMaskOnWhiteBits | gpioWhiteSourceSelectBits | gpioMaskOnNotBlackBits | gpioWhiteBitsForEachBlackOn; // inverted black/white
-
-        // Black = DAC,masked, White = DAC,masked.
-        //uint32_t gpioBits = gpioBlackBits | gpioMaskOnWhiteBits | gpioWhiteSourceSelectBits | gpioMaskOnNotBlackBits | gpioWhiteSourceSelectBitsForEachBlackOn; // works
-
-        //
-        // BAD
-        //
-        // Black = unmasked, White = fixed, masked.
-        //uint32_t gpioBits = gpioBlackBits | gpioWhiteBits | gpioMaskOnWhiteBits; // works but white pixels are a bit dark, visible black shadow on right hand side of white pixels as mask is turned off, voltage after whites goes quite low.
-        //uint32_t gpioBits = gpioBlackBitsForEachWhiteOn | gpioWhiteBits | gpioMaskOnWhiteBits | gpioMaskOnNotBlackBits; // works but blacks are 0v.
-
-
-        //uint32_t gpioBits = gpioBlackBits | gpioWhiteBits | gpioMaskOnNotBlackBits; // doesn't work, why? - because voltage goes to 0 and comparator triggers!
-        //uint32_t gpioBits = gpioBlackBits | gpioMaskOnWhiteBits; // doesn't work.  odd frame is legible during v line level detection.
-        //uint32_t gpioBits = gpioBlackBits | gpioMaskOnNotBlackBits; // doesn't work.
-        //uint32_t gpioBits = BLOCK_TRANSPARENT | gpioMaskOnNotBlackBits; // doesn't work.
-        //uint32_t gpioBits = BLOCK_TRANSPARENT | gpioMaskOnWhiteBits; // doesn't work.
-        //uint32_t gpioBits = gpioBlackBits | gpioWhiteBits | gpioMaskOnWhiteBits | gpioMaskOnNotBlackBits; // doesn't work
-        //uint32_t gpioBits = gpioBlackBits | gpioWhiteBits | gpioMaskOnWhiteBits | gpioMaskOnBlackBits; // doesn't work,
-
-#ifdef DEBUG_PATTERN_BARS
-        const int lineOffset = 32;
-        const int linesPerPattern = 4;
-        const int patternCount = 16; // 4 IO lines = 16 combinations
-        if (lineIndex < lineOffset || lineIndex >= lineOffset + (patternCount * linesPerPattern)) {
-            *pixels++ = gpioBits;
-        } else {
-
-            uint8_t pattern = (((lineIndex - lineOffset) / linesPerPattern) % patternCount);
-
-            bool patternCauses0VSignal = (pattern == 4 || pattern == 6);
-            if (patternCauses0VSignal) {
-                pattern = BLOCK_FILL;
-            }
-
-            uint32_t patternBits = (pattern << 24) | (pattern << 16) | (pattern << 8) | (pattern << 0);
-            uint32_t gpioPatternBits = patternBits << PIXEL_CONTROL_FIRST_BIT;
-            *pixels++ = gpioPatternBits;
-        }
-#else
-        *pixels++ = gpioBits;
-#endif // DEBUG_PATTERN_BARS
-
-#endif
-
-    }
-    destinationPixelBuffer[PIXEL_COUNT] = PIXEL_TRANSPARENT & ~(PIXEL_MASK_ON << PIXEL_MASK_ENABLE_BIT); // IMPORTANT!  The white source/black sink must be disabled before the SYNC signal, otherwise we change the sync voltage level.
-#ifdef DEBUG_PIXEL_BUFFER_FILL
-    pixelDebug2Toggle();
-#endif
-}
-#endif
-
-// Macro to swap two variables using XOR swap.
-#define SWAP_XOR(a, b) { a ^= b; b ^= a; a ^= b; }
-
-// unoptimized, avoid over-use.
-void frameBuffer_setPixel(uint8_t *frameBuffer, uint16_t x, uint16_t y, uint8_t mode)
-{
-    uint8_t *lineBuffer = frameBuffer + (y * FRAME_BUFFER_LINE_SIZE);
-
-    uint8_t pixelOffsetInBlock = (PIXELS_PER_BYTE - 1) - (x % PIXELS_PER_BYTE);
-
-    uint8_t pixelBitOffset = BITS_PER_PIXEL * pixelOffsetInBlock;
-
-    uint8_t mask = ~(FRAME_PIXEL_MASK << pixelBitOffset);
-
-    uint8_t before = lineBuffer[x / PIXELS_PER_BYTE];
-    uint8_t withMaskCleared = before & mask;
-    lineBuffer[x / PIXELS_PER_BYTE] = withMaskCleared |
-            (mode << pixelBitOffset);
-}
-
-void framebuffer_drawVerticalLine(uint8_t *frameBuffer, uint16_t x, uint16_t y0, uint16_t y1, uint8_t mode)
-{
-   if(y0 > y1)
-   {
-       SWAP_XOR(y0, y1);
-   }
-
-   uint8_t pixelOffsetInBlock = (PIXELS_PER_BYTE - 1) - (x % PIXELS_PER_BYTE);
-
-   uint8_t pixelBitOffset = BITS_PER_PIXEL * pixelOffsetInBlock;
-
-   uint8_t mask = ~(FRAME_PIXEL_MASK << pixelBitOffset);
-
-   uint16_t blockOffset = x / PIXELS_PER_BYTE;
-
-   uint16_t lineCount = y1 - y0;
-   uint8_t *firstBlock = frameBuffer + (y0 * FRAME_BUFFER_LINE_SIZE) + blockOffset;
-   uint8_t *lastBlock = firstBlock + (lineCount * FRAME_BUFFER_LINE_SIZE);
-
-   for (uint8_t *block = firstBlock; block <= lastBlock; block += FRAME_BUFFER_LINE_SIZE) {
-       uint8_t blockValue = *block;
-       uint8_t blockValueWithMaskCleared = blockValue & mask;
-       *block = blockValueWithMaskCleared | (mode << pixelBitOffset);
-   }
-}
-
-void framebuffer_drawLine(uint8_t *frameBuffer, uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1, uint8_t mode)
-{
-    // Based on http://en.wikipedia.org/wiki/Bresenham%27s_line_algorithm
-    bool steep = ABS(y1 - y0) > ABS(x1 - x0);
-    if (steep) {
-        SWAP_XOR(x0, y0);
-        SWAP_XOR(x1, y1);
-    }
-    if(x0 > x1)
-    {
-        SWAP_XOR(x0, x1);
-        SWAP_XOR(y0, y1);
-    }
-    int deltax = x1 - x0;
-    int deltay = ABS(y1 - y0);
-    int error = deltax / 2;
-    int ystep;
-    int y = y0;
-    int x;
-    if (y0 < y1) {
-        ystep = 1;
-    } else {
-        ystep = -1;
-    }
-    for (x = x0; x < x1; x++) {
-
-        if (steep) {
-            if (x >= 0 && y >= 0 && x < 288 && y < 720/2) {
-                frameBuffer_setPixel(frameBuffer, y, x, mode);
-            }
-        } else {
-            if (x >= 0 && y >= 0 && x < 720/2 && y < 288) {
-                frameBuffer_setPixel(frameBuffer, x, y, mode);
-            }
-        }
-        error -= deltay;
-        if (error < 0) {
-            y     += ystep;
-            error += deltax;
-        }
-    }
-}
-
-void framebuffer_drawRectangle(uint8_t *frameBuffer, uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1, uint8_t mode)
-{
-    framebuffer_drawLine(frameBuffer, x0, y0, x1, y0, mode); // top
-    framebuffer_drawLine(frameBuffer, x0, y0, x0, y1, mode); // left
-    framebuffer_drawLine(frameBuffer, x1, y0, x1, y1, mode); // right
-    framebuffer_drawLine(frameBuffer, x0, y1, x1, y1, mode); // bottom
-}
-
-void frameBuffer_createTestPattern1(uint8_t *frameBuffer)
-{
-    for (int lineIndex = 0; lineIndex < PAL_VISIBLE_LINES; lineIndex++) {
-        uint8_t *lineBuffer = frameBuffer + (lineIndex * FRAME_BUFFER_LINE_SIZE);
-
-        if (lineIndex & 0x8) {
-            continue; // empty vertical band.
-        }
-
-        for (int i = 0; i < PIXEL_COUNT / PIXELS_PER_BYTE; i ++) {
-
-            lineBuffer[i] =
-                    (FRAME_PIXEL_WHITE << (BITS_PER_PIXEL * 3)) |
-                    (FRAME_PIXEL_GREY << (BITS_PER_PIXEL * 2)) |
-                    (FRAME_PIXEL_BLACK << (BITS_PER_PIXEL * 1)) |
-                    (FRAME_PIXEL_TRANSPARENT << (BITS_PER_PIXEL * 0));
-        }
-    }
-}
-
-void frameBuffer_createTestPattern2(uint8_t *frameBuffer)
-{
-    for (int lineIndex = 0; lineIndex < PAL_VISIBLE_LINES; lineIndex++) {
-        int x;
-
-        x = lineIndex;
-        frameBuffer_setPixel(frameBuffer, x, lineIndex, FRAME_PIXEL_BLACK);
-        frameBuffer_setPixel(frameBuffer, x+1, lineIndex, FRAME_PIXEL_WHITE);
-        frameBuffer_setPixel(frameBuffer, x+2, lineIndex, FRAME_PIXEL_BLACK);
-
-        x = PIXEL_COUNT - 1 - lineIndex;
-        frameBuffer_setPixel(frameBuffer, x, lineIndex, FRAME_PIXEL_BLACK);
-        frameBuffer_setPixel(frameBuffer, x-1, lineIndex, FRAME_PIXEL_WHITE);
-        frameBuffer_setPixel(frameBuffer, x-2, lineIndex, FRAME_PIXEL_BLACK);
-
-    }
-}
-
-// unoptimized for now
-void frameBuffer_slowWriteCharacter(uint8_t *frameBuffer, uint16_t x, uint16_t y, uint8_t characterIndex)
-{
-    uint16_t fontCharacterOffset = characterIndex * FONT_MAX7456_12x18_BYTES_PER_CHARACTER;
-
-    for (int row = 0; row < FONT_MAX7456_HEIGHT; row++) {
-        uint16_t fy = y + row;
-        uint16_t fx = x;
-
-        for (int b = 0; b < 3; b++) {
-            uint8_t c = font_max7456_12x18[fontCharacterOffset];
-            fontCharacterOffset++;
-
-            for (int p = 0; p <= 3; p++) {
-                uint8_t mp = (c >> (2 * (3 - p))) & ((1 << 1) | (1 << 0)); // extract max7456 pixel from character
-                uint8_t mode = FRAME_PIXEL_TRANSPARENT;
-
-                if (mp == ((0 << 1) | (0 << 0))) {
-                    mode = FRAME_PIXEL_BLACK;
-                } else if (mp == ((1 << 1) | (0 << 0))) {
-                    mode = FRAME_PIXEL_WHITE;
-                }
-                if (mode != 0xFF) {
-                    frameBuffer_setPixel(frameBuffer, fx, fy, mode);
-                }
-                fx++;
-            }
-        }
-
-    }
-}
-
-// unoptimized for now
-void frameBuffer_slowWriteString(uint8_t *frameBuffer, uint16_t x, uint16_t y, const uint8_t *message, uint8_t messageLength)
-{
-    uint16_t fx = x;
-    for (int mi = 0; mi < messageLength; mi++) {
-#if USE_FONT_MAPPING
-        uint8_t c = font_max7456_12x18_asciiToFontMapping[message[mi]];
-#else
-        uint8_t c = message[mi];
-#endif
-
-        frameBuffer_slowWriteCharacter(frameBuffer, fx, y, c);
-        fx+= 12; // font width
-    }
-}
-
-//
 // Layer support
 //
 // Foreground only for now.
@@ -2383,18 +1793,21 @@ bool spracingPixelOSDInit(const struct spracingPixelOSDConfig_s *spracingPixelOS
 
     frameBuffer_eraseInit();
 
-    frameBuffer_erase(frameBuffers[0]);
-    frameBuffer_erase(frameBuffers[1]);
+    uint8_t * fb0 = frameBuffer_getBuffer(0);
+    uint8_t * fb1 = frameBuffer_getBuffer(1);
 
-    //frameBuffer_createTestPattern1(frameBuffers[0]);
-    //frameBuffer_createTestPattern1(frameBuffers[1]);
+    frameBuffer_erase(fb0);
+    frameBuffer_erase(fb1);
 
-    //frameBuffer_createTestPattern2(frameBuffers[0]);
+    //frameBuffer_createTestPattern1(fb0);
+    //frameBuffer_createTestPattern1(fb1);
 
-    framebuffer_drawRectangle(frameBuffers[0], 0, 0, PIXEL_COUNT - 1, PAL_VISIBLE_LINES - 1, FRAME_PIXEL_WHITE);
+    //frameBuffer_createTestPattern2(fb0);
+
+    framebuffer_drawRectangle(fb0, 0, 0, PIXEL_COUNT - 1, PAL_VISIBLE_LINES - 1, FRAME_PIXEL_WHITE);
 
 
-    frameBuffer_slowWriteString(frameBuffers[0], 50, 150, (uint8_t*)"SP RACING PIXEL OSD", 19);
+    frameBuffer_slowWriteString(fb0, 50, 150, (uint8_t*)"SP RACING PIXEL OSD", 19);
 
     //
     // Sync detection
@@ -2441,8 +1854,10 @@ bool spracingPixelOSDInit(const struct spracingPixelOSDConfig_s *spracingPixelOS
 
     spracingPixelOsdPixelTimerInit(); // TIM15
 
+#ifdef DEBUG
     pixelBuffer_createTestPattern1(pixelBufferA, 16);
     pixelBuffer_createTestPattern1(pixelBufferB, 8);
+#endif
 
     pixelInit();
 
@@ -2862,7 +2277,7 @@ void spracingPixelOSDDrawDebugOverlay(void)
 
     static uint8_t messageBuffer[32];
 
-    uint16_t debugY = 18 * 13;
+    uint16_t debugY = FONT_MAX7456_HEIGHT * 13;
 
     static const char *videoModeNames[] = { "????", "PAL", "NTSC" };
     tfp_sprintf((char *)messageBuffer, "P:%04X V:%04X E:%04X M:%04s",

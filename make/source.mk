@@ -397,6 +397,20 @@ SRC += \
             $(MSC_SRC)
 endif
 
+ifneq ($(filter SPRACING_PIXEL_OSD,$(FEATURES)),)
+
+SRC += \
+            drivers/spracingpixelosd/spracing_pixel_osd.c \
+            drivers/spracingpixelosd/framebuffer.c \
+            drivers/spracingpixelosd/pixelbuffer.c \
+            drivers/spracingpixelosd/glue.c \
+            io/displayport_spracing_pixel_osd.c \
+            osd/font_max7456_12x18.c \
+            osd/font_max7456_12x18_betaflight.c \
+            osd/font_max7456_12x18_cleanflight1.c \
+
+endif
+
 SRC += $(COMMON_SRC)
 
 #excludes

@@ -34,6 +34,7 @@
 
 #include "drivers/display.h"
 #include "drivers/spracingpixelosd/spracing_pixel_osd.h"
+#include "drivers/spracingpixelosd/framebuffer.h"
 #include "drivers/osd.h"
 
 #include "config/config.h"
