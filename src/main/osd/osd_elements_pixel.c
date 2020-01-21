@@ -65,10 +65,6 @@ void simple_artificial_horizon(int16_t roll, int16_t pitch, int16_t x, int16_t y
         int16_t pp_x2 = pp_x - i * d_x_10;
         int16_t pp_y2 = pp_y - i * d_y_10;
 
-        char tmp_str[5];
-
-        //tfp_sprintf(tmp_str, "%d", angle);
-
         int mode = 3;
 
         if (angle < 0) {
