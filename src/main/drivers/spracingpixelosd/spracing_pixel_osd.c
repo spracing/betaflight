@@ -65,26 +65,23 @@
 #define OVERLAY_LENGTH ((CLOCKS_PER_PIXEL * HORIZONTAL_RESOLUTION) / TIMER_CLOCKS_PER_US) // us
 
 //
-// Sync Detection/Timing
-//
-
-COMP_HandleTypeDef hcomp2;
-DAC_HandleTypeDef hdac1;
-
-//
 // State
 //
 
 volatile bool cameraConnected = true;
 volatile videoMode_t detectedVideoMode = MODE_UNKNOWN;
 
+//
+// Sync Detection/Timing
+//
+
 TIM_HandleTypeDef htim1;
 TIM_HandleTypeDef htim2;
 TIM_HandleTypeDef htim15;
 DMA_HandleTypeDef hdma_tim1_up;
 DMA_HandleTypeDef hdma_tim15_ch1;
-
-typedef DMA_Stream_TypeDef dmaStream_t;
+COMP_HandleTypeDef hcomp2;
+DAC_HandleTypeDef hdac1;
 
 //
 // Init
@@ -763,6 +760,15 @@ static void MX_DAC1_Init(void)
   }
 }
 
+void setVideoSourceVoltageMv(uint32_t whiteMv)
+{
+    // TODO get measured VREF via ADC and use instead of VIDEO_DAC_VCC here?
+    uint32_t dacWhiteRaw = (whiteMv * 0x0FFF) / (VIDEO_DAC_VCC * 1000);
+
+    HAL_DAC_SetValue(&hdac1, DAC_CHANNEL_1, DAC_ALIGN_12B_R, dacWhiteRaw);
+}
+
+
 //
 // Layer support
 //
@@ -791,14 +797,6 @@ bool spracingPixelOSDLayerCopy(displayPortLayer_e destLayer, displayPortLayer_e 
     UNUSED(sourceLayer);
     UNUSED(destLayer);
     return false;
-}
-
-void setVideoSourceVoltageMv(uint32_t whiteMv)
-{
-    // TODO get measured VREF via ADC and use instead of VIDEO_DAC_VCC here?
-    uint32_t dacWhiteRaw = (whiteMv * 0x0FFF) / (VIDEO_DAC_VCC * 1000);
-
-    HAL_DAC_SetValue(&hdac1, DAC_CHANNEL_1, DAC_ALIGN_12B_R, dacWhiteRaw);
 }
 
 //
