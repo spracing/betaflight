@@ -52,6 +52,7 @@
 #include "configuration.h"
 #include "framebuffer.h"
 #include "pixelbuffer.h"
+#include "io.h"
 #include "glue.h"
 
 #include "drivers/spracingpixelosd/spracing_pixel_osd.h"
@@ -59,15 +60,6 @@
 // All 8 pins of the OSD GPIO port are reserved for OSD use if any are using GPIO OUTPUT MODE
 // The 8 pins on the OSD GPIO port *can* be used for other functions, just not GPIO OUTPUT, e.g. mixing QUADSPI_BK2 and 4 GPIO pins on GPIOE on the H750 is fine.
 // Note: using the BSRR register instead of ODR could also be implemented for greater IO flexibility.
-
-static void pixelDebug1Set(bool state);
-static void pixelDebug2Set(bool state);
-static void pixelDebug1Low(void);
-static void pixelDebug2Low(void);
-static void pixelDebug1High(void);
-static void pixelDebug2High(void);
-static void pixelDebug1Toggle(void);
-static void pixelDebug2Toggle(void);
 
 //
 // Video Format
@@ -279,48 +271,6 @@ uint16_t syncPulseFallingStatistics[PAL_LINES] __attribute__((used));
 
 volatile bool cameraConnected = true;
 static uint32_t osdFrameTimeoutAt = 0;
-
-typedef struct spracingPixelOSDIO_s {
-    IO_t blackPin;
-    IO_t whitePin;
-    IO_t syncInPin;
-    IO_t debug1Pin;
-    IO_t debug2Pin;
-#ifdef DEBUG_BLANKING
-    IO_t blankingDebugPin;
-#endif
-#ifdef DEBUG_GATING
-    IO_t gatingDebugPin;
-#endif
-    IO_t whiteSourceSelectPin;
-    IO_t maskEnablePin;
-} spracingPixelOSDIO_t;
-
-static spracingPixelOSDIO_t spracingPixelOSDIO = {
-    .blackPin               = IO_NONE,
-    .whitePin               = IO_NONE,
-    .syncInPin              = IO_NONE,
-    .debug1Pin              = IO_NONE,
-    .debug2Pin              = IO_NONE,
-#ifdef DEBUG_BLANKING
-    .blankingDebugPin       = IO_NONE,
-#endif
-#ifdef DEBUG_GATING
-    .gatingDebugPin         = IO_NONE,
-#endif
-    .whiteSourceSelectPin   = IO_NONE,
-    .maskEnablePin          = IO_NONE,
-};
-
-#define IO_PIXEL_BLACK_CFG                  IO_CONFIG(GPIO_MODE_OUTPUT_OD, GPIO_SPEED_FREQ_MEDIUM,  GPIO_NOPULL)
-#define IO_PIXEL_WHITE_CFG                  IO_CONFIG(GPIO_MODE_OUTPUT_PP, GPIO_SPEED_FREQ_MEDIUM,  GPIO_NOPULL)
-
-#define IO_PIXEL_MASK_ENABLE_CFG            IO_CONFIG(GPIO_MODE_OUTPUT_PP, GPIO_SPEED_FREQ_MEDIUM,  GPIO_PULLDOWN)
-#define IO_PIXEL_WHITE_SOURCE_SELECT_CFG    IO_CONFIG(GPIO_MODE_OUTPUT_PP, GPIO_SPEED_FREQ_MEDIUM,  GPIO_PULLDOWN)
-
-#define IO_PIXEL_DEBUG_CFG                  IO_CONFIG(GPIO_MODE_OUTPUT_PP, GPIO_SPEED_FREQ_MEDIUM,  GPIO_PULLDOWN)
-
-#define IO_VIDEO_SYNC_IN_CFG                IO_CONFIG(GPIO_MODE_INPUT,     GPIO_SPEED_FREQ_LOW,     GPIO_NOPULL)
 
 TIM_HandleTypeDef htim1;
 TIM_HandleTypeDef htim2;
@@ -1676,50 +1626,6 @@ bool spracingPixelOSDLayerCopy(displayPortLayer_e destLayer, displayPortLayer_e 
 }
 
 //
-// Debug
-//
-
-static inline void pixelDebug1Set(bool state)
-{
-    IOWrite(spracingPixelOSDIO.debug1Pin, state);
-}
-
-static inline void pixelDebug1Low(void)
-{
-    IOLo(spracingPixelOSDIO.debug1Pin);
-}
-
-static inline void pixelDebug1High(void)
-{
-    IOHi(spracingPixelOSDIO.debug1Pin);
-}
-
-static inline void pixelDebug1Toggle(void)
-{
-    IOToggle(spracingPixelOSDIO.debug1Pin);
-}
-
-static inline void pixelDebug2Set(bool state)
-{
-    IOWrite(spracingPixelOSDIO.debug2Pin, state);
-}
-
-static inline void pixelDebug2Low(void)
-{
-    IOLo(spracingPixelOSDIO.debug2Pin);
-}
-
-static inline void pixelDebug2High(void)
-{
-    IOHi(spracingPixelOSDIO.debug2Pin);
-}
-
-static inline void pixelDebug2Toggle(void)
-{
-    IOToggle(spracingPixelOSDIO.debug2Pin);
-}
-
-//
 // Init
 //
 static bool spracingPixelOSDInitialised = false;
@@ -1733,58 +1639,7 @@ bool spracingPixelOSDInit(const struct spracingPixelOSDConfig_s *spracingPixelOS
     UNUSED(spracingPixelOSDConfig);
     UNUSED(vcdProfile);
 
-    spracingPixelOSDIO.blackPin = IOGetByTag(IO_TAG(SPRACING_PIXEL_OSD_BLACK_PIN));
-    IOHi(spracingPixelOSDIO.blackPin);
-    IOInit(spracingPixelOSDIO.blackPin, OWNER_OSD, 0);
-    IOConfigGPIO(spracingPixelOSDIO.blackPin, IO_PIXEL_BLACK_CFG);
-
-#ifdef SPRACING_PIXEL_OSD_MASK_ENABLE_PIN
-    spracingPixelOSDIO.maskEnablePin = IOGetByTag(IO_TAG(SPRACING_PIXEL_OSD_MASK_ENABLE_PIN));
-    IOLo(spracingPixelOSDIO.maskEnablePin); // Low = Mask disabled, High = Mask Enabled.
-    IOInit(spracingPixelOSDIO.maskEnablePin, OWNER_OSD, 0);
-    IOConfigGPIO(spracingPixelOSDIO.maskEnablePin, IO_PIXEL_MASK_ENABLE_CFG);
-#endif
-
-    spracingPixelOSDIO.whitePin = IOGetByTag(IO_TAG(SPRACING_PIXEL_OSD_WHITE_PIN));
-    IOLo(spracingPixelOSDIO.whitePin);
-    IOInit(spracingPixelOSDIO.whitePin, OWNER_OSD, 0);
-    IOConfigGPIO(spracingPixelOSDIO.whitePin, IO_PIXEL_WHITE_CFG);
-
-#ifdef SPRACING_PIXEL_OSD_WHITE_SOURCE_SELECT_PIN
-    spracingPixelOSDIO.whiteSourceSelectPin = IOGetByTag(IO_TAG(SPRACING_PIXEL_OSD_WHITE_SOURCE_SELECT_PIN));
-    IOLo(spracingPixelOSDIO.whiteSourceSelectPin); // Low = Fixed Voltage, High = Linked to DAC1_OUT1 voltage.
-    IOInit(spracingPixelOSDIO.whiteSourceSelectPin, OWNER_OSD, 0);
-    IOConfigGPIO(spracingPixelOSDIO.whiteSourceSelectPin, IO_PIXEL_WHITE_SOURCE_SELECT_CFG);
-#endif
-
-    spracingPixelOSDIO.syncInPin = IOGetByTag(IO_TAG(SPRACING_PIXEL_OSD_SYNC_IN_PIN));
-    IOLo(spracingPixelOSDIO.syncInPin);
-    IOInit(spracingPixelOSDIO.syncInPin, OWNER_OSD, 0);
-    IOConfigGPIO(spracingPixelOSDIO.syncInPin, IO_VIDEO_SYNC_IN_CFG);
-
-#ifdef DEBUG_BLANKING
-    spracingPixelOSDIO.blankingDebugPin = IOGetByTag(IO_TAG(SPRACING_PIXEL_OSD_PIXEL_BLANKING_DEBUG_PIN));
-    IOLo(spracingPixelOSDIO.blankingDebugPin);
-    IOInit(spracingPixelOSDIO.blankingDebugPin, OWNER_OSD, 0);
-    IOConfigGPIO(spracingPixelOSDIO.blankingDebugPin, IO_PIXEL_DEBUG_CFG);
-#endif
-
-#ifdef DEBUG_GATING
-    spracingPixelOSDIO.gatingDebugPin = IOGetByTag(IO_TAG(SPRACING_PIXEL_OSD_PIXEL_GATING_DEBUG_PIN));
-    IOLo(spracingPixelOSDIO.gatingDebugPin);
-    IOInit(spracingPixelOSDIO.gatingDebugPin, OWNER_OSD, 0);
-    IOConfigGPIO(spracingPixelOSDIO.gatingDebugPin, IO_PIXEL_DEBUG_CFG);
-#endif
-
-    spracingPixelOSDIO.debug1Pin = IOGetByTag(IO_TAG(SPRACING_PIXEL_OSD_PIXEL_DEBUG_1_PIN));
-    IOLo(spracingPixelOSDIO.debug1Pin);
-    IOInit(spracingPixelOSDIO.debug1Pin, OWNER_OSD, 0);
-    IOConfigGPIO(spracingPixelOSDIO.debug1Pin, IO_PIXEL_DEBUG_CFG);
-
-    spracingPixelOSDIO.debug2Pin = IOGetByTag(IO_TAG(SPRACING_PIXEL_OSD_PIXEL_DEBUG_2_PIN));
-    IOLo(spracingPixelOSDIO.debug2Pin);
-    IOInit(spracingPixelOSDIO.debug2Pin, OWNER_OSD, 0);
-    IOConfigGPIO(spracingPixelOSDIO.debug2Pin, IO_PIXEL_DEBUG_CFG);
+    spracingPixelOSD_initIO();
 
 
     //

@@ -403,6 +403,7 @@ SRC += \
             drivers/spracingpixelosd/spracing_pixel_osd.c \
             drivers/spracingpixelosd/framebuffer.c \
             drivers/spracingpixelosd/pixelbuffer.c \
+            drivers/spracingpixelosd/io.c \
             drivers/spracingpixelosd/glue.c \
             io/displayport_spracing_pixel_osd.c \
             osd/font_max7456_12x18.c \
