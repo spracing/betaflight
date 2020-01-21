@@ -39,6 +39,7 @@ typedef enum {
 } videoMode_t;
 
 extern volatile videoMode_t detectedVideoMode; // unstable value
+extern volatile bool cameraConnected;
 
 struct vcdProfile_s;
 struct spracingPixelOSDConfig_s;
