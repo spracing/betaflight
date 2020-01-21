@@ -10,16 +10,11 @@
 
 #ifdef USE_SPRACING_PIXEL_OSD
 
-#include "build/debug.h"
-
-#include "common/maths.h"
 #include "common/printf.h"
 
 #include "drivers/dma.h"
 #include "drivers/dma_reqmap.h"
 #include "drivers/nvic.h"
-#include "drivers/io.h"
-#include "drivers/timer.h"
 #include "drivers/time.h"
 
 #include "drivers/display.h"
