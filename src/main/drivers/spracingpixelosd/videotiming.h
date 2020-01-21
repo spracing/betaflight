@@ -3,6 +3,17 @@
 // **GPL** FIXME Some of the time definitions in this file come from TinyOSD which is GPL code, replace prior to release.
 //
 
+//
+// Video Format
+//
+
+#define PAL_LINES 625
+#define NTSC_LINES 525
+
+//
+// Video Timing
+//
+
 #ifdef USE_NTSC
 #define VIDEO_LINE_LEN            63.556  // us
 #define VIDEO_SYNC_SHORT           2.000  // us

@@ -55,4 +55,3 @@ void spracingPixelOSDProcess(timeUs_t currentTimeUs);
 bool spracingPixelOSDLayerSupported(displayPortLayer_e layer);
 bool spracingPixelOSDLayerSelect(displayPortLayer_e layer);
 bool spracingPixelOSDLayerCopy(displayPortLayer_e destLayer, displayPortLayer_e sourceLayer);
-

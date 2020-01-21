@@ -6,6 +6,7 @@
 #include "glue.h"
 #include "videotiming.h"
 #include "spracing_pixel_osd.h"
+#include "spracing_pixel_osd_impl.h"
 
 #include "syncgeneration.h"
 
@@ -13,7 +14,6 @@
 //
 // Sync Generation
 //
-extern TIM_HandleTypeDef htim1;
 
 bool syncDMAActive = false;
 

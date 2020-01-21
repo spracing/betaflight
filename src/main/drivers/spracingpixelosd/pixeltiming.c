@@ -11,12 +11,9 @@
 #include "glue.h"
 
 #include "spracing_pixel_osd.h"
+#include "spracing_pixel_osd_impl.h"
 
 #include "pixeltiming.h"
-
-
-extern TIM_HandleTypeDef htim1;
-extern TIM_HandleTypeDef htim15;
 
 //
 // Pixel Generation

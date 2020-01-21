@@ -25,6 +25,20 @@
 #define TIMER_CLOCKS_PER_US                      (TIMER_CLOCK / 1000000)
 #define _US_TO_CLOCKS(__us)                      ((uint32_t)((__us) * TIMER_CLOCKS_PER_US))
 
+//
+// It takes some time between the comparator being triggered and the IRQ handler beging called.
+// it can be measured by togging a GPIO high/low in the IRQ handler and measuring the time between
+// the input signal and the gpio being toggled.
+// Note: the value varies based on CPU clock-speed and compiler optimisations, i.e. DEBUG build = more time, faster CPU = less time.
+//
+#define VIDEO_COMPARATOR_TO_IRQ_OFFSET 0.4 // us
+
+//
+// Voltage
+//
+
+#define VIDEO_DAC_VCC 3.3
+
 
 //
 // DEBUG
