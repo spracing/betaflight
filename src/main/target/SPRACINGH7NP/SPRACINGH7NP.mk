@@ -5,7 +5,7 @@ EXST = yes
 endif
 
 ifneq ($(EXST),yes)
-TARGET_FLASH   := 1024
+TARGET_FLASH_SIZE := 1024
 LD_SCRIPT       = $(LINKER_DIR)/stm32_flash_h750_1m.ld
 endif
 
