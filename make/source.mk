@@ -403,7 +403,7 @@ SRC += \
             drivers/spracingpixelosd/spracing_pixel_osd.c \
             drivers/spracingpixelosd/framebuffer.c \
             drivers/spracingpixelosd/pixelbuffer.c \
-            drivers/spracingpixelosd/pixeltiming.c \
+            drivers/spracingpixelosd/pixelgeneration.c \
             drivers/spracingpixelosd/syncgeneration.c \
             drivers/spracingpixelosd/syncdetection.c \
             drivers/spracingpixelosd/videoframe.c \

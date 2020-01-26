@@ -15,7 +15,7 @@
 #include "spracing_pixel_osd.h"
 #include "spracing_pixel_osd_impl.h"
 
-#include "pixeltiming.h"
+#include "pixelgeneration.h"
 
 //
 // Pixel Generation

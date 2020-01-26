@@ -71,7 +71,7 @@
 #include "configuration.h"
 #include "framebuffer.h"
 #include "pixelbuffer.h"
-#include "pixeltiming.h"
+#include "pixelgeneration.h"
 #include "videotiming.h"
 #include "videoframe.h"
 #include "syncdetection.h"

@@ -13,7 +13,7 @@
 #include "configuration.h"
 #include "io.h"
 #include "videotiming.h"
-#include "pixeltiming.h"
+#include "pixelgeneration.h"
 #include "pixelbuffer.h"
 
 #include "spracing_pixel_osd.h"
