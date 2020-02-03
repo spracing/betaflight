@@ -34,8 +34,10 @@
 #include "common/maths.h"
 
 #include "config/feature.h"
+#include "config/config_eeprom.h"
 
 #include "drivers/camera_control.h"
+#include "drivers/system.h"
 
 #include "fc/config.h"
 #include "fc/core.h"
@@ -273,6 +275,18 @@ void processRcStickPositions()
 
     if (rcSticks == THR_LO + YAW_LO + PIT_LO + ROL_HI) {
         saveConfigAndNotify();
+    }
+
+
+    if (rcSticks == THR_LO + YAW_HI + PIT_HI + ROL_LO) {
+        configIndex = 0;
+        systemReset();
+        return;
+    }
+
+    if (rcSticks == THR_LO + YAW_HI + PIT_HI + ROL_HI) {
+        configIndex = 1;
+        systemReset();
     }
 
 #ifdef USE_ACC
