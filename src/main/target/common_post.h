@@ -355,10 +355,17 @@ extern uint8_t eepromData[EEPROM_SIZE];
 #ifndef CONFIG_IN_FLASH
 #define CONFIG_IN_FLASH
 #endif
-extern uint8_t __config_start_a;   // configured via linker script when building binaries.
+
+#if defined(USE_CONFIG_SELECTION)
+// start/end addresses configured via linker scripts.
+extern uint8_t __config_start_a;
 extern uint8_t __config_end_a;
-extern uint8_t __config_start_b;   // configured via linker script when building binaries.
+extern uint8_t __config_start_b;
 extern uint8_t __config_end_b;
+#else
+extern uint8_t __config_start;
+extern uint8_t __config_end;
+#endif // USE_CONFIG_SELECTION
 #endif
 
 #if defined(USE_EXST) && !defined(RAMBASED)

@@ -247,6 +247,7 @@ typedef struct configAddresses_s {
     uint8_t *end;
 } configAddresses_t;
 
+#ifdef USE_CONFIG_SELECTION
 static const configAddresses_t configAddressMap[] = {
     {&__config_start_a, &__config_end_a},
     {&__config_start_b, &__config_end_b},
@@ -258,8 +259,22 @@ const configAddresses_t *selectedConfig = &configAddressMap[0];
 
 void selectEEPROM(uint8_t index)
 {
+    if (index >= ARRAYLEN(configAddressMap)) {
+        return;
+    }
+
     selectedConfig = &configAddressMap[index];
 }
+#else
+
+static const configAddresses_t configAddresses = {
+    .start = &__config_start,
+    .end = &__config_end
+};
+
+const configAddresses_t *selectedConfig = &configAddresses;
+
+#endif
 
 void initEEPROM(void)
 {

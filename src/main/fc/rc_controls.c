@@ -278,6 +278,7 @@ void processRcStickPositions()
     }
 
 
+#ifdef USE_CONFIG_SELECTION
     if (rcSticks == THR_LO + YAW_HI + PIT_HI + ROL_LO) {
         configIndex = 0;
         systemReset();
@@ -288,6 +289,7 @@ void processRcStickPositions()
         configIndex = 1;
         systemReset();
     }
+#endif
 
 #ifdef USE_ACC
     if (rcSticks == THR_HI + YAW_LO + PIT_LO + ROL_CE) {

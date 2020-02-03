@@ -15,11 +15,8 @@ ENTRY(Reset_Handler)
 _estack = ORIGIN(STACKRAM) + LENGTH(STACKRAM);    /* end of RAM */
 
 /* Base address where the config is stored. */
-__config_start_a = ORIGIN(FLASH_CONFIG_A);
-__config_end_a = ORIGIN(FLASH_CONFIG_A) + LENGTH(FLASH_CONFIG_A);
-
-__config_start_b = ORIGIN(FLASH_CONFIG_B);
-__config_end_b = ORIGIN(FLASH_CONFIG_B) + LENGTH(FLASH_CONFIG_B);
+__config_start = ORIGIN(FLASH_CONFIG);
+__config_end = ORIGIN(FLASH_CONFIG) + LENGTH(FLASH_CONFIG);
 
 /* Generate a link error if heap and stack don't fit into RAM */
 _Min_Heap_Size = 0;      /* required amount of heap  */

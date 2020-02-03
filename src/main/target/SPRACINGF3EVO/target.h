@@ -45,6 +45,7 @@
 
 #ifdef SPRACINGAIRBIT
 #define BRUSHED_MOTORS
+#define USE_CONFIG_SELECTION
 #endif
 
 

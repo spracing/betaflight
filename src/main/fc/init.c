@@ -380,10 +380,13 @@ void init(void)
 
 #endif // CONFIG_IN_EXTERNAL_FLASH
 
+#ifdef USE_CONFIG_SELECTION
     if (configIndex > 1 || !isMPUSoftReset()) {
         configIndex = 0;
     }
     selectEEPROM(configIndex);
+#endif
+
     initEEPROM();
 
     ensureEEPROMStructureIsValid();
