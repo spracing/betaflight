@@ -252,6 +252,8 @@ static const configAddresses_t configAddressMap[] = {
     {&__config_start_b, &__config_end_b},
 };
 
+PERSISTENT uint8_t configIndex = 0;
+
 const configAddresses_t *selectedConfig = &configAddressMap[0];
 
 void selectEEPROM(uint8_t index)

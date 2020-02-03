@@ -23,6 +23,8 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+extern uint8_t configIndex;
+
 #define EEPROM_CONF_VERSION 172
 
 bool isEEPROMVersionValid(void);

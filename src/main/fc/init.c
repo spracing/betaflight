@@ -380,7 +380,10 @@ void init(void)
 
 #endif // CONFIG_IN_EXTERNAL_FLASH
 
-    selectEEPROM(0);
+    if (configIndex > 1) {
+        configIndex = 0;
+    }
+    selectEEPROM(configIndex);
     initEEPROM();
 
     ensureEEPROMStructureIsValid();

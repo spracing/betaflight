@@ -151,7 +151,7 @@
 #define FAST_RAM
 #endif // USE_FAST_RAM
 
-#if defined(STM32F4) || defined (STM32H7)
+#if defined(STM32F3) || defined(STM32F4) || defined (STM32H7)
 // Data in RAM which is guaranteed to not be reset on hot reboot
 #define PERSISTENT                  __attribute__ ((section(".persistent_data"), aligned(4)))
 #endif
