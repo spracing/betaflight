@@ -242,6 +242,23 @@ void loadEEPROMFromFile(void) {
 }
 #endif
 
+typedef struct configAddresses_s {
+    uint8_t *start;
+    uint8_t *end;
+} configAddresses_t;
+
+static const configAddresses_t configAddressMap[] = {
+    {&__config_start_a, &__config_end_a},
+    {&__config_start_b, &__config_end_b},
+};
+
+const configAddresses_t *selectedConfig = &configAddressMap[0];
+
+void selectEEPROM(uint8_t index)
+{
+    selectedConfig = &configAddressMap[index];
+}
+
 void initEEPROM(void)
 {
     // Verify that this architecture packs as expected.
@@ -271,7 +288,7 @@ void initEEPROM(void)
 
 bool isEEPROMVersionValid(void)
 {
-    const uint8_t *p = &__config_start;
+    const uint8_t *p = selectedConfig->start;
     const configHeader_t *header = (const configHeader_t *)p;
 
     if (header->eepromConfigVersion != EEPROM_CONF_VERSION) {
@@ -284,7 +301,7 @@ bool isEEPROMVersionValid(void)
 // Scan the EEPROM config. Returns true if the config is valid.
 bool isEEPROMStructureValid(void)
 {
-    const uint8_t *p = &__config_start;
+    const uint8_t *p = selectedConfig->start;
     const configHeader_t *header = (const configHeader_t *)p;
 
     if (header->magic_be != 0xBE) {
@@ -302,7 +319,7 @@ bool isEEPROMStructureValid(void)
             // Found the end.  Stop scanning.
             break;
         }
-        if (p + record->size >= &__config_end
+        if (p + record->size >= selectedConfig->end
             || record->size < sizeof(*record)) {
             // Too big or too small.
             return false;
@@ -322,7 +339,7 @@ bool isEEPROMStructureValid(void)
     crc = crc16_ccitt_update(crc, storedCrc, sizeof(*storedCrc));
     p += sizeof(storedCrc);
 
-    eepromConfigSize = p - &__config_start;
+    eepromConfigSize = p - selectedConfig->start;
 
     // CRC has the property that if the CRC itself is included in the calculation the resulting CRC will have constant value
     return crc == CRC_CHECK_VALUE;
@@ -343,7 +360,7 @@ size_t getEEPROMStorageSize(void)
 #ifdef CONFIG_IN_RAM
     return EEPROM_SIZE;
 #else
-    return &__config_end - &__config_start;
+    return selectedConfig->end - selectedConfig->start;
 #endif
 }
 
@@ -352,12 +369,12 @@ size_t getEEPROMStorageSize(void)
 // this function assumes that EEPROM content is valid
 static const configRecord_t *findEEPROM(const pgRegistry_t *reg, configRecordFlags_e classification)
 {
-    const uint8_t *p = &__config_start;
+    const uint8_t *p = selectedConfig->start;
     p += sizeof(configHeader_t);             // skip header
     while (true) {
         const configRecord_t *record = (const configRecord_t *)p;
         if (record->size == 0
-            || p + record->size >= &__config_end
+            || p + record->size >= selectedConfig->end
             || record->size < sizeof(*record))
             break;
         if (pgN(reg) == record->pgn
@@ -398,7 +415,7 @@ static bool writeSettingsToEEPROM(void)
     config_streamer_t streamer;
     config_streamer_init(&streamer);
 
-    config_streamer_start(&streamer, (uintptr_t)&__config_start, &__config_end - &__config_start);
+    config_streamer_start(&streamer, (uintptr_t)selectedConfig->start, selectedConfig->end - selectedConfig->start);
 
     configHeader_t header = {
         .eepromConfigVersion =  EEPROM_CONF_VERSION,

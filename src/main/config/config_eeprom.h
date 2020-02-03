@@ -30,5 +30,7 @@ bool isEEPROMStructureValid(void);
 bool loadEEPROM(void);
 void writeConfigToEEPROM(void);
 
+void selectEEPROM(uint8_t index);
+
 uint16_t getEEPROMConfigSize(void);
 size_t getEEPROMStorageSize(void);
