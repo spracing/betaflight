@@ -129,6 +129,14 @@ SECTIONS
     __bss_end__ = _ebss;
   } >RAM
   
+  .persistent_data (NOLOAD) :
+  {
+    __persistent_data_start__ = .;
+    *(.persistent_data)
+    . = ALIGN(4);
+    __persistent_data_end__ = .;
+  } >RAM
+  
   .fastram_bss (NOLOAD) :
   {
     __fastram_bss_start__ = .;

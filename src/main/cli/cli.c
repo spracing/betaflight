@@ -3531,6 +3531,15 @@ static void cliBootloader(char *cmdline)
     cliRebootEx(rebootTarget);
 }
 
+static void cliSelectConfig(char *cmdline)
+{
+    int val = atoi(cmdline);
+
+    if (val >= 0 && val <= 1) {
+        configIndex = val;
+    }
+}
+
 static void cliExit(char *cmdline)
 {
     UNUSED(cmdline);
@@ -6372,6 +6381,7 @@ const clicmd_t cmdTable[] = {
     CLI_COMMAND_DEF("servo", "configure servos", NULL, cliServo),
 #endif
     CLI_COMMAND_DEF("set", "change setting", "[<name>=<value>]", cliSet),
+    CLI_COMMAND_DEF("selectconfig", "select config", "<index>", cliSelectConfig),
 #if defined(USE_SIGNATURE)
     CLI_COMMAND_DEF("signature", "get / set the board type signature", "[signature]", cliSignature),
 #endif
