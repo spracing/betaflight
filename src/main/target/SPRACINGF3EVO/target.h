@@ -189,6 +189,12 @@
 #define CURRENT_METER_ADC_PIN   PA5
 #endif
 
+#ifdef SPRACINGAIRBIT
+#define USE_PINIO
+#define USE_PINIOBOX
+#endif
+
+
 #if !defined(AIORACERF3) && !defined(SPRACINGAIRBIT)
 #define USE_OSD
 #define USE_OSD_OVER_MSP_DISPLAYPORT
