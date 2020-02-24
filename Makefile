@@ -247,6 +247,7 @@ TEMPORARY_FLAGS :=
 CFLAGS     += $(ARCH_FLAGS) \
               $(addprefix -D,$(OPTIONS)) \
               $(addprefix -I,$(INCLUDE_DIRS)) \
+              -DBETAFLIGHT \
               $(DEBUG_FLAGS) \
               -std=gnu11 \
               -Wall -Wextra -Wunsafe-loop-optimizations -Wdouble-promotion \

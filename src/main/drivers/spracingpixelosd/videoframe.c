@@ -7,11 +7,18 @@
 
 #include "platform.h"
 
+#ifdef BETAFLIGHT
 #include "drivers/io.h"
 #include "drivers/time.h"
+#endif
+#ifdef FLIGHT_ONE
+#endif
+
 
 #include "configuration.h"
 #include "io.h"
+#include "syncgeneration.h"
+#include "videosystem.h"
 #include "videotiming.h"
 #include "pixelgeneration.h"
 #include "pixelbuffer.h"
@@ -91,6 +98,14 @@ uint32_t targetMv = 0;
 //
 // Sync blanking
 //
+
+uint32_t blankingClocks = 0;
+
+void recalculateBlankingTimings(const videoTimings_t *vt)
+{
+  uint32_t blankingNs = vt->lineNs - vt->frontPorchNs - vt->syncHSyncNs - VIDEO_COMPARATOR_TO_IRQ_OFFSET_NS;
+  blankingClocks = _NS_TO_CLOCKS(blankingNs); // ~57250ns for PAL
+}
 
 void disableComparatorBlanking(void)
 {
@@ -191,17 +206,17 @@ void RAW_COMP_TriggerCallback(void)
 
         // VIDEO_SYNC_VSYNC_MIN ((uint32_t)((((64.000 / 2.0) - 4.700) - (((64.000 / 2.0) - 4.700) - (4.700))/2.0) * (80000000 / 1000000)))
         // VIDEO_SYNC_VSYNC_MAX ((uint32_t)((((64.000 / 2.0) - 4.700) + (((64.000 / 2.0) - 2.000) - ((64.000 / 2.0) - 4.700))/2.0) * (80000000 / 1000000)))
-        if (pulseLength > VIDEO_SYNC_VSYNC_MIN && pulseLength < VIDEO_SYNC_VSYNC_MAX) {
-            if (previousPulseLength > VIDEO_SYNC_HSYNC_MIN) {
+        if (pulseLength > videoPulseTimings->highVSync.minClocks && pulseLength < videoPulseTimings->highVSync.maxClocks) {
+            if (previousPulseLength > videoPulseTimings->lowVSync.minClocks) {
 
                 // depending on the video mode a half frame pulse occurs at different times
                 // use the detected mode to figure out if this is the first or second field.
 
-                switch (detectedVideoMode) {
-                case MODE_PAL:
+                switch (detectedVideoSystem) {
+                case VIDEO_SYSTEM_PAL:
                     fieldState.type = FIELD_SECOND; // pulse occurs at end of second field
                     break;
-                case MODE_NTSC:
+                case VIDEO_SYSTEM_NTSC:
                     fieldState.type = FIELD_FIRST;  // pulse occurs at end of first field
                     break;
                 default:
@@ -238,9 +253,9 @@ void RAW_COMP_TriggerCallback(void)
         //
         // check pulse lengths in order from shortest to longest.
         //
-        if (pulseLength < VIDEO_SYNC_SHORT_MIN) {
+        if (pulseLength < videoPulseTimings->lowShort.minClocks) {
             pulseError();
-        } else if (pulseLength < VIDEO_SYNC_SHORT_MAX) {
+        } else if (pulseLength < videoPulseTimings->lowShort.maxClocks) {
 #ifdef DEBUG_SHORT_PULSE
             pixelDebug2Low();
 #endif
@@ -261,15 +276,24 @@ void RAW_COMP_TriggerCallback(void)
                 fieldState.phase = FIELD_POST_EQUALIZING;
                 fieldState.postEqualizingPulses = 1; // this one
 
+                videoSystem_t previousVideoMode = detectedVideoSystem;
                 if (fieldState.syncronizingPulses == 5) { // PAL
-                    detectedVideoMode = MODE_PAL;
+                    detectedVideoSystem = VIDEO_SYSTEM_PAL;
                     firstVisibleLine = 15;
                     lastVisibleLine = (PAL_VISIBLE_LINES - 1);
                 } else if (fieldState.syncronizingPulses == 6) { // NTSC
-                    detectedVideoMode = MODE_NTSC;
+                    detectedVideoSystem = VIDEO_SYSTEM_NTSC;
                     firstVisibleLine = 15;
                     lastVisibleLine = (NTSC_VISIBLE_LINES - 1);
                 }
+
+                if (previousVideoMode != detectedVideoSystem) {
+                    refreshVideoTimings(detectedVideoSystem);
+                    configureSyncGeneration(detectedVideoSystem);
+                    recalculateBlankingTimings(videoTimings);
+                    reconfigureVideoTimers(videoTimings);
+                }
+
 
                 if (fieldState.type == FIELD_ODD) {
                     firstVisibleLine--;
@@ -296,7 +320,7 @@ void RAW_COMP_TriggerCallback(void)
             pixelDebug2High();
 #endif
 
-        } else if (pulseLength < VIDEO_SYNC_HSYNC_MAX) {
+        } else if (pulseLength < videoPulseTimings->lowVSync.maxClocks) {
 
             //
             // Important start DMA *NOW* - then deal with remaining state.
@@ -317,7 +341,7 @@ void RAW_COMP_TriggerCallback(void)
                 LL_TIM_OC_SetMode((&htim1)->Instance, LL_TIM_CHANNEL_CH5, LL_TIM_OCMODE_FORCED_INACTIVE);
                 LL_TIM_OC_SetMode((&htim1)->Instance, LL_TIM_CHANNEL_CH3, LL_TIM_OCMODE_FORCED_INACTIVE);
 
-                setBlankingPeriod(((&htim1)->Instance->CNT + _US_TO_CLOCKS(VIDEO_LINE_LEN - VIDEO_FRONT_PORCH - VIDEO_SYNC_HSYNC - VIDEO_COMPARATOR_TO_IRQ_OFFSET)) % (&htim1)->Instance->ARR);
+                setBlankingPeriod(((&htim1)->Instance->CNT + blankingClocks) % (&htim1)->Instance->ARR);
 
                 LL_TIM_OC_SetMode((&htim1)->Instance, LL_TIM_CHANNEL_CH5, TIM_OCMODE_ACTIVE);
                 LL_TIM_OC_SetMode((&htim1)->Instance, LL_TIM_CHANNEL_CH3, TIM_OCMODE_ACTIVE);
@@ -367,7 +391,7 @@ void RAW_COMP_TriggerCallback(void)
                 pulseError();
             }
 
-        } else if (pulseLength >= VIDEO_SYNC_LO_BROAD_MIN && pulseLength <= VIDEO_SYNC_LO_BROAD_MAX) {
+        } else if (pulseLength >= videoPulseTimings->lowBroad.minClocks && pulseLength <= videoPulseTimings->lowBroad.maxClocks) {
 
             if (frameState.status == COUNTING_PRE_EQUALIZING_PULSES) {
                 frameState.status = COUNTING_SYNCRONIZING_PULSES;

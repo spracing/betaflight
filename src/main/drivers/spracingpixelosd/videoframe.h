@@ -1,3 +1,9 @@
+/*
+ * Author: Dominic Clifton - Sync generation, Sync Detection, Video Overlay and first-cut of working OSD system.
+ */
+
+#pragma once
+
 typedef enum frameStatus_e {
     WAITING_FOR_FIRST_FIELD = 0,
     COUNTING_PRE_EQUALIZING_PULSES,
@@ -18,6 +24,7 @@ typedef struct frameState_s {
 
 void setComparatorTargetMv(uint32_t newTargetMv);
 void disableComparatorBlanking(void);
+void recalculateBlankingTimings(const videoTimings_t *vt);
 
 void videoFrame_reset(void);
 

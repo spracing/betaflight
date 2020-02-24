@@ -327,7 +327,8 @@ void tasksInit(void)
     setTaskEnabled(TASK_OSD, featureIsEnabled(FEATURE_OSD) && osdInitialized());
 #endif
 #ifdef USE_PIXEL_OSD
-    setTaskEnabled(TASK_PIXEL_OSD_VIDEO, spracingPixelOSDIsInitialised());
+    extern bool pixelOSDInitialised;
+    setTaskEnabled(TASK_PIXEL_OSD_VIDEO, pixelOSDInitialised);
 #endif
 
 #ifdef USE_BST

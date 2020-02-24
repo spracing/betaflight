@@ -2,6 +2,6 @@
  * Author: Dominic Clifton - Sync generation, Sync Detection, Video Overlay and first-cut of working OSD system.
  */
 
-#pragma once
+#include "videosystem.h"
 
-void Error_Handler(void);
+volatile videoSystem_t detectedVideoSystem = VIDEO_SYSTEM_UNKNOWN;

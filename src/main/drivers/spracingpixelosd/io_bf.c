@@ -8,8 +8,8 @@
 
 #include "platform.h"
 
+#ifdef BETAFLIGHT
 #include "drivers/io.h"
-
 
 typedef struct spracingPixelOSDIO_s {
     IO_t blackPin;
@@ -156,3 +156,5 @@ void spracingPixelOSD_initIO(void)
     IOInit(spracingPixelOSDIO.debug2Pin, OWNER_OSD, 0);
     IOConfigGPIO(spracingPixelOSDIO.debug2Pin, IO_PIXEL_DEBUG_CFG);
 }
+
+#endif // BETAFLIGHT

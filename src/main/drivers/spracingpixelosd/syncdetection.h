@@ -1,3 +1,8 @@
+/*
+ * Author: Dominic Clifton - Sync generation, Sync Detection, Video Overlay and first-cut of working OSD system.
+ */
+
+#pragma once
 
 typedef struct syncDetectionState_s {
     uint32_t minimumLevelForLineThreshold;
@@ -16,3 +21,6 @@ typedef struct syncDetectionState_s {
 extern syncDetectionState_t syncDetectionState;
 
 void syncDetection_reset(void);
+
+void spracingPixelOSDRefreshState(timeUs_t currentTimeUs);
+void spracingPixelOSDService(timeUs_t currentTimeUs);

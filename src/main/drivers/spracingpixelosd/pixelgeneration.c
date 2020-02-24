@@ -6,7 +6,9 @@
 
 #include "platform.h"
 
+#ifdef BETAFLIGHT
 #include "drivers/io.h"
+#endif
 
 #include "configuration.h"
 #include "io.h"
@@ -39,8 +41,8 @@
 
 #define PIXEL_ADDRESS   ((uint32_t)&(PIXEL_ODR) + (PIXEL_ODR_OFFSET / 8)) // +1 for upper 8 bits
 
-DMA_RAM uint8_t pixelBufferA[PIXEL_BUFFER_SIZE] __attribute__((aligned(32)));
-DMA_RAM uint8_t pixelBufferB[PIXEL_BUFFER_SIZE] __attribute__((aligned(32)));
+PIXEL_BUFFER_DMA_RAM uint8_t pixelBufferA[PIXEL_BUFFER_SIZE] __attribute__((aligned(32)));
+PIXEL_BUFFER_DMA_RAM uint8_t pixelBufferB[PIXEL_BUFFER_SIZE] __attribute__((aligned(32)));
 
 uint8_t *fillPixelBuffer = NULL;
 uint8_t *outputPixelBuffer = NULL;

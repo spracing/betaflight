@@ -1,4 +1,10 @@
+/*
+ * Author: Dominic Clifton - Sync generation, Sync Detection, Video Overlay and first-cut of working OSD system.
+ */
 
+#pragma once
+
+#include "videotiming.h"
 //
 // Implementation only
 //
@@ -16,3 +22,4 @@ void spracingPixelOSDPause(void);
 void spracingPixelOSDRestart(void);
 
 void setVideoSourceVoltageMv(uint32_t whiteMv);
+void reconfigureVideoTimers(const videoTimings_t *vt);

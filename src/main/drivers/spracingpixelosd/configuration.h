@@ -1,3 +1,16 @@
+/*
+ * Author: Dominic Clifton - Sync generation, Sync Detection, Video Overlay and first-cut of working OSD system.
+ */
+
+#pragma once
+
+//
+// Memory
+//
+#ifdef BETAFLIGHT
+#define PIXEL_BUFFER_DMA_RAM DMA_RAM
+#define FRAME_BUFFER_DMA_RAM DMA_RAM
+#endif
 
 //
 // Horizontal
@@ -19,11 +32,12 @@
 // Timing
 //
 
-#define TIMER_BUS_CLOCK   200000000
-#define TIMER_CLOCK  100000000
+#define TIMER_BUS_CLOCK_HZ   200000000
+#define TIMER_CLOCK_HZ  100000000
 
-#define TIMER_CLOCKS_PER_US                      (TIMER_CLOCK / 1000000)
-#define _US_TO_CLOCKS(__us)                      ((uint32_t)((__us) * TIMER_CLOCKS_PER_US))
+#define TIMER_CLOCKS_PER_US                      (TIMER_CLOCK_HZ / 1000000)
+#define _US_TO_CLOCKS(__us)                      ((uint32_t)((uint32_t)(__us) * TIMER_CLOCKS_PER_US))
+#define _NS_TO_CLOCKS(__ns)                      ((uint32_t)(((uint32_t)(__ns) * TIMER_CLOCKS_PER_US) / 1000))
 
 //
 // It takes some time between the comparator being triggered and the IRQ handler beging called.
@@ -31,7 +45,8 @@
 // the input signal and the gpio being toggled.
 // Note: the value varies based on CPU clock-speed and compiler optimisations, i.e. DEBUG build = more time, faster CPU = less time.
 //
-#define VIDEO_COMPARATOR_TO_IRQ_OFFSET 0.4 // us
+#define VIDEO_COMPARATOR_TO_IRQ_OFFSET_US 0.4 // us
+#define VIDEO_COMPARATOR_TO_IRQ_OFFSET_NS ((uint32_t)(VIDEO_COMPARATOR_TO_IRQ_OFFSET_US * 1000)) // ns
 
 //
 // Voltage

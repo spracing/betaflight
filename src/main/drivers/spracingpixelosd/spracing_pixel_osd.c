@@ -54,7 +54,9 @@
 
 #ifdef USE_SPRACING_PIXEL_OSD
 
+#ifdef BETAFLIGHT
 #include "common/printf.h"
+#include "common/time.h"
 
 #include "drivers/dma.h"
 #include "drivers/dma_reqmap.h"
@@ -65,6 +67,8 @@
 
 #include "pg/spracing_pixel_osd.h"
 #include "pg/vcd.h"
+#endif
+
 
 #include "osd/font_max7456_12x18.h"
 
@@ -79,7 +83,7 @@
 #include "io.h"
 #include "glue.h"
 
-#include "drivers/spracingpixelosd/spracing_pixel_osd.h"
+#include "spracing_pixel_osd.h"
 
 // All 8 pins of the OSD GPIO port are reserved for OSD use if any are using GPIO OUTPUT MODE
 // The 8 pins on the OSD GPIO port *can* be used for other functions, just not GPIO OUTPUT, e.g. mixing QUADSPI_BK2 and 4 GPIO pins on GPIOE on the H750 is fine.
@@ -108,7 +112,6 @@
 //
 
 volatile bool cameraConnected = true;
-volatile videoMode_t detectedVideoMode = MODE_UNKNOWN;
 
 //
 // Sync Detection/Timing
@@ -305,6 +308,8 @@ void HAL_TIM_Base_MspInit(TIM_HandleTypeDef* htim_base)
   }
 }
 
+#ifdef BETAFLIGHT
+
 void SYNC_DMA_IRQHandler(dmaChannelDescriptor_t* descriptor)
 {
     UNUSED(descriptor);
@@ -319,6 +324,21 @@ void PIXEL_DMA_IRQHandler(dmaChannelDescriptor_t* descriptor)
     HAL_DMA_IRQHandler(&hdma_tim15_ch1);
 }
 
+#endif
+
+#ifdef FLIGHT_ONE
+
+void SYNC_DMA_IRQHandler(void)
+{
+    HAL_DMA_IRQHandler(&hdma_tim1_up);
+}
+
+void PIXEL_DMA_IRQHandler(void)
+{
+    HAL_DMA_IRQHandler(&hdma_tim15_ch1);
+}
+
+#endif
 static void MX_DMA_Init(void)
 {
 #if 0
@@ -336,9 +356,16 @@ static void MX_DMA_Init(void)
     HAL_NVIC_EnableIRQ(DMA2_Stream7_IRQn);
 #endif
 
+#ifdef FLIGHT_ONE
+    /* DMA controller clock enable */
+    __HAL_RCC_DMA2_CLK_ENABLE(); // already done?
+#endif
+
     //
     // Sync Generation DMA
     //
+
+#ifdef BETAFLIGHT
 
     ioTag_t syncIoTag = timerioTagGetByUsage(TIM_USE_VIDEO_SYNC, 0);
     const timerHardware_t *syncTimerHardware = timerGetByTag(syncIoTag);
@@ -365,9 +392,23 @@ static void MX_DMA_Init(void)
     dmaInit(dmaGetIdentifier(syncDmaRef), OWNER_OSD, 0);
     dmaSetHandler(dmaGetIdentifier(syncDmaRef), SYNC_DMA_IRQHandler, NVIC_PRIO_VIDEO_DMA, syncDmaIndex);
 
+#endif // BETAFLIGHT
+
+#ifdef FLIGHT_ONE
+
+    /* DMA1_Channel5_IRQn interrupt configuration */
+    HAL_NVIC_SetPriority(DMA2_Stream6_IRQn, 0, 0);
+    HAL_NVIC_EnableIRQ(DMA2_Stream6_IRQn);
+
+    // TODO somehow enable the DMA code to use the callback handler SYNC_DMA_IRQHandler
+
+#endif // FLIGHT_ONE
+
     //
     // Pixel Generation DMA
     //
+
+#ifdef BETAFLIGHT
 
     ioTag_t pixelIoTag = timerioTagGetByUsage(TIM_USE_VIDEO_PIXEL, 0);
     const timerHardware_t *pixelTimerHardware = timerGetByTag(pixelIoTag);
@@ -393,6 +434,16 @@ static void MX_DMA_Init(void)
 
     dmaInit(dmaGetIdentifier(pixelDmaRef), OWNER_OSD, 0);
     dmaSetHandler(dmaGetIdentifier(pixelDmaRef), PIXEL_DMA_IRQHandler, NVIC_PRIO_VIDEO_DMA, pixelDmaIndex);
+
+#endif // BETAFLIGHT
+
+#ifdef FLIGHT_ONE
+    /* DMA1_Channel6_IRQn interrupt configuration */
+    HAL_NVIC_SetPriority(DMA2_Stream7_IRQn, 0, 0);
+    HAL_NVIC_EnableIRQ(DMA2_Stream7_IRQn);
+
+    // TODO somehow enable the DMA code to use the callback handler PIXEL_DMA_IRQHandler
+#endif  // FLIGHT_ONE
 }
 
 static void spracingPixelOSDSyncTriggerReset(void)
@@ -418,7 +469,15 @@ static void spracingPixelOSDSyncTriggerReset(void)
     }
 }
 
-static void spracingPixelOSDSyncTimerInit(void)
+void reconfigureVideoTimers(const videoTimings_t *vt)
+{
+  __HAL_TIM_SET_AUTORELOAD(&htim1, _NS_TO_CLOCKS(vt->lineNs) - 1);
+
+  __HAL_TIM_SET_COMPARE(&htim1, SYNC_TIMER_CHANNEL, _NS_TO_CLOCKS(vt->syncHSyncNs));
+  __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_4, _NS_TO_CLOCKS((vt->syncHSyncNs + vt->backPorchNs) + (1000))); // start of picture data + offset
+}
+
+static void spracingPixelOSDSyncTimerInit(const videoTimings_t *vt)
 {
 
   /* USER CODE BEGIN TIM1_Init 0 */
@@ -434,9 +493,9 @@ static void spracingPixelOSDSyncTimerInit(void)
 
   /* USER CODE END TIM1_Init 1 */
   htim1.Instance = TIM1;
-  htim1.Init.Prescaler = (TIMER_BUS_CLOCK / TIMER_CLOCK) - 1;
+  htim1.Init.Prescaler = (TIMER_BUS_CLOCK_HZ / TIMER_CLOCK_HZ) - 1;
   htim1.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim1.Init.Period = _US_TO_CLOCKS(VIDEO_LINE_LEN) - 1;
+  htim1.Init.Period = _NS_TO_CLOCKS(vt->lineNs) - 1;
   htim1.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim1.Init.RepetitionCounter = 0;
   htim1.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
@@ -485,7 +544,7 @@ static void spracingPixelOSDSyncTimerInit(void)
 
   // SYNC output channel
   sConfigOC.OCMode = TIM_OCMODE_PWM1;
-  sConfigOC.Pulse = _US_TO_CLOCKS(4.7);
+  sConfigOC.Pulse = _NS_TO_CLOCKS(vt->syncHSyncNs);
   sConfigOC.OCPolarity = TIM_OCPOLARITY_LOW;
   sConfigOC.OCNPolarity = TIM_OCNPOLARITY_HIGH;
   sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
@@ -496,9 +555,9 @@ static void spracingPixelOSDSyncTimerInit(void)
     Error_Handler();
   }
 
+  // GATING output channel
   sConfigOC.OCMode = TIM_OCMODE_PWM2;
-  // offset can be between 0 and 4, 4 = (VIDEO_LINE_LEN(~64) - hsync(4.7) - back porch(5.8) - front porch (1.5)) - OVERLAY_LENGTH
-  sConfigOC.Pulse = _US_TO_CLOCKS((4.7 + 5.8) + (2.0)); // start of picture data + offset
+  sConfigOC.Pulse = _NS_TO_CLOCKS((vt->syncHSyncNs + vt->backPorchNs) + (1000)); // start of picture data + offset
   sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
   sConfigOC.OCNPolarity = TIM_OCNPOLARITY_HIGH;
   sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
@@ -579,7 +638,7 @@ static void MX_TIM2_Init(void)
 
   /* USER CODE END TIM2_Init 1 */
   htim2.Instance = TIM2;
-  htim2.Init.Prescaler = (TIMER_BUS_CLOCK / TIMER_CLOCK) - 1;
+  htim2.Init.Prescaler = (TIMER_BUS_CLOCK_HZ / TIMER_CLOCK_HZ) - 1;
   htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
   htim2.Init.Period = 0xFFFF;
   htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
@@ -623,7 +682,7 @@ static void spracingPixelOsdPixelTimerInit(void)
   __HAL_RCC_TIM15_CLK_ENABLE();
 
   htim15.Instance = TIM15;
-  htim15.Init.Prescaler = (TIMER_BUS_CLOCK / TIMER_CLOCK) - 1;
+  htim15.Init.Prescaler = (TIMER_BUS_CLOCK_HZ / TIMER_CLOCK_HZ) - 1;
   htim15.Init.CounterMode = TIM_COUNTERMODE_UP;
   htim15.Init.Period = (CLOCKS_PER_PIXEL * RESOLUTION_SCALE) - 1;
   htim15.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
@@ -813,6 +872,7 @@ void setVideoSourceVoltageMv(uint32_t whiteMv)
 //
 // Foreground only for now.
 
+#ifdef BETAFLIGHT
 bool spracingPixelOSDLayerSupported(displayPortLayer_e layer)
 {
     if (layer == DISPLAYPORT_LAYER_FOREGROUND) {
@@ -837,22 +897,32 @@ bool spracingPixelOSDLayerCopy(displayPortLayer_e destLayer, displayPortLayer_e 
     UNUSED(destLayer);
     return false;
 }
+#endif
 
 //
 // Init
 //
-static bool spracingPixelOSDInitialised = false;
 
-bool spracingPixelOSDIsInitialised(void) {
-    return spracingPixelOSDInitialised;
-}
+struct vcdProfile_s;
+struct spracingPixelOSDConfig_s;
 
-bool spracingPixelOSDInit(const struct spracingPixelOSDConfig_s *spracingPixelOSDConfig, const struct vcdProfile_s *vcdProfile)
+bool spracingPixelOSDInitPrivate(const pixelOSDDefaultConfig_t *defaultConfig)
 {
-    UNUSED(spracingPixelOSDConfig);
-    UNUSED(vcdProfile);
-
     spracingPixelOSD_initIO();
+
+    //
+    // Timing
+    //
+
+    videoSystem_t videoSystem = VIDEO_SYSTEM_NTSC;
+
+    if (defaultConfig->flags & PIXELOSD_CF_VIDEO_SYSTEM_PAL) {
+      videoSystem = VIDEO_SYSTEM_PAL;
+    }
+
+    refreshVideoTimings(videoSystem);
+    configureSyncGeneration(videoSystem);
+    recalculateBlankingTimings(videoTimings);
 
 
     //
@@ -912,7 +982,7 @@ bool spracingPixelOSDInit(const struct spracingPixelOSDConfig_s *spracingPixelOS
 
     MX_DMA_Init();
 
-    spracingPixelOSDSyncTimerInit(); // TIM1
+    spracingPixelOSDSyncTimerInit(videoTimings); // TIM1
 
     syncInit();
 
@@ -940,8 +1010,6 @@ bool spracingPixelOSDInit(const struct spracingPixelOSDConfig_s *spracingPixelOS
       Error_Handler();
     }
 
-    spracingPixelOSDInitialised = true;
-
     return true;
 }
 
@@ -960,19 +1028,21 @@ void spracingPixelOSDPause(void)
 
 void spracingPixelOSDRestart(void)
 {
-    spracingPixelOSDSyncTimerInit();
-    pixelGateAndBlankStart();
+  __HAL_TIM_DISABLE(&htim1);
 
-    //spracingPixelOSDSyncTriggerReset();
     setComparatorTargetMv(0);
-    syncInit();
-
     videoFrame_reset();
     syncDetection_reset();
+
+    spracingPixelOSDSyncTimerInit(videoTimings);
+
+    syncInit();
+
+    pixelGateAndBlankStart();
 }
 
 
-void spracingPixelOSDDrawDebugOverlay(void)
+void spracingPixelOSDRenderDebugOverlay(void)
 {
     uint8_t *frameBuffer = frameBuffer_getBuffer(0);
 
@@ -981,18 +1051,18 @@ void spracingPixelOSDDrawDebugOverlay(void)
     uint16_t debugY = FONT_MAX7456_HEIGHT * 13;
 
     static const char *videoModeNames[] = { "????", "PAL", "NTSC" };
-    tfp_sprintf((char *)messageBuffer, "P:%04X V:%04X E:%04X M:%04s",
+    tfp_sprintf((char *)messageBuffer, "E:%04lX PE:%04X VF:%04lX M:%4s",
+            frameState.frameStartCounter - frameState.validFrameCounter,
             frameState.totalPulseErrors,
             frameState.validFrameCounter,
-            frameState.frameStartCounter - frameState.validFrameCounter,
-            videoModeNames[detectedVideoMode]
+            videoModeNames[detectedVideoSystem]
     );
     int messageLength = strlen((char *)messageBuffer);
     frameBuffer_slowWriteString(frameBuffer, (360 - (12 * messageLength)) / 2, debugY, messageBuffer, messageLength);
 
     debugY += FONT_MAX7456_HEIGHT;
 
-    tfp_sprintf((char *)messageBuffer, "L:%03d FL:%03d FH:%03d T:%03d",
+    tfp_sprintf((char *)messageBuffer, "L:%04ld FL:%04ld FH:%04ld T:%04ld",
             syncDetectionState.minimumLevelForLineThreshold,
             syncDetectionState.minimumLevelForValidFrameMv,
             syncDetectionState.maximumLevelForValidFrameMv,
@@ -1001,6 +1071,52 @@ void spracingPixelOSDDrawDebugOverlay(void)
     messageLength = strlen((char *)messageBuffer);
     frameBuffer_slowWriteString(frameBuffer, (360 - (12 * messageLength)) / 2, debugY, messageBuffer, messageLength);
 
+}
+
+//
+// API
+//
+
+const pixelOSDHostAPI_t *hostAPI = NULL;
+pixelOSDState_t spracingPixelOSDState;
+
+void spracingPixelOSDInit(const pixelOSDHostAPI_t *hostAPIFromClient, const pixelOSDDefaultConfig_t *defaultConfig)
+{
+    hostAPI = hostAPIFromClient;
+
+    memset(&spracingPixelOSDState, 0, sizeof(spracingPixelOSDState));
+
+    bool result = spracingPixelOSDInitPrivate(defaultConfig);
+
+    if (result) {
+      spracingPixelOSDState.flags |= PIXELOSD_FLAG_INITIALISED;
+    } else {
+      spracingPixelOSDState.flags |= PIXELOSD_FLAG_ERROR;
+    }
+
+}
+
+pixelOSDState_t *spracingPixelOSDGetState(void)
+{
+    return &spracingPixelOSDState;
+}
+
+const pixelOSDAPIVTable_t spracingPixelOSDAPIVTable = {
+    .init = spracingPixelOSDInit,
+    .getState = spracingPixelOSDGetState,
+    .refreshState = spracingPixelOSDRefreshState,
+    .service = spracingPixelOSDService,
+    .renderDebugOverlay = spracingPixelOSDRenderDebugOverlay
+};
+
+const pixelOSDClientAPI_t spracingPixelOSDClientAPI = {
+    .osdVersion = 1,
+    .apiVersion = 1,
+    .vTable = &spracingPixelOSDAPIVTable,
+};
+
+const pixelOSDClientAPI_t *spracingPixelOSDGetAPI(void) {
+    return &spracingPixelOSDClientAPI;
 }
 
 #endif // USE_SPRACING_PIXEL_OSD

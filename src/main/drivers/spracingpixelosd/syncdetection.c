@@ -7,9 +7,11 @@
 
 #include "platform.h"
 
+#ifdef BETAFLIGHT
 #include "build/debug.h"
 
 #include "common/time.h"
+#endif
 
 #include "configuration.h"
 #include "videotiming.h"
@@ -23,22 +25,22 @@ typedef enum {
     OUTPUT_DISABLED = 0,
     SEARCHING_FOR_LINE_MIN_LEVEL,
     SEARCHING_FOR_FRAME_MIN_LEVEL,
-    SEARCHING_FOR_FRAME_MAX_LEVEL,
+    SEARCHING_FOR_LINE_MAX_LEVEL,
     GENERATING_VIDEO,
-} pixelOsdState_t;
+} pixelOsdVideoState_t;
 
-pixelOsdState_t pixelOsdState = SEARCHING_FOR_LINE_MIN_LEVEL;
+pixelOsdVideoState_t pixelOsdVideoState = SEARCHING_FOR_LINE_MIN_LEVEL;
 
 #ifdef DEBUG_OSD_EVENTS
 typedef struct eventLogItem_s {
     timeUs_t us;
-    pixelOsdState_t state;
+    pixelOsdVideoState_t state;
 } eventLogItem_t;
 
 eventLogItem_t eventLog[256] = {0};
 unsigned int eventLogIndex = 0;
 
-void logEvent(timeUs_t us, pixelOsdState_t state)
+void logEvent(timeUs_t us, pixelOsdVideoState_t state)
 {
     eventLogIndex++;
     if (eventLogIndex >= ARRAYLEN(eventLog)) {
@@ -59,36 +61,59 @@ void logEvent(timeUs_t us, pixelOsdState_t state)
 #define MAXIMIM_LINE_LEVEL_DIFFERENCE_MV 300
 
 
+extern pixelOSDState_t spracingPixelOSDState;
+extern volatile bool frameStartFlag;
+
 uint32_t pulseErrorsPerSecond = 0;
 uint32_t framesPerSecond = 0;
 
 syncDetectionState_t syncDetectionState = { 0 };
 static uint32_t nextEventAt = 0;
+static timeUs_t previousServiceAt = 0;
 
 void syncDetection_reset(void)
 {
     memset(&syncDetectionState, 0x00, sizeof(syncDetectionState));
 }
 
-bool spracingPixelOSDShouldProcessNow(timeUs_t currentTimeUs)
+#define DELAY_60_HZ (1000000 / 60)
+
+void spracingPixelOSDRefreshState(timeUs_t currentTimeUs)
 {
+    timeDelta_t serviceDeltaUs = currentTimeUs - previousServiceAt;
+
+    bool deltaTooLong = serviceDeltaUs > DELAY_60_HZ; // FIXME use current video mode, (50/60hz)
     bool handleEventNow = cmp32(currentTimeUs, nextEventAt) > 0;
-    return handleEventNow;
+
+    spracingPixelOSDState.flags = 0;
+
+    if (deltaTooLong || handleEventNow) {
+      spracingPixelOSDState.flags |= PIXELOSD_FLAG_SERVICE_REQUIRED;
+    }
+
+    if (frameStartFlag) {
+      spracingPixelOSDState.flags |= PIXELOSD_FLAG_FRAME_START;
+
+      // the frameStateFlag can be used to determine if the client is handling the frame, i.e. by calling this method.
+      // a future videoframe ISR will set the flag.
+      frameStartFlag = false;
+    }
 }
 
-void spracingPixelOSDProcess(timeUs_t currentTimeUs)
+void spracingPixelOSDService(timeUs_t currentTimeUs)
 {
+
     const uint16_t requiredLines = 100; // ~64us * 100 = 6.4ms
 
-    const uint32_t lineCounterDelayUs = (VIDEO_LINE_LEN) * (requiredLines);
-    const uint32_t minimumFrameDelayUs = (VIDEO_LINE_LEN) * (PAL_LINES + 10);
+    const uint32_t lineCounterDelayUs = (videoTimings->lineNs / 1000) * (requiredLines);
+    const uint32_t minimumFrameDelayUs = (videoTimings->lineNs / 1000) * (videoTimings->lineCount + 10);
 
     DEBUG_SET(DEBUG_SPRACING_PIXEL_OSD, 0, frameState.validFrameCounter);
     DEBUG_SET(DEBUG_SPRACING_PIXEL_OSD, 0, frameState.totalPulseErrors);
 
     static uint8_t syncDetectionFailureCount = 0;
 
-    switch(pixelOsdState) {
+    switch(pixelOsdVideoState) {
         case OUTPUT_DISABLED:
         {
             if (nextEventAt == 0) {
@@ -112,16 +137,16 @@ void spracingPixelOSDProcess(timeUs_t currentTimeUs)
 
                     syncDetectionFailureCount = 0;
 
-                    pixelOsdState = SEARCHING_FOR_LINE_MIN_LEVEL;
+                    pixelOsdVideoState = SEARCHING_FOR_LINE_MIN_LEVEL;
                     nextEventAt = 0;
                 }
             }
 
             bool handleEventNow = cmp32(currentTimeUs, nextEventAt) > 0;
             if (handleEventNow) {
-                logEvent(currentTimeUs, pixelOsdState);
+                logEvent(currentTimeUs, pixelOsdVideoState);
 
-                pixelOsdState = SEARCHING_FOR_LINE_MIN_LEVEL;
+                pixelOsdVideoState = SEARCHING_FOR_LINE_MIN_LEVEL;
                 nextEventAt = 0;
             }
             break;
@@ -152,7 +177,7 @@ void spracingPixelOSDProcess(timeUs_t currentTimeUs)
             bool handleEventNow = cmp32(currentTimeUs, nextEventAt) > 0;
 
             if (handleEventNow) {
-                logEvent(currentTimeUs, pixelOsdState);
+                logEvent(currentTimeUs, pixelOsdVideoState);
 
                 uint32_t linesSinceStart = frameState.lineCounter - syncDetectionState.lineCounterAtStart;
 
@@ -168,11 +193,11 @@ void spracingPixelOSDProcess(timeUs_t currentTimeUs)
                         nextEventAt = currentTimeUs + lineCounterDelayUs;
                         syncDetectionState.lineCounterAtStart = frameState.lineCounter;
                     } else {
-                        pixelOsdState = OUTPUT_DISABLED;
+                        pixelOsdVideoState = OUTPUT_DISABLED;
                         nextEventAt = 0;
                     }
                 } else {
-                    pixelOsdState = SEARCHING_FOR_FRAME_MIN_LEVEL;
+                    pixelOsdVideoState = SEARCHING_FOR_FRAME_MIN_LEVEL;
                     nextEventAt = 0;
                 }
 
@@ -190,7 +215,7 @@ void spracingPixelOSDProcess(timeUs_t currentTimeUs)
             bool handleEventNow = cmp32(currentTimeUs, nextEventAt) > 0;
 
             if (handleEventNow) {
-                logEvent(currentTimeUs, pixelOsdState);
+                logEvent(currentTimeUs, pixelOsdVideoState);
 
                 if (frameState.validFrameCounter == 0) {
 
@@ -201,48 +226,61 @@ void spracingPixelOSDProcess(timeUs_t currentTimeUs)
                         setComparatorTargetMv(syncDetectionState.minimumLevelForValidFrameMv);
                         nextEventAt = currentTimeUs + minimumFrameDelayUs;
                     } else {
-                        pixelOsdState = OUTPUT_DISABLED;
+                        pixelOsdVideoState = OUTPUT_DISABLED;
                         nextEventAt = 0;
                     }
 
                 } else {
-                    pixelOsdState = SEARCHING_FOR_FRAME_MAX_LEVEL;
+                    pixelOsdVideoState = SEARCHING_FOR_LINE_MAX_LEVEL;
                     nextEventAt = 0;
                 }
             }
             break;
         }
-        case SEARCHING_FOR_FRAME_MAX_LEVEL:
+        case SEARCHING_FOR_LINE_MAX_LEVEL:
         {
-            static uint32_t validFrameCounterAtStart;
+            static uint32_t lineCounterAtStart;
 
             if (nextEventAt == 0) {
                 // state transition
-                validFrameCounterAtStart = frameState.validFrameCounter;
                 syncDetectionState.maximumLevelForValidFrameMv = syncDetectionState.minimumLevelForValidFrameMv + 5;
                 setComparatorTargetMv(syncDetectionState.maximumLevelForValidFrameMv);
-                nextEventAt = currentTimeUs + minimumFrameDelayUs;
+
+                nextEventAt = currentTimeUs + lineCounterDelayUs;
+                lineCounterAtStart = frameState.lineCounter; // store the line counter as late as possible, so that less ISR's occur between now and the next event
             }
+
             bool handleEventNow = cmp32(currentTimeUs, nextEventAt) > 0;
 
             if (handleEventNow) {
-                logEvent(currentTimeUs, pixelOsdState);
 
-                int32_t framesSinceStart = frameState.validFrameCounter - validFrameCounterAtStart;
+                // calculate lines seen NOW, since the lineCounter will change via the ISR.
+                int32_t linesSeen = frameState.lineCounter - lineCounterAtStart;
+
+                logEvent(currentTimeUs, pixelOsdVideoState);
+
+#if 0 // XXX
+                int32_t timeDeltaUs = cmp32(currentTimeUs, nextEventAt);
+                int32_t maximumLines = timeDeltaUs / (videoTimings->lineNs / 1000);
+                // in practice, if this method isn't scheduled exactly on time, this doesn't work; linesSeen is frequently more than maximumLines.
+                // suspect this code would need to move into the ISR itself for accuracy if the exact amount of lines seen is needed.
+#endif
 
                 bool levelOk = false;
 
-                if (framesSinceStart > 0) {
-                    // still getting valid frames, increase targetMv
-                    uint32_t minMaxDifference = syncDetectionState.maximumLevelForValidFrameMv - syncDetectionState.minimumLevelForValidFrameMv;
+                int8_t possibleSyncPulseCount = detectedVideoSystem == VIDEO_SYSTEM_NTSC ? VIDEO_NTSC_TOTAL_HSYNC_PULSES : VIDEO_PAL_TOTAL_HSYNC_PULSES;
 
-                    if (syncDetectionState.minimumLevelForValidFrameMv < MAXIMIM_FRAME_LEVEL_THRESHOLD_MV && minMaxDifference < MAXIMIM_FRAME_LEVEL_DIFFERENCE_MV) {
-                        syncDetectionState.maximumLevelForValidFrameMv += 5;
+                if (linesSeen > (requiredLines - possibleSyncPulseCount)) {
+                    // still getting valid frames, increase targetMv
+                  syncDetectionState.minMaxDifference = syncDetectionState.maximumLevelForValidFrameMv - syncDetectionState.minimumLevelForValidFrameMv;
+
+                    if (syncDetectionState.minimumLevelForValidFrameMv < MAXIMIM_FRAME_LEVEL_THRESHOLD_MV && syncDetectionState.minMaxDifference < MAXIMIM_FRAME_LEVEL_DIFFERENCE_MV) {
+                        syncDetectionState.maximumLevelForValidFrameMv += 10;
                         setComparatorTargetMv(syncDetectionState.maximumLevelForValidFrameMv);
 
                         // start again using current frame counter.
-                        validFrameCounterAtStart = frameState.validFrameCounter;
-                        nextEventAt = currentTimeUs + minimumFrameDelayUs;
+                        lineCounterAtStart = frameState.lineCounter;
+                        nextEventAt = currentTimeUs + lineCounterDelayUs;
                     } else {
                         // use the current level, since we reached the upper threshold and we are still getting valid frames.
                         levelOk = true;
@@ -261,7 +299,7 @@ void spracingPixelOSDProcess(timeUs_t currentTimeUs)
 
                     setVideoSourceVoltageMv(syncDetectionState.syncThresholdMv + 1700);
 
-                    pixelOsdState = GENERATING_VIDEO;
+                    pixelOsdVideoState = GENERATING_VIDEO;
 
                     syncDetectionState.syncCompletedAt = currentTimeUs;
                     syncDetectionState.syncDuration = syncDetectionState.syncCompletedAt - syncDetectionState.syncStartedAt;
@@ -292,7 +330,7 @@ void spracingPixelOSDProcess(timeUs_t currentTimeUs)
             bool handleEventNow = cmp32(currentTimeUs, nextEventAt) > 0;
 
             if (handleEventNow) {
-                logEvent(currentTimeUs, pixelOsdState);
+                logEvent(currentTimeUs, pixelOsdVideoState);
 
                 if (errorDetectionEnabled) {
 
@@ -332,7 +370,7 @@ void spracingPixelOSDProcess(timeUs_t currentTimeUs)
 
                         spracingPixelOSDRestart();
 
-                        pixelOsdState = SEARCHING_FOR_LINE_MIN_LEVEL;
+                        pixelOsdVideoState = SEARCHING_FOR_LINE_MIN_LEVEL;
                         nextEventAt = 0;
                         break;
                     }
@@ -390,4 +428,6 @@ void spracingPixelOSDProcess(timeUs_t currentTimeUs)
     }
 
 #endif
+
+    previousServiceAt = currentTimeUs;
 }

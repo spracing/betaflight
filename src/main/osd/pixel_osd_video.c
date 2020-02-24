@@ -40,37 +40,40 @@
 
 #include "pixel_osd_video.h"
 
-bool osdServiceFlag = false;
+//
+// Client code
+//
 
-#define DELAY_60_HZ (1000000 / 60)
+extern const pixelOSDClientAPI_t *pixelOSDClientAPI;
+extern pixelOSDState_t *pixelOSDState;
 
 FAST_CODE bool taskPixelOSDVideoCheck(timeUs_t currentTimeUs, timeDelta_t currentDeltaTimeUs)
 {
     UNUSED(currentTimeUs);
     UNUSED(currentDeltaTimeUs);
 
-    osdServiceFlag = currentDeltaTimeUs > DELAY_60_HZ || spracingPixelOSDShouldProcessNow(currentTimeUs);
+    pixelOSDClientAPI->vTable->refreshState(currentTimeUs);
 
-    return (frameStartFlag || osdServiceFlag);
+    bool isReady = (pixelOSDState->flags & PIXELOSD_FLAG_FRAME_START) || (pixelOSDState->flags & PIXELOSD_FLAG_SERVICE_REQUIRED);
+
+    return isReady;
 }
 
 FAST_CODE void taskPixelOSDVideo(timeUs_t currentTimeUs)
 {
     // Handle the more frequent operations first
 
-    // FIXME task should be disabled when SPRacingPixelOSD is not in use.
+    if (pixelOSDState->flags & PIXELOSD_FLAG_FRAME_START) {
 
-    if (frameStartFlag) {
-        frameStartFlag = false;
-        spracingPixelOSDDrawDebugOverlay();
+      //
+      // Do other client drawing stuff here ?
+      //
 
-        //
-        // TODO sync Betaflight OSD code to frameFlag/vsync
-        //
+      pixelOSDClientAPI->vTable->renderDebugOverlay();
     }
 
-    if (osdServiceFlag) {
-        spracingPixelOSDProcess(currentTimeUs);
+    if (pixelOSDState->flags & PIXELOSD_FLAG_SERVICE_REQUIRED) {
+      pixelOSDClientAPI->vTable->service(currentTimeUs);
     }
 }
 

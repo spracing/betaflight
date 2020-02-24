@@ -36,6 +36,7 @@
 #include "drivers/spracingpixelosd/spracing_pixel_osd.h"
 #include "drivers/spracingpixelosd/framebuffer.h"
 #include "drivers/osd.h"
+#include "drivers/time.h"
 
 #include "config/config.h"
 
@@ -213,13 +214,34 @@ static const displayPortVTable_t spracingPixelOSDVTable = {
     .writeFontCharacter = writeFontCharacter,
 };
 
+bool pixelOSDInitialised = false;
+const pixelOSDClientAPI_t *pixelOSDClientAPI;
+pixelOSDState_t *pixelOSDState;
+
+const pixelOSDHostAPI_t pixelOSDHostAPI = {
+    .micros = micros
+};
+
 displayPort_t *spracingPixelOSDDisplayPortInit(const vcdProfile_t *vcdProfile)
 {
-    if (
-        !spracingPixelOSDInit(spracingPixelOSDConfig(), vcdProfile)
-    ) {
+    pixelOSDClientAPI = spracingPixelOSDGetAPI();
+
+    if (pixelOSDClientAPI->apiVersion != 1) {
         return NULL;
     }
+
+    pixelOSDDefaultConfig_t defaultConfig = {
+        .flags = (vcdProfile->video_system == VIDEO_SYSTEM_PAL ? PIXELOSD_CF_VIDEO_SYSTEM_PAL : PIXELOSD_CF_VIDEO_SYSTEM_NTSC),
+    };
+
+    pixelOSDClientAPI->vTable->init(&pixelOSDHostAPI, &defaultConfig);
+    pixelOSDState = pixelOSDClientAPI->vTable->getState();
+    if ((pixelOSDState->flags & PIXELOSD_FLAG_INITIALISED) == 0) {
+        return NULL;
+    }
+
+    pixelOSDInitialised = true;
+
 
     displayInit(&spracingPixelOSDDisplayPort, &spracingPixelOSDVTable);
 

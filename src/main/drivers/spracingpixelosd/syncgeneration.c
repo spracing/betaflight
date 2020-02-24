@@ -42,28 +42,58 @@ typedef struct syncBufferItem_s {
 #define SYNC_BUST_TRANSFER_COUNT TIM_DMABURSTLENGTH_3TRANSFERS
 #endif
 
-#define HALF_LINE(period, repetitions, pulse) _US_TO_CLOCKS(period / 2) - 1, (repetitions) - 1, SYNC_CC(_US_TO_CLOCKS(pulse) - 1)
-#define FULL_LINE(period, repetitions, pulse) _US_TO_CLOCKS(period) - 1, (repetitions) - 1, SYNC_CC(_US_TO_CLOCKS(pulse) - 1)
+#define HALF_LINE(period, repetitions, pulse) _NS_TO_CLOCKS(period / 2) - 1, (repetitions) - 1, SYNC_CC(_NS_TO_CLOCKS(pulse) - 1)
+#define FULL_LINE(period, repetitions, pulse) _NS_TO_CLOCKS(period) - 1, (repetitions) - 1, SYNC_CC(_NS_TO_CLOCKS(pulse) - 1)
 
 const syncBufferItem_t palSyncItems[] = {
-        { HALF_LINE(VIDEO_LINE_LEN,  5,   VIDEO_SYNC_LO_BROAD)},  // start of first field
-        { HALF_LINE(VIDEO_LINE_LEN,  5,   VIDEO_SYNC_SHORT)},
-        { FULL_LINE(VIDEO_LINE_LEN,  153, VIDEO_SYNC_HSYNC)},     // start of picture data
-        { FULL_LINE(VIDEO_LINE_LEN,  152, VIDEO_SYNC_HSYNC)},
-        { HALF_LINE(VIDEO_LINE_LEN,  5,   VIDEO_SYNC_SHORT)},
-        { HALF_LINE(VIDEO_LINE_LEN,  5,   VIDEO_SYNC_LO_BROAD)},  // start of second field
-        { HALF_LINE(VIDEO_LINE_LEN,  4,   VIDEO_SYNC_SHORT)},
-        { FULL_LINE(VIDEO_LINE_LEN,  1,   VIDEO_SYNC_SHORT)},     // second half of a line
-        { FULL_LINE(VIDEO_LINE_LEN,  152, VIDEO_SYNC_HSYNC)},     // start of picture data
-        { FULL_LINE(VIDEO_LINE_LEN,  152, VIDEO_SYNC_HSYNC)},
-        { HALF_LINE(VIDEO_LINE_LEN,  1,   VIDEO_SYNC_HSYNC)},     // first half of a line/frame
-        { HALF_LINE(VIDEO_LINE_LEN,  5,   VIDEO_SYNC_SHORT)},
-        // 625 lines (2.5+2.5+153+152+2.5+2.5+2+1+152+152+.5+2.5)
+    { HALF_LINE(VIDEO_PAL_LINE_LEN,  5,   VIDEO_PAL_SYNC_LO_BROAD)},  // start of first field
+    { HALF_LINE(VIDEO_PAL_LINE_LEN,  5,   VIDEO_PAL_SYNC_SHORT)},
+    { FULL_LINE(VIDEO_PAL_LINE_LEN,  153, VIDEO_PAL_SYNC_HSYNC)},     // start of picture data
+    { FULL_LINE(VIDEO_PAL_LINE_LEN,  152, VIDEO_PAL_SYNC_HSYNC)},
+    { HALF_LINE(VIDEO_PAL_LINE_LEN,  5,   VIDEO_PAL_SYNC_SHORT)},
+    { HALF_LINE(VIDEO_PAL_LINE_LEN,  5,   VIDEO_PAL_SYNC_LO_BROAD)},  // start of second field
+    { HALF_LINE(VIDEO_PAL_LINE_LEN,  4,   VIDEO_PAL_SYNC_SHORT)},
+    { FULL_LINE(VIDEO_PAL_LINE_LEN,  1,   VIDEO_PAL_SYNC_SHORT)},     // second half of a line
+    { FULL_LINE(VIDEO_PAL_LINE_LEN,  152, VIDEO_PAL_SYNC_HSYNC)},     // start of picture data
+    { FULL_LINE(VIDEO_PAL_LINE_LEN,  152, VIDEO_PAL_SYNC_HSYNC)},
+    { HALF_LINE(VIDEO_PAL_LINE_LEN,  1,   VIDEO_PAL_SYNC_HSYNC)},     // first half of a line/frame
+    { HALF_LINE(VIDEO_PAL_LINE_LEN,  5,   VIDEO_PAL_SYNC_SHORT)},
+    // 625 lines (2.5+2.5+153+152+2.5+2.5+2+1+152+152+.5+2.5)
+};
+
+const syncBufferItem_t ntscSyncItems[] = {
+    { HALF_LINE(VIDEO_NTSC_LINE_LEN,  6,   VIDEO_NTSC_SYNC_LO_BROAD)},  // start of first field
+    { HALF_LINE(VIDEO_NTSC_LINE_LEN,  6,   VIDEO_NTSC_SYNC_SHORT)},
+    { FULL_LINE(VIDEO_NTSC_LINE_LEN,  127, VIDEO_NTSC_SYNC_HSYNC)},     // start of picture data
+    { FULL_LINE(VIDEO_NTSC_LINE_LEN,  127, VIDEO_NTSC_SYNC_HSYNC)},
+    { HALF_LINE(VIDEO_NTSC_LINE_LEN,  1,   VIDEO_NTSC_SYNC_HSYNC)},     // first half of a line/frame
+    { HALF_LINE(VIDEO_NTSC_LINE_LEN,  6,   VIDEO_NTSC_SYNC_SHORT)},
+    { HALF_LINE(VIDEO_NTSC_LINE_LEN,  6,   VIDEO_NTSC_SYNC_LO_BROAD)},  // start of second field
+    { HALF_LINE(VIDEO_NTSC_LINE_LEN,  5,   VIDEO_NTSC_SYNC_SHORT)},
+    { FULL_LINE(VIDEO_NTSC_LINE_LEN,  1,   VIDEO_NTSC_SYNC_SHORT)},     // second half of a line
+    { FULL_LINE(VIDEO_NTSC_LINE_LEN,  126, VIDEO_NTSC_SYNC_HSYNC)},     // start of picture data
+    { FULL_LINE(VIDEO_NTSC_LINE_LEN,  127, VIDEO_NTSC_SYNC_HSYNC)},
+    { HALF_LINE(VIDEO_NTSC_LINE_LEN,  6,   VIDEO_NTSC_SYNC_SHORT)},
+    // 525 lines (3+3+127+127+.5+3+3+2.5+1+127+127+3)
 };
 
 #undef SYNC_CC
 #undef HALF_LINE
 #undef FULL_LINE
+
+const  syncBufferItem_t *videoSyncItems = ntscSyncItems;
+uint16_t videoSyncItemsSize = sizeof(ntscSyncItems);
+
+void configureSyncGeneration(videoSystem_t videoSystem)
+{
+  if (videoSystem == VIDEO_SYSTEM_PAL) {
+    videoSyncItems = palSyncItems;
+    videoSyncItemsSize = sizeof(palSyncItems);
+  } else {
+    videoSyncItems = ntscSyncItems;
+    videoSyncItemsSize = sizeof(ntscSyncItems);
+  }
+}
 
 void syncStartPWM(void)
 {
@@ -97,9 +127,9 @@ void syncStartDMA(void)
         &htim1,
         TIM_DMABASE_ARR,
         TIM_DMA_UPDATE,
-        (uint32_t *)palSyncItems,
+        (uint32_t *)videoSyncItems,
         SYNC_BUST_TRANSFER_COUNT,
-        sizeof(palSyncItems) / 2 // 2 because each item is uint16_t, not uint32_t?
+        videoSyncItemsSize / 2 // 2 because each item is uint16_t, not uint32_t?
     );
 
     syncDMAActive = true;

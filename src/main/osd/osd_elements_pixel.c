@@ -1,3 +1,5 @@
+#include "stdbool.h"
+
 #include "platform.h"
 
 #include "common/maths.h"

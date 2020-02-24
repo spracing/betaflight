@@ -4,7 +4,9 @@
 
 #include "platform.h"
 
+#ifdef BETAFLIGHT
 #include "common/maths.h"
+#endif
 
 #include "osd/font_max7456_12x18.h"
 
@@ -28,7 +30,7 @@
 
 #define FRAME_BUFFER_SIZE (FRAME_BUFFER_LINE_SIZE * PAL_VISIBLE_LINES)
 
-DMA_RAM uint8_t frameBuffers[2][FRAME_BUFFER_SIZE] __attribute__((aligned(32)));
+FRAME_BUFFER_DMA_RAM uint8_t frameBuffers[2][FRAME_BUFFER_SIZE] __attribute__((aligned(32)));
 
 //
 // Frame Buffer API
@@ -40,7 +42,7 @@ uint8_t *frameBuffer_getBuffer(uint8_t index)
     return frameBuffer;
 }
 
-DMA_RAM uint32_t fillColor __attribute__((aligned(32)));
+FRAME_BUFFER_DMA_RAM uint32_t fillColor __attribute__((aligned(32)));
 static MDMA_HandleTypeDef     frameBuffer_MDMA_Handle_Erase = { 0 };
 
 void frameBuffer_eraseInit(void)
@@ -295,8 +297,11 @@ void frameBuffer_slowWriteString(uint8_t *frameBuffer, uint16_t x, uint16_t y, c
 #else
         uint8_t c = message[mi];
 #endif
+        if (c) {
+          // only render non-null characters, i.e skip nulls or characters without a mapping.
 
-        frameBuffer_slowWriteCharacter(frameBuffer, fx, y, c);
-        fx+= 12; // font width
+          frameBuffer_slowWriteCharacter(frameBuffer, fx, y, c);
+        }
+        fx+= FONT_MAX7456_WIDTH;
     }
 }

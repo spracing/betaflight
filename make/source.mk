@@ -407,7 +407,9 @@ SRC += \
             drivers/spracingpixelosd/syncgeneration.c \
             drivers/spracingpixelosd/syncdetection.c \
             drivers/spracingpixelosd/videoframe.c \
-            drivers/spracingpixelosd/io.c \
+            drivers/spracingpixelosd/videotiming.c \
+            drivers/spracingpixelosd/videosystem.c \
+            drivers/spracingpixelosd/io_bf.c \
             drivers/spracingpixelosd/glue.c \
             io/displayport_spracing_pixel_osd.c \
             osd/font_max7456_12x18.c \

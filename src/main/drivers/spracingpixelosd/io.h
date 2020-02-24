@@ -1,21 +1,10 @@
+/*
+ * Author: Dominic Clifton - Sync generation, Sync Detection, Video Overlay and first-cut of working OSD system.
+ */
+
+#pragma once
 
 #include "configuration.h"
-
-typedef struct spracingPixelOSDIO_s {
-    IO_t blackPin;
-    IO_t whitePin;
-    IO_t syncInPin;
-    IO_t debug1Pin;
-    IO_t debug2Pin;
-#ifdef DEBUG_BLANKING
-    IO_t blankingDebugPin;
-#endif
-#ifdef DEBUG_GATING
-    IO_t gatingDebugPin;
-#endif
-    IO_t whiteSourceSelectPin;
-    IO_t maskEnablePin;
-} spracingPixelOSDIO_t;
 
 void spracingPixelOSD_initIO(void);
 
