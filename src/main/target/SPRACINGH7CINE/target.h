@@ -23,14 +23,20 @@
 #define TARGET_BOARD_IDENTIFIER "SP7C"
 #define USBD_PRODUCT_STRING "SPRacingH7CINE"
 
-#define SPRACINGH7CINE_REV 2 // REV B
+#define SPRACINGH7CINE_REV 3 // REV C
+//#define SPRACINGH7CINE_REV 2 // REV B
+//#define SPRACINGH7CINE_REV 1 // REV A
 #ifndef SPRACINGH7CINE_REV
-#define SPRACINGH7CINE_REV 1 // REV A
+#define SPRACINGH7CINE_REV 3 // REV C
 #endif
 
 #define USE_TARGET_CONFIG
 
+#if (SPRACINGH7CINE_REV <= 2) // Rev A & B
 #define LED0_PIN                PE3
+#elif (SPRACINGH7CINE_REV == 3) // Rev {
+#define LED0_PIN                PE4
+#endif
 
 #define USE_BEEPER
 #define BEEPER_PIN              PD7
@@ -109,19 +115,28 @@
 
 #define USE_SPI
 
-#if (SPRACINGH7CINE_REV <= 1)
+#if (SPRACINGH7CINE_REV == 1)
 // SPI2 is NC.
 #define USE_SPI_DEVICE_2
 #define SPI2_SCK_PIN            PD3
 #define SPI2_MISO_PIN           PC2
 #define SPI2_MOSI_PIN           PC3
 #define SPI2_NSS_PIN            PB12
-#else
+#elif (SPRACINGH7CINE_REV == 2)
+// SPI2 unavailable
 #define SPI2_SCK_PIN            NONE
 #define SPI2_MISO_PIN           NONE
 #define SPI2_MOSI_PIN           NONE
 #define SPI2_NSS_PIN            NONE
+#elif (SPRACINGH7CINE_REV == 3)
+// SPI2 is NC
+#define USE_SPI_DEVICE_2
+#define SPI2_SCK_PIN            PD3
+#define SPI2_MISO_PIN           PC1
+#define SPI2_MOSI_PIN           PC2
+#define SPI2_NSS_PIN            PB12
 #endif
+
 // SPI3 for Gyro
 #define USE_SPI_DEVICE_3
 #define SPI3_SCK_PIN            PB3
@@ -140,6 +155,7 @@
 
 #define USE_BARO
 #define USE_BARO_BMP388
+#define BARO_EXTI_PIN           PC13 // NOTE Unused.
 
 #define USE_GYRO
 #define USE_GYRO_SPI_MPU6500
@@ -218,6 +234,7 @@
 #define USE_ADC
 #define USE_ADC_INTERNAL // ADC3
 
+#if (SPRACINGH7CINE_REV <= 2)
 #define ADC1_INSTANCE ADC1 // ADC1 for Battery/Current/RSSI/Monitoring
 #define ADC2_INSTANCE ADC2 // ADC2 for VIDEO ADC
 #define ADC3_INSTANCE ADC3 // ADC3 only for core temp and vrefint
@@ -227,8 +244,25 @@
 #define VBAT_ADC_PIN            PC4  // ADC123
 #define RSSI_ADC_PIN            PC5  // ADC12
 #define VIDEO_ADC_PIN           PC3  // ADC12
+#elif (SPRACINGH7CINE_REV == 3)
+#define ADC1_INSTANCE ADC1 // ADC1 for Battery/Current/RSSI/Monitoring
+#define ADC2_INSTANCE ADC2 // ADC2 for VIDEO ADC
+#define ADC3_INSTANCE ADC3 // ADC3 only for core temp and vrefint
 
+// FIXME the current betaflight ADC implementation will pick the first ADC instance that can be connected to each ADC pin
+// however, ADC2 and ADC3 should be used for monitoring, and ADC1 should be dedicated to video so that a timer-triggered
+// DMA stream can be used which should be independent from CURRENT/POWER/RSSI.
+#define CURRENT_METER_ADC_PIN   PC0  // ADC3_IN10 CURRENT
+#define VBAT_ADC_PIN            PC3  // ADC3_INP1 POWER
+#define RSSI_ADC_PIN            PC4  // ADC2_INP4 RSSI
+#define VIDEO_ADC_PIN           PC5  // ADC1_INP8 VIDEO
+#endif
+
+#if (SPRACINGH7CINE_REV <= 2) // Rev A & B
 #define CAM_SELECT_PIN          PE4
+#elif (SPRACINGH7CINE_REV == 3) // Rev C
+#define CAM_SELECT_PIN          PE3
+#endif
 
 #define USE_PINIO
 #define PINIO1_PIN              CAM_SELECT_PIN
@@ -239,7 +273,7 @@
 
 #define USE_SPRACING_PIXEL_OSD
 
-#if (SPRACINGH7CINE_REV <= 1)
+#if (SPRACINGH7CINE_REV == 1)
 // Rev A
 #define SPRACING_PIXEL_OSD_BLACK_PIN                    PE13
 #define SPRACING_PIXEL_OSD_WHITE_PIN                    PE14
@@ -257,7 +291,7 @@
 #define SPRACING_PIXEL_OSD_PIXEL_DEBUG_2_PIN            PE6  // TIM15_CH2 - Spare
 #define SPRACING_PIXEL_OSD_PIXEL_GATING_DEBUG_PIN       PB0 // TIM1_CH2N // actual gating is on CH4
 #define SPRACING_PIXEL_OSD_PIXEL_BLANKING_DEBUG_PIN     PB1 // TIM1_CH3N // actual blanking is on CH5
-#else
+#elif (SPRACINGH7CINE_REV == 2)
 // Rev B
 #define SPRACING_PIXEL_OSD_WHITE_SOURCE_SELECT_PIN      PE12
 #define SPRACING_PIXEL_OSD_BLACK_PIN                    PE13
@@ -275,11 +309,29 @@
 #define SPRACING_PIXEL_OSD_PIXEL_DEBUG_2_PIN            PE6  // TIM15_CH2 - Spare
 #define SPRACING_PIXEL_OSD_PIXEL_GATING_DEBUG_PIN       PB0 // TIM1_CH2N // actual gating is on CH4
 #define SPRACING_PIXEL_OSD_PIXEL_BLANKING_DEBUG_PIN     PB1 // TIM1_CH3N // actual blanking is on CH5
+#elif (SPRACINGH7CINE_REV == 3)
+// Rev C
+#define SPRACING_PIXEL_OSD_BLACK_PIN                    PE12
+#define SPRACING_PIXEL_OSD_WHITE_PIN                    PE13
+#define SPRACING_PIXEL_OSD_WHITE_SOURCE_SELECT_PIN      PE14
+#define SPRACING_PIXEL_OSD_MASK_ENABLE_PIN              PE15
+
+#define SPRACING_PIXEL_OSD_SYNC_IN_PIN                  PE11 // COMP2_INP
+#define SPRACING_PIXEL_OSD_SYNC_OUT_PIN                 PA8  // TIM1_CH1
+#define USE_TIM1_CH1_FOR_SYNC
+#define SYNC_TIMER_CHANNEL TIM_CHANNEL_1
+
+#define SPRACING_PIXEL_OSD_WHITE_SOURCE_PIN             PA4  // DAC1_OUT1
+#define SPRACING_PIXEL_OSD_VIDEO_THRESHOLD_DEBUG_PIN    PA5  // DAC1_OUT2
+#define SPRACING_PIXEL_OSD_PIXEL_DEBUG_1_PIN            PE5  // TIM15_CH1 - For DMA updates
+#define SPRACING_PIXEL_OSD_PIXEL_DEBUG_2_PIN            PE6  // TIM15_CH2 - Spare
+#define SPRACING_PIXEL_OSD_PIXEL_GATING_DEBUG_PIN       PB0 // TIM1_CH2N // actual gating is on CH4
+#define SPRACING_PIXEL_OSD_PIXEL_BLANKING_DEBUG_PIN     PB1 // TIM1_CH3N // actual blanking is on CH5
 #endif
 
-#define BLACK_SINK_Pin GPIO_PIN_13
+#define BLACK_SINK_Pin GPIO_PIN_12
 #define BLACK_SINK_GPIO_Port GPIOE
-#define WHITE_SOURCE_Pin GPIO_PIN_14
+#define WHITE_SOURCE_Pin GPIO_PIN_13
 #define WHITE_SOURCE_GPIO_Port GPIOE
 
 #define PIXEL_DEBUG_1_Pin GPIO_PIN_5
@@ -292,7 +344,7 @@
 #define BLANKING_DEBUG_Pin GPIO_PIN_1
 #define BLANKING_DEBUG_GPIO_Port GPIOB
 
-#if (SPRACINGH7CINE_REV <= 1)
+#if (SPRACINGH7CINE_REV == 1)
 #define SYNC_OUT_Pin GPIO_PIN_12
 #define SYNC_OUT_GPIO_Port GPIOE
 #else
@@ -302,15 +354,21 @@
 
 #define USE_PIXEL_OUT_GPIOE
 #ifdef USE_PIXEL_OUT_GPIOE
-#if (SPRACINGH7CINE_REV <= 1)
+#if (SPRACINGH7CINE_REV == 1)
 #define PIXEL_BLACK_BIT 5 // PE13
 #define PIXEL_WHITE_BIT 6 // PE14
-#else
+#elif (SPRACINGH7CINE_REV == 2)
 #define PIXEL_WHITE_SOURCE_SELECT_BIT   4 // PE12
 #define PIXEL_BLACK_BIT                 5 // PE13
 #define PIXEL_MASK_ENABLE_BIT           6 // PE14
 #define PIXEL_WHITE_BIT                 7 // PE15
 #define PIXEL_CONTROL_FIRST_BIT PIXEL_WHITE_SOURCE_SELECT_BIT
+#elif (SPRACINGH7CINE_REV == 3)
+#define PIXEL_BLACK_BIT                 4 // PE12
+#define PIXEL_WHITE_BIT                 5 // PE13
+#define PIXEL_WHITE_SOURCE_SELECT_BIT   6 // PE14
+#define PIXEL_MASK_ENABLE_BIT           7 // PE15
+#define PIXEL_CONTROL_FIRST_BIT PIXEL_BLACK_BIT
 #endif
 #define PIXEL_ODR_OFFSET 8 // 0 = PE0-PE7, 8 = PE8-PE15
 #endif
