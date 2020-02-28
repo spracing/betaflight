@@ -982,6 +982,7 @@ void init(void)
         case OSD_DISPLAYPORT_DEVICE_SPRACING_PIXEL_OSD:
             osdDisplayPort = spracingPixelOSDDisplayPortInit(vcdProfile());
             if (osdDisplayPort || device == OSD_DISPLAYPORT_DEVICE_SPRACING_PIXEL_OSD) {
+                osdDisplayPortDevice = OSD_DISPLAYPORT_DEVICE_SPRACING_PIXEL_OSD;
                 break;
             }
             FALLTHROUGH;
