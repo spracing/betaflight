@@ -42,6 +42,7 @@ typedef struct pixelOSDState_s {
 
 typedef struct pixelOSDHostAPI_s {
   uint32_t (*micros)(void);
+  void (*onVSync)(void);
 } pixelOSDHostAPI_t;
 
 typedef struct pixelOSDDefaultConfig_s {

@@ -28,6 +28,8 @@
 
 #include "videoframe.h"
 
+extern const pixelOSDHostAPI_t *hostAPI;
+
 typedef enum fieldType_e {
     FIELD_EVEN = 0,
     FIELD_ODD = 1,
@@ -424,7 +426,6 @@ void RAW_COMP_TriggerCallback(void)
 #ifdef DEBUG_FRAMEBUFFER_COMMITS
                     pixelDebug1Toggle();
 #endif
-
                 }
 
                 fieldState.lineNumber = 0;
@@ -434,6 +435,8 @@ void RAW_COMP_TriggerCallback(void)
 #ifdef DEBUG_FIELD_START
                 pixelDebug2Low();
 #endif
+
+                hostAPI->onVSync();
             }
 
             if (frameState.status == COUNTING_POST_EQUALIZING_PULSES) {

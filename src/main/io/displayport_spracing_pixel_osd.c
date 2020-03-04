@@ -53,7 +53,7 @@
 bool pixelOSDInitialised = false;
 const pixelOSDClientAPI_t *pixelOSDClientAPI;
 pixelOSDState_t *pixelOSDState;
-bool frameRenderingComplete = false;
+volatile bool frameRenderingComplete = false;
 
 uint8_t frameBufferIndex = 0;
 uint8_t *frameBuffer = NULL;
@@ -208,7 +208,25 @@ static void commitTransaction(displayPort_t *instance)
 {
     UNUSED(instance);
 
+    pixelOSDClientAPI->vTable->renderDebugOverlay(frameBuffer);
+    pixelOSDClientAPI->vTable->frameBufferCommit(frameBuffer);
+
     frameRenderingComplete = true;
+}
+
+static void onVSync(void) // ISR callback
+{
+    if (frameRenderingComplete) {
+        if (frameBufferIndex == 0) {
+            frameBufferIndex = 1;
+        } else {
+            frameBufferIndex = 0;
+        }
+
+        frameBuffer = frameBuffer_getBuffer(frameBufferIndex);
+
+        frameRenderingComplete = false;
+    }
 }
 
 static const displayPortVTable_t spracingPixelOSDVTable = {
@@ -233,7 +251,8 @@ static const displayPortVTable_t spracingPixelOSDVTable = {
 };
 
 const pixelOSDHostAPI_t pixelOSDHostAPI = {
-    .micros = micros
+    .micros = micros,
+    .onVSync = onVSync,
 };
 
 displayPort_t *spracingPixelOSDDisplayPortInit(const vcdProfile_t *vcdProfile)
