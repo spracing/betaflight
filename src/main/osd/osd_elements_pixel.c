@@ -7,15 +7,12 @@
 #include "drivers/spracingpixelosd/spracing_pixel_osd.h"
 #include "drivers/spracingpixelosd/framebuffer.h"
 
-
-
+extern uint8_t *frameBuffer;
 
 #define PITCH_STEP       10
 void simple_artificial_horizon(int16_t roll, int16_t pitch, int16_t x, int16_t y,
         int16_t width, int16_t height, int8_t max_pitch, uint8_t n_pitch_steps)
 {
-    uint8_t *frameBuffer = frameBuffer_getBuffer(0);
-
     width /= 2;
     height /= 2;
 

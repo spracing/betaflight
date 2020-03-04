@@ -42,6 +42,11 @@ uint8_t *frameBuffer_getBuffer(uint8_t index)
     return frameBuffer;
 }
 
+uint8_t frameBuffer_getBufferIndex(uint8_t *frameBuffer)
+{
+    return (frameBuffer - frameBuffers[0]) / sizeof(frameBuffers[0]);
+}
+
 FRAME_BUFFER_DMA_RAM uint32_t fillColor __attribute__((aligned(32)));
 static MDMA_HandleTypeDef     frameBuffer_MDMA_Handle_Erase = { 0 };
 

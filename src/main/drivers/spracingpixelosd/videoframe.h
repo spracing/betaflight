@@ -29,4 +29,4 @@ void recalculateBlankingTimings(const videoTimings_t *vt);
 void videoFrame_reset(void);
 
 extern frameState_t frameState;
-extern uint32_t osdFrameTimeoutAt;
+extern uint8_t *outputFrameBuffer;

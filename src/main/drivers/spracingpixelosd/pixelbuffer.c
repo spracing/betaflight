@@ -26,14 +26,12 @@
 #define PIXEL_WITH_MASK     (PIXEL_MASK_ON << PIXEL_MASK_ENABLE_BIT)
 #define PIXEL_WITHOUT_MASK  (PIXEL_MASK_OFF << PIXEL_MASK_ENABLE_BIT)
 
-void pixelBuffer_fillFromFrameBuffer(uint8_t *destinationPixelBuffer, uint8_t frameBufferIndex, uint16_t lineIndex)
+void pixelBuffer_fillFromFrameBuffer(uint8_t *destinationPixelBuffer, uint8_t *frameBuffer, uint16_t lineIndex)
 {
     // Rev B has 4 IO lines for White Source, Black, Mask and White, black and white are NOT adjacent so the bits cannot be copied and shifted together...
 #ifdef DEBUG_PIXEL_BUFFER_FILL
     pixelDebug2Toggle();
 #endif
-
-    uint8_t *frameBuffer = frameBuffer_getBuffer(frameBufferIndex);
 
     uint8_t *frameBufferLine = frameBuffer + (FRAME_BUFFER_LINE_SIZE * lineIndex);
 

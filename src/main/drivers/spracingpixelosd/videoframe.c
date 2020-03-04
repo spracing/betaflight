@@ -64,10 +64,15 @@ uint16_t lastVisibleLine;
 bool nextLineIsVisible;
 volatile uint16_t visibleLineIndex;
 
-volatile bool frameStartFlag = false;
+// flags are set in ISR and cleared by state retrieval
+volatile bool vSyncFlag = false;
+volatile bool fieldSyncFlag = false;
+
 volatile uint16_t fillLineIndex = 0;
 
-uint32_t osdFrameTimeoutAt = 0; // XXX currently unused
+uint8_t *committedFrameBuffer = NULL;
+uint8_t *outputFrameBuffer = NULL;
+
 
 #ifdef DEBUG_PULSE_STATISTICS
 uint16_t syncPulseRisingStatisticIndex = 0;
@@ -380,7 +385,7 @@ void RAW_COMP_TriggerCallback(void)
                         pixelConfigureDMAForNextField();
                     }
 
-                    pixelBuffer_fillFromFrameBuffer(fillPixelBuffer, 0, fillLineIndex);
+                    pixelBuffer_fillFromFrameBuffer(fillPixelBuffer, outputFrameBuffer, fillLineIndex);
                 }
 
                 if (fieldState.lineNumber > fieldState.highestFieldLineNumber) {
@@ -405,12 +410,21 @@ void RAW_COMP_TriggerCallback(void)
 
                     frameState.vsyncAt = microsISR();
                     frameState.frameStartCounter++;
-                    frameStartFlag = true;
-
-                    osdFrameTimeoutAt = frameState.vsyncAt + (1000000 / 50); // 50 FPS
-
+                    vSyncFlag = true;
                 } else {
                     fieldState.type = FIELD_SECOND;
+                }
+
+                fieldSyncFlag = true;
+
+                if (committedFrameBuffer) {
+                    outputFrameBuffer = committedFrameBuffer;
+                    committedFrameBuffer = NULL;
+
+#ifdef DEBUG_FRAMEBUFFER_COMMITS
+                    pixelDebug1Toggle();
+#endif
+
                 }
 
                 fieldState.lineNumber = 0;

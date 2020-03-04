@@ -23,6 +23,7 @@ void frameBuffer_eraseInit(void);
 void frameBuffer_erase(uint8_t *frameBuffer);
 
 uint8_t *frameBuffer_getBuffer(uint8_t index);
+uint8_t frameBuffer_getBufferIndex(uint8_t *frameBuffer);
 
 //
 // Drawing

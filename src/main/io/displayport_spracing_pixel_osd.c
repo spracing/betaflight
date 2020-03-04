@@ -50,6 +50,14 @@
 #include "pg/pg_ids.h"
 #include "pg/vcd.h"
 
+bool pixelOSDInitialised = false;
+const pixelOSDClientAPI_t *pixelOSDClientAPI;
+pixelOSDState_t *pixelOSDState;
+bool frameRenderingComplete = false;
+
+uint8_t frameBufferIndex = 0;
+uint8_t *frameBuffer = NULL;
+
 displayPort_t spracingPixelOSDDisplayPort;
 
 PG_REGISTER_WITH_RESET_FN(displayPortProfile_t, displayPortProfileSPRacingPixelOSD, PG_DISPLAY_PORT_SPRACING_PIXEL_OSD_CONFIG, 0);
@@ -86,7 +94,6 @@ static int clearScreen(displayPort_t *displayPort)
 {
     UNUSED(displayPort);
 
-    uint8_t *frameBuffer = frameBuffer_getBuffer(0);
     frameBuffer_erase(frameBuffer);
 
     return 0;
@@ -95,8 +102,6 @@ static int clearScreen(displayPort_t *displayPort)
 static int drawScreen(displayPort_t *displayPort)
 {
     UNUSED(displayPort);
-
-    // TODO
 
     return 0;
 }
@@ -112,8 +117,6 @@ static int writeString(displayPort_t *displayPort, uint8_t x, uint8_t y, uint8_t
     UNUSED(displayPort);
     UNUSED(attr);
 
-    uint8_t *frameBuffer = frameBuffer_getBuffer(0);
-
     frameBuffer_slowWriteString(frameBuffer, x * FONT_MAX7456_WIDTH, y * FONT_MAX7456_HEIGHT, (uint8_t *)s, strlen(s));
 
     return 0;
@@ -124,7 +127,6 @@ static int writeChar(displayPort_t *displayPort, uint8_t x, uint8_t y, uint8_t a
     UNUSED(displayPort);
     UNUSED(attr);
 
-    uint8_t *frameBuffer = frameBuffer_getBuffer(0);
     frameBuffer_slowWriteCharacter(frameBuffer, x * FONT_MAX7456_WIDTH, y * FONT_MAX7456_HEIGHT, c);
 
     return 0;
@@ -134,8 +136,7 @@ static bool isTransferInProgress(const displayPort_t *displayPort)
 {
     UNUSED(displayPort);
 
-    // TODO
-    return false;
+    return frameRenderingComplete;
 }
 
 static bool isSynced(const displayPort_t *displayPort)
@@ -195,6 +196,21 @@ static bool writeFontCharacter(displayPort_t *instance, uint16_t addr, const osd
     return false;
 }
 
+static void beginTransaction(displayPort_t *instance, displayTransactionOption_e opts)
+{
+    UNUSED(instance);
+    UNUSED(opts);
+
+    frameRenderingComplete = false;
+}
+
+static void commitTransaction(displayPort_t *instance)
+{
+    UNUSED(instance);
+
+    frameRenderingComplete = true;
+}
+
 static const displayPortVTable_t spracingPixelOSDVTable = {
     .grab = grab,
     .release = release,
@@ -212,11 +228,9 @@ static const displayPortVTable_t spracingPixelOSDVTable = {
     .layerSelect = layerSelect,
     .layerCopy = layerCopy,
     .writeFontCharacter = writeFontCharacter,
+    .beginTransaction = beginTransaction,
+    .commitTransaction = commitTransaction,
 };
-
-bool pixelOSDInitialised = false;
-const pixelOSDClientAPI_t *pixelOSDClientAPI;
-pixelOSDState_t *pixelOSDState;
 
 const pixelOSDHostAPI_t pixelOSDHostAPI = {
     .micros = micros
@@ -242,6 +256,7 @@ displayPort_t *spracingPixelOSDDisplayPortInit(const vcdProfile_t *vcdProfile)
 
     pixelOSDInitialised = true;
 
+    frameBuffer = frameBuffer_getBuffer(frameBufferIndex);
 
     displayInit(&spracingPixelOSDDisplayPort, &spracingPixelOSDVTable);
 

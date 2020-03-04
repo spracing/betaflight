@@ -37,6 +37,7 @@
 
 #include "drivers/spracingpixelosd/spracing_pixel_osd.h"
 #include "drivers/spracingpixelosd/sync.h"
+#include "drivers/spracingpixelosd/framebuffer.h"
 
 #include "pixel_osd_video.h"
 
@@ -46,6 +47,10 @@
 
 extern const pixelOSDClientAPI_t *pixelOSDClientAPI;
 extern pixelOSDState_t *pixelOSDState;
+extern uint8_t *frameBuffer;
+extern uint8_t frameBufferIndex;
+
+extern bool frameRenderingComplete;
 
 FAST_CODE bool taskPixelOSDVideoCheck(timeUs_t currentTimeUs, timeDelta_t currentDeltaTimeUs)
 {
@@ -54,22 +59,38 @@ FAST_CODE bool taskPixelOSDVideoCheck(timeUs_t currentTimeUs, timeDelta_t curren
 
     pixelOSDClientAPI->vTable->refreshState(currentTimeUs);
 
-    bool isReady = (pixelOSDState->flags & PIXELOSD_FLAG_FRAME_START) || (pixelOSDState->flags & PIXELOSD_FLAG_SERVICE_REQUIRED);
+    bool isReady = (pixelOSDState->flags & PIXELOSD_FLAG_VSYNC) || (pixelOSDState->flags & PIXELOSD_FLAG_SERVICE_REQUIRED);
 
     return isReady;
 }
+
+bool canCommit = true;
 
 FAST_CODE void taskPixelOSDVideo(timeUs_t currentTimeUs)
 {
     // Handle the more frequent operations first
 
-    if (pixelOSDState->flags & PIXELOSD_FLAG_FRAME_START) {
+    if (pixelOSDState->flags & PIXELOSD_FLAG_VSYNC) {
 
-      //
-      // Do other client drawing stuff here ?
-      //
+        if (!canCommit && frameRenderingComplete) {
+            frameRenderingComplete = false;
+            canCommit = true;
+        }
 
-      pixelOSDClientAPI->vTable->renderDebugOverlay();
+        if (frameRenderingComplete && canCommit) {
+            pixelOSDClientAPI->vTable->renderDebugOverlay(frameBuffer);
+            pixelOSDClientAPI->vTable->frameBufferCommit(frameBuffer);
+
+            if (frameBufferIndex == 0) {
+                frameBufferIndex = 1;
+            } else {
+                frameBufferIndex = 0;
+            }
+
+            frameBuffer = frameBuffer_getBuffer(frameBufferIndex);
+            canCommit = false; // wait for next vsync
+        }
+
     }
 
     if (pixelOSDState->flags & PIXELOSD_FLAG_SERVICE_REQUIRED) {

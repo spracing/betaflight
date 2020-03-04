@@ -10,7 +10,7 @@
 // FrameBuffer to PixelBuffer
 //
 
-void pixelBuffer_fillFromFrameBuffer(uint8_t *destinationPixelBuffer, uint8_t frameBufferIndex, uint16_t lineIndex);
+void pixelBuffer_fillFromFrameBuffer(uint8_t *destinationPixelBuffer, uint8_t *frameBuffer, uint16_t lineIndex);
 
 //
 // PixelBuffer Debug

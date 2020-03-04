@@ -56,7 +56,6 @@
 
 #ifdef BETAFLIGHT
 #include "common/printf.h"
-#include "common/time.h"
 
 #include "drivers/dma.h"
 #include "drivers/dma_reqmap.h"
@@ -112,6 +111,7 @@
 //
 
 volatile bool cameraConnected = true;
+extern volatile uint8_t *committedFrameBuffer;
 
 //
 // Sync Detection/Timing
@@ -903,6 +903,16 @@ bool spracingPixelOSDLayerCopy(displayPortLayer_e destLayer, displayPortLayer_e 
 // Init
 //
 
+static bool spracingPixelOSDInitialised = false;
+
+#ifdef BETAFLIGHT
+// FIXME delete this when the BF code uses the API
+bool spracingPixelOSDIsInitialised(void)
+{
+    return spracingPixelOSDInitialised;
+}
+#endif
+
 struct vcdProfile_s;
 struct spracingPixelOSDConfig_s;
 
@@ -933,6 +943,8 @@ bool spracingPixelOSDInitPrivate(const pixelOSDDefaultConfig_t *defaultConfig)
 
     uint8_t * fb0 = frameBuffer_getBuffer(0);
     uint8_t * fb1 = frameBuffer_getBuffer(1);
+
+    outputFrameBuffer = fb0;
 
     frameBuffer_erase(fb0);
     frameBuffer_erase(fb1);
@@ -1010,6 +1022,8 @@ bool spracingPixelOSDInitPrivate(const pixelOSDDefaultConfig_t *defaultConfig)
       Error_Handler();
     }
 
+    spracingPixelOSDInitialised = true;
+
     return true;
 }
 
@@ -1042,31 +1056,39 @@ void spracingPixelOSDRestart(void)
 }
 
 
-void spracingPixelOSDRenderDebugOverlay(void)
+void spracingPixelOSDRenderDebugOverlay(uint8_t *frameBuffer)
 {
-    uint8_t *frameBuffer = frameBuffer_getBuffer(0);
-
-    static uint8_t messageBuffer[32];
+    static uint8_t messageBuffer[31];
 
     uint16_t debugY = FONT_MAX7456_HEIGHT * 13;
 
     static const char *videoModeNames[] = { "????", "PAL", "NTSC" };
-    tfp_sprintf((char *)messageBuffer, "E:%04lX PE:%04X VF:%04lX M:%4s",
+
+    char frameBufferCode1 = ' ';
+    char frameBufferCode2 = ' ';
+    if (frameBuffer_getBufferIndex(frameBuffer) == 0) {
+      frameBufferCode1 = 'A';
+    } else {
+      frameBufferCode2 = 'B';
+    }
+    tfp_sprintf((char *)messageBuffer, "E:%04lX PE:%04X VF:%04lX M:%4s%c",
             frameState.frameStartCounter - frameState.validFrameCounter,
             frameState.totalPulseErrors,
             frameState.validFrameCounter,
-            videoModeNames[detectedVideoSystem]
+            videoModeNames[detectedVideoSystem],
+            frameBufferCode1
     );
     int messageLength = strlen((char *)messageBuffer);
     frameBuffer_slowWriteString(frameBuffer, (360 - (12 * messageLength)) / 2, debugY, messageBuffer, messageLength);
 
     debugY += FONT_MAX7456_HEIGHT;
 
-    tfp_sprintf((char *)messageBuffer, "L:%04ld FL:%04ld FH:%04ld T:%04ld",
+    tfp_sprintf((char *)messageBuffer, "L:%04ld FL:%04ld FH:%04ld T:%04ld%c",
             syncDetectionState.minimumLevelForLineThreshold,
             syncDetectionState.minimumLevelForValidFrameMv,
             syncDetectionState.maximumLevelForValidFrameMv,
-            syncDetectionState.syncThresholdMv
+            syncDetectionState.syncThresholdMv,
+            frameBufferCode2
     );
     messageLength = strlen((char *)messageBuffer);
     frameBuffer_slowWriteString(frameBuffer, (360 - (12 * messageLength)) / 2, debugY, messageBuffer, messageLength);
@@ -1096,17 +1118,24 @@ void spracingPixelOSDInit(const pixelOSDHostAPI_t *hostAPIFromClient, const pixe
 
 }
 
+void spracingPixelFrameBufferCommit(uint8_t *frameBuffer)
+{
+  committedFrameBuffer = frameBuffer;
+}
+
 pixelOSDState_t *spracingPixelOSDGetState(void)
 {
     return &spracingPixelOSDState;
 }
+
 
 const pixelOSDAPIVTable_t spracingPixelOSDAPIVTable = {
     .init = spracingPixelOSDInit,
     .getState = spracingPixelOSDGetState,
     .refreshState = spracingPixelOSDRefreshState,
     .service = spracingPixelOSDService,
-    .renderDebugOverlay = spracingPixelOSDRenderDebugOverlay
+    .renderDebugOverlay = spracingPixelOSDRenderDebugOverlay,
+    .frameBufferCommit = spracingPixelFrameBufferCommit,
 };
 
 const pixelOSDClientAPI_t spracingPixelOSDClientAPI = {

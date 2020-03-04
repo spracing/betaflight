@@ -14,6 +14,15 @@
 
 extern volatile bool cameraConnected;
 
+//struct vcdProfile_s;
+//struct spracingPixelOSDConfig_s;
+//bool spracingPixelOSDInit(const struct spracingPixelOSDConfig_s *spracingPixelOSDConfig, const struct vcdProfile_s *vcdProfile);
+//bool spracingPixelOSDIsInitialised(void);
+//void spracingPixelOSDDrawDebugOverlay(void);
+//
+//void spracingPixelOSDRefreshState(timeUs_t currentTimeUs);
+//void spracingPixelOSDService(timeUs_t currentTimeUs);
+
 //
 // PUBLIC API
 //
@@ -21,7 +30,8 @@ extern volatile bool cameraConnected;
 #define PIXELOSD_FLAG_INITIALISED       (1 << 0)
 #define PIXELOSD_FLAG_ERROR             (1 << 1)
 #define PIXELOSD_FLAG_SERVICE_REQUIRED  (1 << 2)
-#define PIXELOSD_FLAG_FRAME_START       (1 << 3)
+#define PIXELOSD_FLAG_VSYNC             (1 << 3)
+#define PIXELOSD_FLAG_FIELD_SYNC        (1 << 4)
 
 #define PIXELOSD_CF_VIDEO_SYSTEM_PAL    (1 << 0)
 #define PIXELOSD_CF_VIDEO_SYSTEM_NTSC   (0 << 1)
@@ -43,7 +53,8 @@ typedef struct pixelOSDAPIVTable_s {
   pixelOSDState_t *(*getState)(void);
   void (*refreshState)(uint32_t currentTimeUs);
   void (*service)(uint32_t currentTimeUs);
-  void (*renderDebugOverlay)(void);
+  void (*renderDebugOverlay)(uint8_t *frameBuffer);
+  void (*frameBufferCommit)(uint8_t *frameBuffer);
 } pixelOSDAPIVTable_t;
 
 typedef struct pixelOSDClientAPI_s {
