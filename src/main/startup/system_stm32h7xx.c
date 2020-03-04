@@ -251,7 +251,11 @@ static void SystemClockHSE_Config(void)
     }
 #endif
 
+#ifdef SPRACINGH7CINE // XXX always use rev Y clocks until OSD code is updated.
+    pllConfig_t *pll1Config = &pll1ConfigRevY;
+#else
     pllConfig_t *pll1Config = (HAL_GetREVID() == REV_ID_V) ? &pll1ConfigRevV : &pll1ConfigRevY;
+#endif
 
     // Configure voltage scale.
     // It has been pre-configured at PWR_REGULATOR_VOLTAGE_SCALE1,
