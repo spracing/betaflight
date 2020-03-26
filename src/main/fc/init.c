@@ -104,6 +104,7 @@
 #include "io/displayport_crsf.h"
 #include "io/displayport_frsky_osd.h"
 #include "io/displayport_max7456.h"
+#include "io/displayport_spracing_pixel_osd.h"
 #include "io/displayport_msp.h"
 #include "io/displayport_srxl.h"
 #include "io/flashfs.h"
@@ -974,6 +975,16 @@ void init(void)
             osdDisplayPort = max7456DisplayPortInit(vcdProfile());
             if (osdDisplayPort || device == OSD_DISPLAYPORT_DEVICE_MAX7456) {
                 osdDisplayPortDevice = OSD_DISPLAYPORT_DEVICE_MAX7456;
+                break;
+            }
+            FALLTHROUGH;
+#endif
+
+#if defined(USE_SPRACING_PIXEL_OSD)
+        case OSD_DISPLAYPORT_DEVICE_SPRACING_PIXEL_OSD:
+            osdDisplayPort = spracingPixelOSDDisplayPortInit(vcdProfile());
+            if (osdDisplayPort || device == OSD_DISPLAYPORT_DEVICE_SPRACING_PIXEL_OSD) {
+                osdDisplayPortDevice = OSD_DISPLAYPORT_DEVICE_SPRACING_PIXEL_OSD;
                 break;
             }
             FALLTHROUGH;
