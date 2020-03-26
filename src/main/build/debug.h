@@ -94,6 +94,7 @@ typedef enum {
     DEBUG_VTX_TRAMP,
     DEBUG_GHST,
     DEBUG_SCHEDULER_DETERMINISM,
+    DEBUG_SPRACING_PIXEL_OSD,
     DEBUG_COUNT
 } debugType_e;
 

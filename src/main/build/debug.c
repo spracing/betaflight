@@ -95,5 +95,6 @@ const char * const debugModeNames[DEBUG_COUNT] = {
     "D_LPF",
     "VTX_TRAMP",
     "GHST",
-    "SCHEDULER_DETERMINISM"
+    "SCHEDULER_DETERMINISM",
+    "SPRACING_PIXEL_OSD",
 };
