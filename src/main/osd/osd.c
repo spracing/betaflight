@@ -41,6 +41,7 @@
 
 #include "build/build_config.h"
 #include "build/version.h"
+#include "build/debug.h"
 
 #include "cms/cms.h"
 
@@ -52,6 +53,8 @@
 #include "common/unit.h"
 
 #include "config/feature.h"
+
+#include "drivers/spracingpixelosd/framebuffer.h"
 
 #include "drivers/display.h"
 #include "drivers/dshot.h"
@@ -143,9 +146,16 @@ static bool suppressStatsDisplay = false;
 
 static bool backgroundLayerSupported = false;
 
+#ifdef USE_CANVAS
+static displayCanvas_t osdCanvas;
+static bool canvasSupported = false;
+#endif
+
 #ifdef USE_ESC_SENSOR
 escSensorData_t *osdEscDataCombined;
 #endif
+
+//#define DEBUG_FRAMEBUFFER_ERASE_WAIT
 
 STATIC_ASSERT(OSD_POS_MAX == OSD_POS(31,31), OSD_POS_MAX_incorrect);
 
@@ -297,8 +307,10 @@ void changeOsdProfileIndex(uint8_t profileIndex)
 {
     if (profileIndex <= OSD_PROFILE_COUNT) {
         osdConfigMutable()->osdProfileIndex = profileIndex;
+        displayBeginTransaction(osdDisplayPort, DISPLAY_TRANSACTION_OPT_RESET_DRAWING);
         setOsdProfile(profileIndex);
         osdAnalyzeActiveElements();
+        displayCommitTransaction(osdDisplayPort);
     }
 }
 #endif
@@ -466,7 +478,15 @@ static void osdCompleteInitialization(void)
     setOsdProfile(osdConfig()->osdProfileIndex);
 #endif
 
+#ifdef USE_CANVAS
+    canvasSupported = displayGetCanvas(&osdCanvas, osdDisplayPort);
+    if (canvasSupported) {
+        osdCanvasInit(&osdCanvas);
+    }
+#endif
+
     osdElementsInit(backgroundLayerSupported);
+
     osdAnalyzeActiveElements();
 
     osdIsReady = true;
@@ -1198,6 +1218,15 @@ bool osdUpdateCheck(timeUs_t currentTimeUs, timeDelta_t currentDeltaTimeUs)
     UNUSED(currentDeltaTimeUs);
     static timeUs_t osdUpdateDueUs = 0;
 
+#if defined(USE_SPRACING_PIXEL_OSD)
+    if (frameBuffer_eraseInProgress()) {
+#ifdef DEBUG_FRAMEBUFFER_ERASE_WAIT
+        debug[1]++;
+#endif
+        return false;
+    }
+#endif
+
     if (osdState == OSD_STATE_IDLE) {
         // If the OSD is due a refresh, mark that as being the case
         if (cmpTimeUs(currentTimeUs, osdUpdateDueUs) > 0) {
@@ -1252,7 +1281,10 @@ void osdUpdate(timeUs_t currentTimeUs)
         break;
 
     case OSD_STATE_CHECK:
-        // don't touch buffers if DMA transaction is in progress
+        showVisualBeeper = isBeeperOn();
+
+        // SPRacingPixelOSD - don't touch buffers while we're waiting for the framebuffer to be committed
+        // MAX7456/etc - don't touch buffers if DMA transaction is in progress
         if (displayIsTransferInProgress(osdDisplayPort)) {
             break;
         }
