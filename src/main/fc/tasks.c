@@ -75,6 +75,7 @@
 #include "msp/msp_serial.h"
 
 #include "osd/osd.h"
+#include "osd/pixel_osd_video.h"
 
 #include "pg/rx.h"
 #include "pg/motor.h"
@@ -404,6 +405,10 @@ void tasksInit(void)
     rescheduleTask(TASK_OSD, TASK_PERIOD_HZ(osdConfig()->framerate_hz));
     setTaskEnabled(TASK_OSD, featureIsEnabled(FEATURE_OSD) && osdGetDisplayPort(NULL));
 #endif
+#ifdef USE_PIXEL_OSD
+    extern bool pixelOSDInitialised;
+    setTaskEnabled(TASK_PIXEL_OSD_VIDEO, pixelOSDInitialised);
+#endif
 
 #ifdef USE_BST
     setTaskEnabled(TASK_BST_MASTER_PROCESS, true);
@@ -510,6 +515,10 @@ task_t tasks[TASK_COUNT] = {
 
 #ifdef USE_OSD
     [TASK_OSD] = DEFINE_TASK("OSD", NULL, osdUpdateCheck, osdUpdate, TASK_PERIOD_HZ(OSD_FRAMERATE_DEFAULT_HZ), TASK_PRIORITY_LOW),
+#endif
+
+#ifdef USE_PIXEL_OSD
+    [TASK_PIXEL_OSD_VIDEO] = DEFINE_TASK("PIXEL_OSD_VIDEO", NULL, taskPixelOSDVideoCheck, taskPixelOSDVideo, TASK_PERIOD_HZ(60), TASK_PRIORITY_VERY_HIGH),
 #endif
 
 #ifdef USE_TELEMETRY
