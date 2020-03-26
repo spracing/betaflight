@@ -139,6 +139,11 @@ static uint8_t osdStatsRowCount = 0;
 
 static bool backgroundLayerSupported = false;
 
+#ifdef USE_CANVAS
+static displayCanvas_t osdCanvas;
+static bool canvasSupported = false;
+#endif
+
 #ifdef USE_ESC_SENSOR
 escSensorData_t *osdEscDataCombined;
 #endif
@@ -453,7 +458,15 @@ static void osdCompleteInitialization(void)
     setOsdProfile(osdConfig()->osdProfileIndex);
 #endif
 
+#ifdef USE_CANVAS
+    canvasSupported = displayGetCanvas(&osdCanvas, osdDisplayPort);
+    if (canvasSupported) {
+        osdCanvasInit(&osdCanvas);
+    }
+#endif
+
     osdElementsInit(backgroundLayerSupported);
+
     osdAnalyzeActiveElements();
     displayCommitTransaction(osdDisplayPort);
 
@@ -1042,7 +1055,6 @@ STATIC_UNIT_TESTED void osdRefresh(timeUs_t currentTimeUs)
  */
 void osdUpdate(timeUs_t currentTimeUs)
 {
-    static uint32_t counter = 0;
 
     if (!osdIsReady) {
         if (!displayCheckReady(osdDisplayPort, false)) {
@@ -1056,7 +1068,8 @@ void osdUpdate(timeUs_t currentTimeUs)
         showVisualBeeper = true;
     }
 
-    // don't touch buffers if DMA transaction is in progress
+    // SPRacingPixelOSD - don't touch buffers while we're waiting for the framebuffer to be committed
+    // MAX7456/etc - don't touch buffers if DMA transaction is in progress
     if (displayIsTransferInProgress(osdDisplayPort)) {
         return;
     }
@@ -1070,7 +1083,11 @@ void osdUpdate(timeUs_t currentTimeUs)
     }
 #endif
 
+    // FIXME OSD subsystems should likely expose the draw/refresh denomination they require to this code.
+
     // redraw values in buffer
+#if (OSD_DRAW_FREQ_DENOM > 0)
+    static uint32_t counter = 0;
     if (counter % OSD_DRAW_FREQ_DENOM == 0) {
         osdRefresh(currentTimeUs);
         showVisualBeeper = false;
@@ -1089,6 +1106,11 @@ void osdUpdate(timeUs_t currentTimeUs)
         }
     }
     ++counter;
+#else
+    osdRefresh(currentTimeUs);
+    displayDrawScreen(osdDisplayPort);
+    showVisualBeeper = false;
+#endif
 }
 
 void osdSuppressStats(bool flag)
