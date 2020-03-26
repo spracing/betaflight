@@ -103,6 +103,7 @@
 #define USE_RTC_TIME
 #define USE_PERSISTENT_MSC_RTC
 #define USE_LATE_TASK_STATISTICS
+#define USE_CANVAS_OSD
 #endif
 
 #ifdef STM32G4
