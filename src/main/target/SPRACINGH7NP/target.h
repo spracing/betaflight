@@ -24,7 +24,6 @@
 #define USBD_PRODUCT_STRING "SPRacingH7NP"
 
 #define USE_TARGET_CONFIG
-#define USE_H7_LEGACY_CPU_REVISION_SPEED // FIXME - This can be removed when OSD code has clock speed detection.
 
 #define LED0_PIN                PE4
 
