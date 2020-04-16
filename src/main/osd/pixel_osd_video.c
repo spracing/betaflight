@@ -37,8 +37,6 @@
 
 extern const spracingPixelOSDLibraryVTable_t *spracingPixelOSDLibraryVTable;
 extern spracingPixelOSDState_t *pixelOSDState;
-extern uint8_t *frameBuffer;
-extern uint8_t frameBufferIndex;
 
 FAST_CODE bool taskPixelOSDVideoCheck(timeUs_t currentTimeUs, timeDelta_t currentDeltaTimeUs)
 {

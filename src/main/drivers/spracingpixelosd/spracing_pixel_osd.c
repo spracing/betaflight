@@ -92,7 +92,7 @@
 
 spracingPixelOSDState_t *pixelOSDState;
 volatile bool frameRenderingComplete = false;
-uint8_t frameBufferIndex = 0;
+volatile uint8_t frameBufferIndex = 0;
 uint8_t *frameBuffer = NULL;
 
 //
@@ -132,10 +132,13 @@ static void onVSync(void) // ISR callback
             frameBufferIndex = 0;
         }
 
-        frameBuffer = frameBuffer_getBuffer(frameBufferIndex);
-
         frameRenderingComplete = false;
     }
+}
+
+uint8_t *spracingPixelOSDGetActiveFrameBuffer(void)
+{
+    return frameBuffer_getBuffer(frameBufferIndex);
 }
 
 void frameBufferInit(void)

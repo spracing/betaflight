@@ -278,6 +278,7 @@ static void beginTransaction(displayPort_t *instance, displayTransactionOption_e
     UNUSED(opts);
 
     frameRenderingComplete = false;
+    frameBuffer = frameBuffer_getBuffer(frameBufferIndex);
 }
 
 spracingPixelOSDFrameState_t frameState;
