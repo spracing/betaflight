@@ -34,12 +34,16 @@
 
 #if (SPRACINGH7CINE_REV <= 2) // Rev A & B
 #define LED0_PIN                PE3
-#elif (SPRACINGH7CINE_REV == 3) // Rev {
+#elif (SPRACINGH7CINE_REV == 3) // Rev C
 #define LED0_PIN                PE4
 #endif
 
 #define USE_BEEPER
+#if (SPRACINGH7CINE_REV <= 2) // Rev A & B
 #define BEEPER_PIN              PD7
+#elif (SPRACINGH7CINE_REV == 3) // Rev C
+#define BEEPER_PIN              PB11
+#endif
 #define BEEPER_INVERTED
 
 // Force two buttons to look at the single button so config reset on button works
@@ -164,7 +168,11 @@
 
 #define USE_EXTI
 #define USE_GYRO_EXTI
+#if (SPRACINGH7CINE_REV <= 2) // Rev A & B
 #define GYRO_1_EXTI_PIN         PB11 // ICM42605-INT1/INT
+#elif (SPRACINGH7CINE_REV == 3) // Rev C
+#define GYRO_1_EXTI_PIN         PD7  // ICM42605-INT1/INT
+#endif
 #define GYRO_1_INT2_PIN         PD4  // ICM42605-INT2/FSYNC // TODO - Ensure this pin is configured correctly on MCU and via Gyro registers.
 
 #define USE_MPU_DATA_READY_SIGNAL
