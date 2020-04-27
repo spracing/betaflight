@@ -33,7 +33,8 @@ bool spracingPixelOSDInit(const vcdProfile_t *vcdProfile);
 
 void spracingPixelOSDRenderDebugOverlay(uint8_t *frameBuffer, spracingPixelOSDFrameState_t* frameState, spracingPixelOSDSyncVoltages_t *syncVoltages);
 
-extern volatile bool frameRenderingComplete;
-extern volatile uint8_t frameBufferIndex;
-extern uint8_t *frameBuffer;
+void spracingPixelOSDBeginRendering(void);
+void spracingPixelOSDEndRendering(void);
+bool spracingPixelOSDIsFrameRenderingComplete();
 
+uint8_t *spracingPixelOSDGetActiveFrameBuffer(void);

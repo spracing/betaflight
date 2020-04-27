@@ -92,8 +92,7 @@
 
 spracingPixelOSDState_t *pixelOSDState;
 volatile bool frameRenderingComplete = false;
-volatile uint8_t frameBufferIndex = 0;
-uint8_t *frameBuffer = NULL;
+static volatile uint8_t frameBufferIndex = 0;
 
 //
 // Low-level handlers
@@ -136,9 +135,25 @@ static void onVSync(void) // ISR callback
     }
 }
 
+void spracingPixelOSDBeginRendering(void)
+{
+    frameRenderingComplete = false;
+}
+
+void spracingPixelOSDEndRendering(void)
+{
+    frameRenderingComplete = true;
+}
+
+bool spracingPixelOSDIsFrameRenderingComplete(void)
+{
+    return frameRenderingComplete;
+}
+
 uint8_t *spracingPixelOSDGetActiveFrameBuffer(void)
 {
-    return frameBuffer_getBuffer(frameBufferIndex);
+    uint8_t *activeFrameBuffer = frameBuffer_getBuffer(frameBufferIndex);
+    return activeFrameBuffer;
 }
 
 void frameBufferInit(void)
@@ -304,7 +319,6 @@ bool spracingPixelOSDInit(const vcdProfile_t *vcdProfile)
     }
 
     frameBufferInit();
-    frameBuffer = frameBuffer_getBuffer(frameBufferIndex);
 
     configureDMAHandlers();
     reserveGPIOPins();

@@ -53,6 +53,7 @@
 bool pixelOSDInitialised = false;
 
 displayPort_t spracingPixelOSDDisplayPort;
+uint8_t *frameBuffer = NULL;
 
 PG_REGISTER_WITH_RESET_FN(displayPortProfile_t, displayPortProfileSPRacingPixelOSD, PG_DISPLAY_PORT_SPRACING_PIXEL_OSD_CONFIG, 0);
 
@@ -88,6 +89,10 @@ static int clearScreen(displayPort_t *displayPort)
 {
     UNUSED(displayPort);
 
+    // FIXME: clearScreen is called outside of a transaction during init
+    // so the current frame buffer pointer must always be obtained.
+    // see displayInit().
+    frameBuffer = spracingPixelOSDGetActiveFrameBuffer();
     frameBuffer_erase(frameBuffer);
 
     return 0;
@@ -130,7 +135,7 @@ static bool isTransferInProgress(const displayPort_t *displayPort)
 {
     UNUSED(displayPort);
 
-    return frameRenderingComplete;
+    return spracingPixelOSDIsFrameRenderingComplete();
 }
 
 static bool isSynced(const displayPort_t *displayPort)
@@ -277,8 +282,8 @@ static void beginTransaction(displayPort_t *instance, displayTransactionOption_e
     UNUSED(instance);
     UNUSED(opts);
 
-    frameRenderingComplete = false;
-    frameBuffer = frameBuffer_getBuffer(frameBufferIndex);
+    spracingPixelOSDBeginRendering();
+    frameBuffer = spracingPixelOSDGetActiveFrameBuffer();
 }
 
 spracingPixelOSDFrameState_t frameState;
@@ -294,7 +299,7 @@ static void commitTransaction(displayPort_t *instance)
 
     spracingPixelOSDLibraryVTable->frameBufferCommit(frameBuffer);
 
-    frameRenderingComplete = true;
+    spracingPixelOSDEndRendering();
 }
 
 static const displayPortVTable_t spracingPixelOSDVTable = {
