@@ -33,6 +33,8 @@
 #include "pg/piniobox.h"
 #include "msp/msp_box.h"
 
+#include "pg/sdcard.h"
+
 static targetSerialPortFunction_t targetSerialPortFunction[] = {
     { SERIAL_PORT_USART1, FUNCTION_MSP },
 };
@@ -42,6 +44,9 @@ void targetConfiguration(void)
     targetSerialPortFunctionConfig(targetSerialPortFunction, ARRAYLEN(targetSerialPortFunction));
 
     pinioBoxConfigMutable()->permanentId[0] = findBoxByBoxId(BOXUSER1)->permanentId;
+    
+    sdcardConfigMutable()->mode = SDCARD_MODE_SDIO;
+    sdcardConfigMutable()->useDma = true;
 }
 
 #endif
