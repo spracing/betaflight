@@ -349,6 +349,10 @@ $(OBJECT_DIR)/$(TARGET)/build/version.o : $(SRC)
 $(TARGET_LST): $(TARGET_ELF)
 	$(V0) $(OBJDUMP) -S --disassemble $< > $@
 
+$(TARGET_S19): $(TARGET_ELF)
+	@echo "Creating srec/S19 $(TARGET_S19)" "$(STDOUT)"
+	$(V1) $(OBJCOPY) --output-target=srec $< $@
+
 ifeq ($(EXST),no)
 $(TARGET_BIN): $(TARGET_ELF)
 	@echo "Creating BIN $(TARGET_BIN)" "$(STDOUT)"
