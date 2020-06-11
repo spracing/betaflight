@@ -4,9 +4,25 @@ HSE_VALUE    = 8000000
 
 FEATURES       += VCP ONBOARDFLASH SDCARD_SDIO
 
+
 ifneq ($(EXST),)
 EXST = yes
-EXST_ADJUST_VMA = 0x97CE0000
+endif
+
+ifeq ($(EXST),yes)
+# EXST flash chip configuration
+
+ifeq ($(EXST_FLASH_CHIP),)
+EXST_FLASH_CHIP = W25N01GV
+endif
+
+ifeq ($(EXST_FLASH_CHIP),W25N01GV)
+EXST_ADJUST_VMA = 0x97CE0000 # 128MB NAND flash
+else
+ifeq ($(EXST_FLASH_CHIP),W25Q128JV)
+EXST_ADJUST_VMA = 0x90F90000 # 16MB NOR flash
+endif
+endif
 endif
 
 ifneq ($(EXST),yes)

@@ -26,6 +26,7 @@ OPBL      ?= no
 
 # compile for External Storage Bootloader support
 EXST      ?= no
+EXST_FLASH_CHIP ?=
 
 # compile for target loaded into RAM
 RAM_BASED ?= no
@@ -48,6 +49,7 @@ SERIAL_DEVICE   ?= $(firstword $(wildcard /dev/ttyACM*) $(firstword $(wildcard /
 
 # Flash size (KB).  Some low-end chips actually have more flash than advertised, use this to override.
 TARGET_FLASH_SIZE ?=
+
 
 
 ###############################################################################
@@ -302,7 +304,14 @@ CPPCHECK        = cppcheck $(CSOURCES) --enable=all --platform=unix64 \
                   -I/usr/include -I/usr/include/linux
 
 
-TARGET_BASENAME = $(BIN_DIR)/$(FORKNAME)_$(FC_VER)_$(TARGET)_$(REVISION)
+TARGET_BASENAME = $(BIN_DIR)/$(FORKNAME)_$(FC_VER)_$(TARGET)
+
+ifeq ($(EXST),yes)
+TARGET_BASENAME := $(TARGET_BASENAME)-$(EXST_FLASH_CHIP)
+endif
+
+TARGET_BASENAME := $(TARGET_BASENAME)_$(REVISION)
+
 
 #
 # Things we will build
