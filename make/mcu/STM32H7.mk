@@ -245,7 +245,7 @@ DEFAULT_LD_SCRIPT   = $(LINKER_DIR)/stm32_flash_h750_128k.ld
 STARTUP_SRC         = startup_stm32h743xx.s
 DEFAULT_TARGET_FLASH := 128
 
-ifeq ($(TARGET_FLASH),)
+ifeq ($(MCU_FLASH_SIZE),)
 MCU_FLASH_SIZE := $(DEFAULT_TARGET_FLASH) 
 endif
 
