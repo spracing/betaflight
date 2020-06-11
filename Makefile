@@ -25,6 +25,7 @@ OPTIONS   ?=
 
 # compile for External Storage Bootloader support
 EXST      ?= no
+EXST_FLASH_CHIP ?=
 
 # compile for target loaded into RAM
 RAM_BASED ?= no
@@ -47,6 +48,7 @@ SERIAL_DEVICE   ?= $(firstword $(wildcard /dev/ttyACM*) $(firstword $(wildcard /
 
 # Flash size (KB).  Some low-end chips actually have more flash than advertised, use this to override.
 FLASH_SIZE ?=
+
 
 ###############################################################################
 # Things that need to be maintained as the source changes
@@ -314,6 +316,10 @@ endif
 
 ifeq ($(REV),yes)
 TARGET_NAME := $(TARGET_NAME)_$(REVISION)
+endif
+
+ifeq ($(EXST),yes)
+TARGET_NAME := $(TARGET_NAME)-$(EXST_FLASH_CHIP)
 endif
 
 TARGET_FULLNAME = $(FORKNAME)_$(FC_VER)_$(TARGET_NAME)
