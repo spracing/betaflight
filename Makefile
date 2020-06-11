@@ -26,6 +26,7 @@ OPBL      ?= no
 
 # compile for External Storage Bootloader support
 EXST      ?= no
+EXST_FLASH_CHIP ?=
 
 # compile for target loaded into RAM
 RAM_BASED ?= no
@@ -51,6 +52,7 @@ TARGET_FLASH_SIZE ?=
 
 # Release file naming (no revision to be present if this is 'yes')
 RELEASE ?= no
+
 
 ###############################################################################
 # Things that need to be maintained as the source changes
@@ -306,10 +308,14 @@ CPPCHECK        = cppcheck $(CSOURCES) --enable=all --platform=unix64 \
                   $(addprefix -I,$(INCLUDE_DIRS)) \
                   -I/usr/include -I/usr/include/linux
 
-ifeq ($(RELEASE),yes)
 TARGET_BASENAME = $(BIN_DIR)/$(FORKNAME)_$(FC_VER)_$(TARGET)
-else
-TARGET_BASENAME = $(BIN_DIR)/$(FORKNAME)_$(FC_VER)_$(TARGET)_$(REVISION)
+
+ifeq ($(RELEASE),yes)
+TARGET_BASENAME := $(TARGET_BASENAME)_$(REVISION)
+endif
+
+ifeq ($(EXST),yes)
+TARGET_BASENAME := $(TARGET_BASENAME)-$(EXST_FLASH_CHIP)
 endif
 
 #
