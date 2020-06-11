@@ -32,6 +32,7 @@
 #include "flash_impl.h"
 #include "flash_m25p16.h"
 #include "flash_w25n01g.h"
+#include "flash_w25q128fv.h"
 #include "flash_w25m.h"
 #include "drivers/bus_spi.h"
 #include "drivers/bus_quadspi.h"
@@ -70,6 +71,12 @@ static bool flashQuadSpiInit(const flashConfig_t *flashConfig)
 
 #if defined(USE_FLASH_W25N01G)
     if (w25n01g_detect(&flashDevice, chipID)) {
+        return true;
+    }
+#endif
+
+#if defined(USE_FLASH_W25Q128FV)
+    if (w25q128fv_detect(&flashDevice, chipID)) {
         return true;
     }
 #endif
