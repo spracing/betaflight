@@ -38,8 +38,8 @@ MEMORY
 {
     FLASH                              (rx) : ORIGIN = 0x08000000, LENGTH = 1024K
 
-    ITCM_RAM                          (rwx) : ORIGIN = 0x00000000, LENGTH = 64K - 40K
-    SPRACINGPIXELOSD_CODE              (rx) : ORIGIN = ORIGIN(ITCM_RAM) + LENGTH(ITCM_RAM), LENGTH = 40K
+    ITCM_RAM                          (rwx) : ORIGIN = 0x00000000, LENGTH = 64K - 32K
+    SPRACINGPIXELOSD_CODE              (rx) : ORIGIN = ORIGIN(ITCM_RAM) + LENGTH(ITCM_RAM), LENGTH = 32K
     
     DTCM_RAM                          (rwx) : ORIGIN = 0x20000000, LENGTH = 128K - 4K
     SPRACINGPIXELOSD_DTCM_RAM         (rwx) : ORIGIN = ORIGIN(DTCM_RAM) + LENGTH(DTCM_RAM), LENGTH = 4K

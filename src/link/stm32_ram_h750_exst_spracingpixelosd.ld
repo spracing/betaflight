@@ -59,8 +59,8 @@ _spracing_pixel_osd_framebuffer_size = (360 * 288 * 2 / 8) * 2; /* (H * V * Bit-
 /* Specify the memory areas */
 MEMORY
 {
-    ITCM_RAM                          (rwx) : ORIGIN = 0x00000000, LENGTH = 64K - 40K
-    SPRACINGPIXELOSD_CODE              (rx) : ORIGIN = ORIGIN(ITCM_RAM) + LENGTH(ITCM_RAM), LENGTH = 40K
+    ITCM_RAM                          (rwx) : ORIGIN = 0x00000000, LENGTH = 64K - 32K
+    SPRACINGPIXELOSD_CODE              (rx) : ORIGIN = ORIGIN(ITCM_RAM) + LENGTH(ITCM_RAM), LENGTH = 32K
     
     DTCM_RAM                          (rwx) : ORIGIN = 0x20000000, LENGTH = 128K - 4K
     SPRACINGPIXELOSD_DTCM_RAM         (rwx) : ORIGIN = ORIGIN(DTCM_RAM) + LENGTH(DTCM_RAM), LENGTH = 4K
