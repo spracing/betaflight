@@ -243,27 +243,41 @@
 #define USE_ADC_INTERNAL // ADC3
 
 #if (SPRACINGH7CINE_REV <= 2)
-#define ADC1_INSTANCE ADC1 // ADC1 for Battery/Current/RSSI/Monitoring
-#define ADC2_INSTANCE ADC2 // ADC2 for VIDEO ADC
-#define ADC3_INSTANCE ADC3 // ADC3 only for core temp and vrefint
+#define ADC1_INSTANCE ADC1 // ADC1 for VIDEO ADC
+#define ADC2_INSTANCE ADC2 // ADC2 for RSSI/CURRENT
+#define ADC3_INSTANCE ADC3 // ADC3 for TEMP/REF/BATTERY/EXTERNAL
 
-#define EXTERNAL1_ADC_PIN       PC0  // ADC123 aka CURRENT_B for 2nd 4in1 ESC
-#define CURRENT_METER_ADC_PIN   PC1  // ADC12
-#define VBAT_ADC_PIN            PC4  // ADC123
-#define RSSI_ADC_PIN            PC5  // ADC12
-#define VIDEO_ADC_PIN           PC3  // ADC12
+#define ADC_INSTANCE ADC3 // Use ADC3 by default, for as many pins as possible.
+
+#define EXTERNAL1_ADC_PIN           PC0  // ADC123 aka CURRENT_B for 2nd 4in1 ESC
+#define EXTERNAL1_ADC_INSTANCE      ADC3
+#define CURRENT_METER_ADC_PIN       PC1  // ADC12
+#define CURRENT_METER_ADC_INSTANCE  ADC2
+#define VBAT_ADC_PIN                PC4  // ADC123
+#define VBAT_ADC_INSTANCE           ADC3
+#define RSSI_ADC_PIN                PC5  // ADC12
+#define RSSI_ADC_INSTANCE           ADC2
+#define VIDEO_ADC_PIN               PC3  // ADC12
+#define VIDEO_ADC_INSTANCE          ADC1
+
 #elif (SPRACINGH7CINE_REV == 3)
 #define ADC1_INSTANCE ADC1 // ADC1 for Battery/Current/RSSI/Monitoring
 #define ADC2_INSTANCE ADC2 // ADC2 for VIDEO ADC
 #define ADC3_INSTANCE ADC3 // ADC3 only for core temp and vrefint
 
+#define ADC_INSTANCE ADC3 // Use ADC3 by default, for as many pins as possible.
+
 // FIXME the current betaflight ADC implementation will pick the first ADC instance that can be connected to each ADC pin
 // however, ADC2 and ADC3 should be used for monitoring, and ADC1 should be dedicated to video so that a timer-triggered
 // DMA stream can be used which should be independent from CURRENT/POWER/RSSI.
-#define CURRENT_METER_ADC_PIN   PC0  // ADC3_IN10 CURRENT
-#define VBAT_ADC_PIN            PC3  // ADC3_INP1 POWER
-#define RSSI_ADC_PIN            PC4  // ADC2_INP4 RSSI
-#define VIDEO_ADC_PIN           PC5  // ADC1_INP8 VIDEO
+#define CURRENT_METER_ADC_PIN       PC0  // ADC3_IN10 CURRENT
+#define CURRENT_METER_ADC_INSTANCE  ADC3
+#define VBAT_ADC_PIN                PC3  // ADC3_INP1 POWER
+#define VBAT_ADC_INSTANCE           ADC3
+#define RSSI_ADC_PIN                PC4  // ADC2_INP4 RSSI
+#define RSSI_ADC_INSTANCE           ADC2
+#define VIDEO_ADC_PIN               PC5  // ADC1_INP8 VIDEO
+#define VIDEO_ADC_INSTANCE          ADC1
 #endif
 
 #if (SPRACINGH7CINE_REV <= 2) // Rev A & B
