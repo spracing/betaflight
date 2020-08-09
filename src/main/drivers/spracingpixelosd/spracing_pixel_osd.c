@@ -110,6 +110,12 @@ FAST_CODE static void PIXEL_DMA_IRQHandler(dmaChannelDescriptor_t* descriptor)
     spracingPixelOSDLibraryVTable->pixelDMAHandler();
 }
 
+FAST_CODE static void ADC_DMA_IRQHandler(dmaChannelDescriptor_t* descriptor)
+{
+    UNUSED(descriptor);
+    spracingPixelOSDLibraryVTable->adcDMAHandler();
+}
+
 FAST_CODE void COMP1_IRQHandler(void)
 {
     // don't call this if comparator that caused the interrupt is not the one used by the OSD system
@@ -182,6 +188,16 @@ void frameBufferInit(void)
 
 static void configureDMAHandlers(void)
 {
+    //
+    // ADC DMA
+    //
+
+    dmaResource_t *adcDmaRef = dmaGetRefByIdentifier(DMA2_ST5_HANDLER);
+    uint16_t adcDmaParam = 0;
+
+    dmaInit(dmaGetIdentifier(adcDmaRef), OWNER_OSD, 0);
+    dmaSetHandler(dmaGetIdentifier(adcDmaRef), ADC_DMA_IRQHandler, NVIC_PRIO_VIDEO_ADC, adcDmaParam);
+
     //
     // Sync Generation DMA
     //
