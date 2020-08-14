@@ -82,6 +82,8 @@
 
 #include "rx/rx.h"
 
+#include "scheduler/scheduler.h"
+
 #include "sensors/acceleration.h"
 #include "sensors/adcinternal.h"
 #include "sensors/barometer.h"
@@ -91,8 +93,6 @@
 #include "sensors/gyro.h"
 #include "sensors/sensors.h"
 #include "sensors/rangefinder.h"
-
-#include "scheduler/scheduler.h"
 
 #include "telemetry/telemetry.h"
 #include "telemetry/crsf.h"
@@ -171,9 +171,9 @@ bool taskUpdateRxMainInProgress()
 
 static void taskUpdateRxMain(timeUs_t currentTimeUs)
 {
-    // Where we are using a state machine call ignoreTaskTime() for all states bar one
+    // Where we are using a state machine call ignoreTaskStateTime() for all states bar one
     if (rxState != MODES) {
-        ignoreTaskTime();
+        ignoreTaskStateTime();
     }
 
     switch (rxState) {
@@ -423,7 +423,6 @@ void tasksInit(void)
 #endif
 }
 
-#if defined(USE_TASK_STATISTICS)
 #define DEFINE_TASK(taskNameParam, subTaskNameParam, checkFuncParam, taskFuncParam, desiredPeriodParam, staticPriorityParam) {  \
     .taskName = taskNameParam, \
     .subTaskName = subTaskNameParam, \
@@ -432,15 +431,6 @@ void tasksInit(void)
     .desiredPeriodUs = desiredPeriodParam, \
     .staticPriority = staticPriorityParam \
 }
-#else
-#define DEFINE_TASK(taskNameParam, subTaskNameParam, checkFuncParam, taskFuncParam, desiredPeriodParam, staticPriorityParam) {  \
-    .checkFunc = checkFuncParam, \
-    .taskFunc = taskFuncParam, \
-    .desiredPeriodUs = desiredPeriodParam, \
-    .staticPriority = staticPriorityParam \
-}
-#endif
-
 
 task_t tasks[TASK_COUNT] = {
     [TASK_SYSTEM] = DEFINE_TASK("SYSTEM", "LOAD", NULL, taskSystemLoad, TASK_PERIOD_HZ(10), TASK_PRIORITY_MEDIUM_HIGH),

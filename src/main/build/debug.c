@@ -101,4 +101,5 @@ const char * const debugModeNames[DEBUG_COUNT] = {
     "GHST",
     "RX_EXPRESSLRS_SPI",
     "SPRACING_PIXEL_OSD",
+    "SCHEDULER_DETERMINISM"
 };

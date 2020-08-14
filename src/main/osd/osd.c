@@ -90,6 +90,8 @@
 #include "rx/crsf.h"
 #include "rx/rx.h"
 
+#include "scheduler/scheduler.h"
+
 #include "sensors/acceleration.h"
 #include "sensors/battery.h"
 #include "sensors/esc_sensor.h"
@@ -1203,6 +1205,7 @@ void osdUpdate(timeUs_t currentTimeUs)
 {
     if (!osdIsReady) {
         if (!displayCheckReady(osdDisplayPort, false)) {
+            ignoreTaskShortExecTime();
             return;
         }
 
@@ -1233,6 +1236,7 @@ void osdUpdate(timeUs_t currentTimeUs)
         if (doDrawScreen) {
             displayDrawScreen(osdDisplayPort);
         }
+        ignoreTaskShortExecTime();
     }
     ++counter;
 #else
