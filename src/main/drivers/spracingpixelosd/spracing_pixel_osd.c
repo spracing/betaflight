@@ -357,6 +357,7 @@ bool spracingPixelOSDInit(const vcdProfile_t *vcdProfile)
     return true;
 }
 
+#ifdef USE_SPRACING_PIXELOSD_DEBUG_OVERLAY
 void spracingPixelOSDRenderDebugOverlay(uint8_t *frameBuffer, spracingPixelOSDFrameState_t* frameState, spracingPixelOSDSyncVoltages_t *syncVoltages)
 {
     static const char *detectedVideoSystemNames[] = { "????", "PAL", "NTSC" };
@@ -411,5 +412,6 @@ void spracingPixelOSDRenderDebugOverlay(uint8_t *frameBuffer, spracingPixelOSDFr
     frameBuffer_slowWriteString(frameBuffer, (360 - (12 * messageLength)) / 2, debugY, messageBuffer, messageLength);
 
 }
+#endif // USE_SPRACING_PIXELOSD_DEBUG_OVERLAY
 
 #endif // USE_SPRACING_PIXEL_OSD

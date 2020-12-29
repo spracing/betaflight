@@ -295,7 +295,9 @@ static void commitTransaction(displayPort_t *instance)
     UNUSED(instance);
 
     spracingPixelOSDLibraryVTable->refreshFrameState(&frameState);
+#if USE_SPRACING_PIXELOSD_DEBUG_OVERLAY
     spracingPixelOSDRenderDebugOverlay(frameBuffer, &frameState, syncVoltages);
+#endif
 
     spracingPixelOSDLibraryVTable->frameBufferCommit(frameBuffer);
 
