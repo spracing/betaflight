@@ -162,7 +162,7 @@ void sx127xWriteRegisterFIFO(const uint8_t *data, const uint8_t length)
     sx127xWriteRegisterBurst(SX127X_REG_FIFO, data, length);
 }
 
-void sx127xSetBandwidthCodingRate(const sx127x_bandwidth_e bw, const sx127x_coding_rate_e cr, const sx127x_spreading_factor_e sf, const bool headerExplMode, const bool crcEnabled)
+void sx127xSetBandwidthCodingRate(const sx127xBandwidth_e bw, const sx127xCodingRate_e cr, const sx127xSpreadingFactor_e sf, const bool headerExplMode, const bool crcEnabled)
 {
     if (sf == SX127x_SF_6) { // set SF6 optimizations
         sx127xWriteRegister(SX127X_REG_MODEM_CONFIG_1, bw | cr | SX1278_HEADER_IMPL_MODE);
@@ -182,7 +182,7 @@ void sx127xSetBandwidthCodingRate(const sx127x_bandwidth_e bw, const sx127x_codi
     }
 
     if (bw == SX127x_BW_500_00_KHZ) {
-        //datasheet errata reconmendation http://caxapa.ru/thumbs/972894/SX1276_77_8_ErrataNote_1.1_STD.pdf
+        //datasheet errata recommendation http://caxapa.ru/thumbs/972894/SX1276_77_8_ErrataNote_1.1_STD.pdf
         sx127xWriteRegister(0x36, 0x02);
         sx127xWriteRegister(0x3a, 0x64);
     } else {
@@ -209,7 +209,7 @@ void sx127xSetSyncWord(uint8_t syncWord)
     sx127xWriteRegister(SX127X_REG_SYNC_WORD, syncWord); //TODO: possible bug in original code
 }
 
-void sx127xSetMode(const sx127x_radio_op_mode_e mode)
+void sx127xSetMode(const sx127xRadioOpMode_e mode)
 {
     sx127xWriteRegister(SX127x_OPMODE_LORA | SX127X_REG_OP_MODE, mode);
 }
@@ -225,7 +225,7 @@ void sx127xSetPreambleLength(const uint8_t preambleLen)
     sx127xWriteRegister(SX127X_REG_PREAMBLE_LSB, preambleLen);
 }
 
-void sx127xSetSpreadingFactor(const sx127x_spreading_factor_e sf)
+void sx127xSetSpreadingFactor(const sx127xSpreadingFactor_e sf)
 {
     sx127xSetRegisterValue(SX127X_REG_MODEM_CONFIG_2, sf | SX127X_TX_MODE_SINGLE, 7, 3);
     if (sf == SX127x_SF_6) {
@@ -241,7 +241,7 @@ void sx127xSetFrequencyHZ(const uint32_t freq)
 {
     sx127xSetMode(SX127x_OPMODE_STANDBY);
 
-    int32_t FRQ = ((uint32_t)((double)freq / (double)SX127x_FREQ_STEP));
+    int32_t FRQ = ((uint32_t)(freq / SX127x_FREQ_STEP));
 
     uint8_t FRQ_MSB = (uint8_t)((FRQ >> 16) & 0xFF);
     uint8_t FRQ_MID = (uint8_t)((FRQ >> 8) & 0xFF);
@@ -287,7 +287,8 @@ void sx127xStartReceiving(void)
     sx127xSetMode(SX127x_OPMODE_RXCONTINUOUS);
 }
 
-void sx127xConfig(const sx127x_bandwidth_e bw, const sx127x_spreading_factor_e sf, const sx127x_coding_rate_e cr, const uint32_t freq, const uint8_t preambleLen, const bool iqInverted)
+void sx127xConfig(const sx127xBandwidth_e bw, const sx127xSpreadingFactor_e sf, const sx127xCodingRate_e cr, 
+                  const uint32_t freq, const uint8_t preambleLen, const bool iqInverted)
 {
     sx127xConfigLoraDefaults(iqInverted);
     sx127xSetPreambleLength(preambleLen);
@@ -297,7 +298,7 @@ void sx127xConfig(const sx127x_bandwidth_e bw, const sx127x_spreading_factor_e s
     sx127xSetFrequencyReg(freq);
 }
 
-uint32_t sx127xGetCurrBandwidth(const sx127x_bandwidth_e bw)
+uint32_t sx127xGetCurrBandwidth(const sx127xBandwidth_e bw)
 {
     switch (bw) {
     case SX127x_BW_7_80_KHZ:
@@ -324,7 +325,8 @@ uint32_t sx127xGetCurrBandwidth(const sx127x_bandwidth_e bw)
     return -1;
 }
 
-uint32_t sx127xGetCurrBandwidthNormalisedShifted(const sx127x_bandwidth_e bw) // this is basically just used for speedier calc of the freq offset, pre compiled for 32mhz xtal
+// this is basically just used for speedier calc of the freq offset, pre compiled for 32mhz xtal
+uint32_t sx127xGetCurrBandwidthNormalisedShifted(const sx127xBandwidth_e bw)
 {
     switch (bw) {
     case SX127x_BW_7_80_KHZ:
@@ -362,7 +364,7 @@ static bool sx127xGetFrequencyErrorbool(void)
     return (sx127xReadRegister(SX127X_REG_FEI_MSB) & 0x08) >> 3; // returns true if pos freq error, neg if false
 }
 
-int32_t sx127xGetFrequencyError(const sx127x_bandwidth_e bw)
+int32_t sx127xGetFrequencyError(const sx127xBandwidth_e bw)
 {
     uint8_t reg[3] = {0x0, 0x0, 0x0};
     sx127xReadRegisterBurst(SX127X_REG_FEI_MSB, reg, sizeof(reg));
@@ -375,7 +377,8 @@ int32_t sx127xGetFrequencyError(const sx127x_bandwidth_e bw)
         intFreqError -= 524288; // Sign bit is on
     }
 
-    int32_t fErrorHZ = (intFreqError >> 3) * (sx127xGetCurrBandwidthNormalisedShifted(bw)); // bit shift hackery so we don't have to use floaty bois; the >> 3 is intentional and is a simplification of the formula on page 114 of sx1276 datasheet
+    // bit shift hackery so we don't have to use floaty bois; the >> 3 is intentional and is a simplification of the formula on page 114 of sx1276 datasheet
+    int32_t fErrorHZ = (intFreqError >> 3) * (sx127xGetCurrBandwidthNormalisedShifted(bw));
     fErrorHZ >>= 4;
 
     return fErrorHZ;

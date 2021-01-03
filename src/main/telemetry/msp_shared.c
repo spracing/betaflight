@@ -121,8 +121,7 @@ enum { // byte position(index) in msp-over-telemetry request payload
     MSP_INDEX_PAYLOAD_V2    = MSP_INDEX_SIZE_V2_HI    + 1, // MSPv2 first byte of payload itself
 };
 
-STATIC_UNIT_TESTED uint8_t requestBuffer[MSP_TLM_INBUF_SIZE];
-STATIC_UNIT_TESTED uint8_t responseBuffer[MSP_TLM_OUTBUF_SIZE];
+STATIC_UNIT_TESTED uint8_t requestBuffer[MSP_PORT_INBUF_SIZE];
 STATIC_UNIT_TESTED mspPacket_t requestPacket;
 STATIC_UNIT_TESTED mspPacket_t responsePacket;
 static uint8_t lastRequestVersion; // MSP version of last request. Temporary solution. It's better to keep it in requestPacket.
@@ -131,8 +130,8 @@ static mspDescriptor_t mspSharedDescriptor;
 
 void initSharedMsp(void)
 {
-    responsePacket.buf.ptr = responseBuffer;
-    responsePacket.buf.end = ARRAYEND(responseBuffer);
+    responsePacket.buf.ptr = mspSerialOutBuf;
+    responsePacket.buf.end = ARRAYEND(mspSerialOutBuf);
 
     mspSharedDescriptor = mspDescriptorAlloc();
 }
@@ -141,8 +140,8 @@ static void processMspPacket(void)
 {
     responsePacket.cmd = 0;
     responsePacket.result = 0;
-    responsePacket.buf.ptr = responseBuffer;
-    responsePacket.buf.end = ARRAYEND(responseBuffer);
+    responsePacket.buf.ptr = mspSerialOutBuf;
+    responsePacket.buf.end = ARRAYEND(mspSerialOutBuf);
 
     mspPostProcessFnPtr mspPostProcessFn = NULL;
     if (mspFcProcessCommand(mspSharedDescriptor, &requestPacket, &responsePacket, &mspPostProcessFn) == MSP_RESULT_ERROR) {
@@ -152,18 +151,18 @@ static void processMspPacket(void)
         mspPostProcessFn(NULL);
     }
 
-    sbufSwitchToReader(&responsePacket.buf, responseBuffer);
+    sbufSwitchToReader(&responsePacket.buf, mspSerialOutBuf);
 }
 
 void sendMspErrorResponse(uint8_t error, int16_t cmd)
 {
     responsePacket.cmd = cmd;
     responsePacket.result = 0;
-    responsePacket.buf.ptr = responseBuffer;
+    responsePacket.buf.ptr = mspSerialOutBuf;
 
     sbufWriteU8(&responsePacket.buf, error);
     responsePacket.result = TELEMETRY_MSP_RES_ERROR;
-    sbufSwitchToReader(&responsePacket.buf, responseBuffer);
+    sbufSwitchToReader(&responsePacket.buf, mspSerialOutBuf);
 }
 
 // despite its name, the function actually handles telemetry frame payload with MSP in it
@@ -273,7 +272,7 @@ bool sendMspReply(const uint8_t payloadSizeMax, mspResponseFnPtr responseFn)
     sbuf_t *payloadBuf = sbufInit(&payloadBufStruct, payloadArray, payloadArray + payloadSizeMax);
 
     // detect first reply packet
-    if (responsePacket.buf.ptr == responseBuffer) {
+    if (responsePacket.buf.ptr == mspSerialOutBuf) {
         // this is the first frame of the response packet. Add proper header and size.
         // header
         uint8_t status = MSP_STATUS_START_MASK | (seq++ & MSP_STATUS_SEQUENCE_MASK) | (lastRequestVersion << MSP_STATUS_VERSION_SHIFT);
@@ -315,7 +314,7 @@ bool sendMspReply(const uint8_t payloadSizeMax, mspResponseFnPtr responseFn)
     // last/only chunk
     sbufWriteData(payloadBuf, responsePacket.buf.ptr, inputRemainder);
     sbufAdvance(&responsePacket.buf, inputRemainder);
-    sbufSwitchToReader(&responsePacket.buf, responseBuffer);// for CRC calculation
+    sbufSwitchToReader(&responsePacket.buf, mspSerialOutBuf);// for CRC calculation
 
     responseFn(payloadArray, payloadBuf->ptr - payloadArray);
     return false;

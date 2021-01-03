@@ -31,7 +31,7 @@ typedef enum {
     SX127x_OPMODE_LORA = 0x80,
     SX127X_ACCESS_SHARED_REG_OFF = 0x00,
     SX127X_ACCESS_SHARED_REG_ON = 0x40,
-} sx127x_modulation_mode_e;
+} sx127xModulationMode_e;
 
 //SX127x_RadioOPmodes
 typedef enum {
@@ -43,7 +43,7 @@ typedef enum {
     SX127x_OPMODE_RXCONTINUOUS = 0x05,
     SX127x_OPMODE_RXSINGLE = 0x06,
     SX127x_OPMODE_CAD = 0x07,
-} sx127x_radio_op_mode_e;
+} sx127xRadioOpMode_e;
 
 //SX127x_Bandwidth
 typedef enum {
@@ -57,7 +57,7 @@ typedef enum {
     SX127x_BW_125_00_KHZ = 0x70,
     SX127x_BW_250_00_KHZ = 0x80,
     SX127x_BW_500_00_KHZ = 0x90,
-} sx127x_bandwidth_e;
+} sx127xBandwidth_e;
 
 //SX127x_SpreadingFactor
 typedef enum {
@@ -68,7 +68,7 @@ typedef enum {
     SX127x_SF_10 = 0xA0,
     SX127x_SF_11 = 0xB0,
     SX127x_SF_12 = 0xC0,
-} sx127x_spreading_factor_e;
+} sx127xSpreadingFactor_e;
 
 //SX127x_CodingRate
 typedef enum {
@@ -76,7 +76,7 @@ typedef enum {
     SX127x_CR_4_6 = 0x04,
     SX127x_CR_4_7 = 0x06,
     SX127x_CR_4_8 = 0x08,
-} sx127x_coding_rate_e;
+} sx127xCodingRate_e;
 
 // SX127x series common registers
 #define SX127X_REG_FIFO 0x00
@@ -213,7 +213,7 @@ typedef enum {
 
 // SX127X_REG_SYNC_WORD
 //#define SX127X_SYNC_WORD 0xC8 //  200   0     default ExpressLRS sync word - 200Hz
-#define SX127X_SYNC_WORD                              0x12        //  18    0     default LoRa sync word
+#define SX127X_SYNC_WORD 0x12         //  18    0     default LoRa sync word
 #define SX127X_SYNC_WORD_LORAWAN 0x34 //  52    0     sync word reserved for LoRaWAN networks
 
 ///Added by Sandro
@@ -307,24 +307,24 @@ uint8_t sx127xGetRegisterValue(const uint8_t reg, const uint8_t msb, const uint8
 uint8_t sx127xSetRegisterValue(const uint8_t reg, const uint8_t value, const uint8_t msb, const uint8_t lsb);
 void sx127xReadRegisterFIFO(uint8_t *data, const uint8_t length);
 void sx127xWriteRegisterFIFO(const uint8_t *data, const uint8_t length);
-void sx127xSetBandwidthCodingRate(const sx127x_bandwidth_e bw, const sx127x_coding_rate_e cr, const sx127x_spreading_factor_e sf, const bool headerExplMode, const bool crcEnabled);
+void sx127xSetBandwidthCodingRate(const sx127xBandwidth_e bw, const sx127xCodingRate_e cr, const sx127xSpreadingFactor_e sf, const bool headerExplMode, const bool crcEnabled);
 void sx127xSetSyncWord(uint8_t syncWord);
-void sx127xSetMode(const sx127x_radio_op_mode_e mode);
+void sx127xSetMode(const sx127xRadioOpMode_e mode);
 void sx127xSetOutputPower(const uint8_t power);
 void sx127xSetPreambleLength(const uint8_t preambleLen);
-void sx127xSetSpreadingFactor(const sx127x_spreading_factor_e sf);
+void sx127xSetSpreadingFactor(const sx127xSpreadingFactor_e sf);
 void sx127xSetFrequencyHZ(const uint32_t freq);
 void sx127xSetFrequencyReg(const uint32_t freq);
 
 void sx127xTransmitData(const uint8_t *data, const uint8_t length);
 void sx127xReceiveData(uint8_t *data, const uint8_t length);
 void sx127xStartReceiving(void);
-void sx127xConfig(const sx127x_bandwidth_e bw, const sx127x_spreading_factor_e sf, const sx127x_coding_rate_e cr, const uint32_t freq, const uint8_t preambleLen, const bool iqInverted);
+void sx127xConfig(const sx127xBandwidth_e bw, const sx127xSpreadingFactor_e sf, const sx127xCodingRate_e cr, const uint32_t freq, const uint8_t preambleLen, const bool iqInverted);
 
-uint32_t sx127xGetCurrBandwidth(const sx127x_bandwidth_e bw);
-uint32_t sx127xGetCurrBandwidthNormalisedShifted(const sx127x_bandwidth_e bw);
+uint32_t sx127xGetCurrBandwidth(const sx127xBandwidth_e bw);
+uint32_t sx127xGetCurrBandwidthNormalisedShifted(const sx127xBandwidth_e bw);
 void sx127xSetPPMoffsetReg(const int32_t offset, const uint32_t freq);
-int32_t sx127xGetFrequencyError(const sx127x_bandwidth_e bw);
+int32_t sx127xGetFrequencyError(const sx127xBandwidth_e bw);
 void sx127xAdjustFrequency(int32_t offset, const uint32_t freq);
 uint8_t sx127xUnsignedGetLastPacketRSSI(void);
 int8_t sx127xGetLastPacketRSSI(void);

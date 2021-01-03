@@ -31,6 +31,7 @@
 #include "build/build_config.h"
 #include "common/utils.h"
 #include "common/maths.h"
+#include "rx/crsf.h"
 #include "rx/expresslrs_common.h"
 #include "drivers/rx/rx_sx127x.h"
 #include "drivers/rx/rx_sx1280.h"
@@ -50,7 +51,7 @@ static uint8_t syncChannel = 0;
 // @CapnBry - Higher rates shorter timeout. Usually it runs 1-1.5 seconds with complete sync 500Hz.
 //            250Hz is 2-5s. 150Hz 2.5s. 50Hz stays in sync all 5 seconds of my test.
 // The failsafe timeout values come from the ELRS project's ExpressLRS_AirRateConfig definitions.
-elrs_mod_settings_t air_rate_config[][ELRS_RATE_MAX] = {
+elrsModSettings_t airRateConfig[][ELRS_RATE_MAX] = {
 #ifdef USE_RX_SX127X
     {
         {0, RATE_200HZ, SX127x_BW_500_00_KHZ, SX127x_SF_6, SX127x_CR_4_7, 5000, TLM_RATIO_1_64, 4, 8},
@@ -72,7 +73,7 @@ elrs_mod_settings_t air_rate_config[][ELRS_RATE_MAX] = {
 #endif
 };
 
-elrs_rf_perf_params_t rf_perf_config[][ELRS_RATE_MAX] = {
+elrsRfPerfParams_t rfPerfConfig[][ELRS_RATE_MAX] = {
 #ifdef USE_RX_SX127X
     {
         {0, RATE_200HZ, -112, 4380, 3000, 2500, 600, 5000},
@@ -343,43 +344,43 @@ uint16_t calcCrc14(uint8_t *data, uint8_t len, uint16_t crc)
     return crc & 0x3FFF;
 }
 
-static void initializeFHSSFrequencies(const elrs_freq_domain_e dom) {
+static void initializeFHSSFrequencies(const elrsFreqDomain_e dom) {
     switch (dom) {
 #ifdef USE_RX_SX127X
-        case AU433:
-            FHSSfreqs = FHSSfreqsAU433;
-            numFreqs = sizeof(FHSSfreqsAU433) / sizeof(uint32_t);
-            break;
-        case AU915:
-            FHSSfreqs = FHSSfreqsAU915;
-            numFreqs = sizeof(FHSSfreqsAU915) / sizeof(uint32_t);
-            break;
-        case EU433:
-            FHSSfreqs = FHSSfreqsEU433;
-            numFreqs = sizeof(FHSSfreqsEU433) / sizeof(uint32_t);
-            break;
-        case EU868:
-            FHSSfreqs = FHSSfreqsEU868;
-            numFreqs = sizeof(FHSSfreqsEU868) / sizeof(uint32_t);
-            break;
-        case IN866:
-            FHSSfreqs = FHSSfreqsIN866;
-            numFreqs = sizeof(FHSSfreqsIN866) / sizeof(uint32_t);
-            break;
-        case FCC915:
-            FHSSfreqs = FHSSfreqsFCC915;
-            numFreqs = sizeof(FHSSfreqsFCC915) / sizeof(uint32_t);
-            break;
+    case AU433:
+        FHSSfreqs = FHSSfreqsAU433;
+        numFreqs = sizeof(FHSSfreqsAU433) / sizeof(uint32_t);
+        break;
+    case AU915:
+        FHSSfreqs = FHSSfreqsAU915;
+        numFreqs = sizeof(FHSSfreqsAU915) / sizeof(uint32_t);
+        break;
+    case EU433:
+        FHSSfreqs = FHSSfreqsEU433;
+        numFreqs = sizeof(FHSSfreqsEU433) / sizeof(uint32_t);
+        break;
+    case EU868:
+        FHSSfreqs = FHSSfreqsEU868;
+        numFreqs = sizeof(FHSSfreqsEU868) / sizeof(uint32_t);
+        break;
+    case IN866:
+        FHSSfreqs = FHSSfreqsIN866;
+        numFreqs = sizeof(FHSSfreqsIN866) / sizeof(uint32_t);
+        break;
+    case FCC915:
+        FHSSfreqs = FHSSfreqsFCC915;
+        numFreqs = sizeof(FHSSfreqsFCC915) / sizeof(uint32_t);
+        break;
 #endif
 #ifdef USE_RX_SX1280
-        case ISM2400:
-            FHSSfreqs = FHSSfreqsISM2400;
-            numFreqs = sizeof(FHSSfreqsISM2400) / sizeof(uint32_t);
-            break;
+    case ISM2400:
+        FHSSfreqs = FHSSfreqsISM2400;
+        numFreqs = sizeof(FHSSfreqsISM2400) / sizeof(uint32_t);
+        break;
 #endif
-        default:
-            FHSSfreqs = NULL;
-            numFreqs = 0;
+    default:
+        FHSSfreqs = NULL;
+        numFreqs = 0;
     }
 }
 
@@ -434,7 +435,7 @@ Approach:
   another random entry, excluding the sync channel.
 
 */
-void FHSSrandomiseFHSSsequence(const uint8_t UID[], const elrs_freq_domain_e dom)
+void FHSSrandomiseFHSSsequence(const uint8_t UID[], const elrsFreqDomain_e dom)
 {
     seed = ((long)UID[2] << 24) + ((long)UID[3] << 16) + ((long)UID[4] << 8) + UID[5];
 
@@ -469,10 +470,9 @@ void FHSSrandomiseFHSSsequence(const uint8_t UID[], const elrs_freq_domain_e dom
     }
 }
 
-uint8_t tlmRatioEnumToValue(const elrs_tlm_ratio_e enumval)
+uint8_t tlmRatioEnumToValue(const elrsTlmRatio_e enumval)
 {
-    switch (enumval)
-    {
+    switch (enumval) {
     case TLM_RATIO_NO_TLM:
         return 1;
         break;
@@ -502,10 +502,9 @@ uint8_t tlmRatioEnumToValue(const elrs_tlm_ratio_e enumval)
     }
 }
 
-uint16_t rateEnumToHz(const elrs_rf_rate_e eRate)
+uint16_t rateEnumToHz(const elrsRfRate_e eRate)
 {
-    switch (eRate)
-    {
+    switch (eRate) {
     case RATE_500HZ: return 500;
     case RATE_250HZ: return 250;
     case RATE_200HZ: return 200;
@@ -520,8 +519,7 @@ uint16_t rateEnumToHz(const elrs_rf_rate_e eRate)
 
 uint16_t txPowerIndexToValue(const uint8_t index)
 {
-    switch (index)
-    {
+    switch (index) {
     case 0: return 0;
     case 1: return 10;
     case 2: return 25;
@@ -607,20 +605,20 @@ uint16_t convertSwitch1b(const uint16_t val)
 uint16_t convertSwitch3b(const uint16_t val) 
 {
     switch (val) {
-        case 0:
-            return 1000;
-        case 1:
-            return 1275;
-        case 2:
-            return 1425;
-        case 3:
-            return 1575;
-        case 4:
-            return 1725;
-        case 5:
-            return 2000;
-        default:
-            return 1500;
+    case 0:
+        return 1000;
+    case 1:
+        return 1275;
+    case 2:
+        return 1425;
+    case 3:
+        return 1575;
+    case 4:
+        return 1725;
+    case 5:
+        return 2000;
+    default:
+        return 1500;
     }
 }
 
@@ -631,7 +629,7 @@ uint16_t convertSwitchNb(const uint16_t val, const uint16_t max)
 
 uint16_t convertAnalog(const uint16_t val)
 {
-    return 0.62477120195241f * val + 881;
+    return CRSF_RC_CHANNEL_SCALE_LEGACY * val + 881;
 }
 
 uint8_t hybridWideNonceToSwitchIndex(const uint8_t nonce)

@@ -56,9 +56,7 @@ typedef struct elrsTimerState_s {
     volatile tickTock_e tickTock;
     uint32_t intervalUs;
     int32_t frequencyOffsetTicks;
-
     int32_t phaseShiftUs;
-
 } elrsTimerState_t;
 
 // Use a little ram to keep the amount of CPU cycles used in the ISR lower.
