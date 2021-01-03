@@ -436,6 +436,24 @@ rx_spi_expresslrs_unittest_DEFINES := \
 		USE_RX_SX1280= \
 		USE_RX_SX127X= \
 
+rx_spi_expresslrs_telemetry_unittest_SRC := \
+		$(USER_DIR)/rx/crsf.c \
+		$(USER_DIR)/telemetry/crsf.c \
+		$(USER_DIR)/common/crc.c \
+		$(USER_DIR)/common/maths.c \
+		$(USER_DIR)/common/streambuf.c \
+		$(USER_DIR)/common/gps_conversion.c \
+		$(USER_DIR)/common/printf.c \
+		$(USER_DIR)/common/typeconversion.c \
+		$(USER_DIR)/rx/expresslrs_telemetry.c \
+		$(USER_DIR)/build/atomic.c \
+		$(USER_DIR)/telemetry/msp_shared.c \
+
+rx_spi_expresslrs_telemetry_unittest_DEFINES := \
+		USE_RX_EXPRESSLRS= \
+		USE_GPS= \
+		USE_MSP_OVER_TELEMETRY= \
+
 # Please tweak the following variable definitions as needed by your
 # project, except GTEST_HEADERS, which you can use in your own targets
 # but shouldn't modify.

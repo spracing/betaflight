@@ -28,9 +28,10 @@ typedef struct rxExpressLrsSpiConfig_s {
     ioTag_t resetIoTag;
     ioTag_t busyIoTag;
     uint8_t UID[6];
-    bool hybridSwitches;
+    uint8_t switchMode;
     uint8_t domain;
     uint8_t rateIndex;
+    uint8_t modelId;
 } rxExpressLrsSpiConfig_t;
 
 PG_DECLARE(rxExpressLrsSpiConfig_t, rxExpressLrsSpiConfig);

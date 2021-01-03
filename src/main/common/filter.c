@@ -292,7 +292,6 @@ FAST_CODE float laggedMovingAverageUpdate(laggedMovingAverage_t *filter, float i
     return filter->movingSum  / denom;
 }
 
-
 // Simple fixed-point lowpass filter based on integer math
 
 int32_t simpleLPFilterUpdate(simpleLowpassFilter_t *filter, int32_t newVal)

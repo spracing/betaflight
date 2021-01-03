@@ -716,8 +716,7 @@ static void timCCxHandler(TIM_TypeDef *tim, timerConfig_t *timerConfig)
 #endif
 }
 
-
-static void timUpdateHandler(TIM_TypeDef *tim, timerConfig_t *timerConfig)
+static inline void timUpdateHandler(TIM_TypeDef *tim, timerConfig_t *timerConfig)
 {
     uint16_t capture;
     unsigned tim_status;
