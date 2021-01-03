@@ -184,4 +184,10 @@ timeUs_t rxSpiGetLastExtiTimeUs(void)
 {
     return lastExtiTimeUs;
 }
+
+void rxSpiTransferCommandMulti(uint8_t *data, uint8_t length)
+{
+    spiReadWriteBuf(dev, data, data, length);
+}
+
 #endif
