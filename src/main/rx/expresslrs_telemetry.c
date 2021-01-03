@@ -73,7 +73,7 @@ static uint8_t currentPackage;
 static bool waitUntilTelemetryConfirm;
 static uint16_t waitCount;
 static uint16_t maxWaitCount;
-static volatile stubborn_sender_state_s senderState;
+static volatile stubbornSenderState_e senderState;
 
 static void telemetrySenderResetState(void)
 {
@@ -143,7 +143,7 @@ void getCurrentTelemetryPayload(uint8_t *packageIndex, uint8_t *count, uint8_t *
 
 void confirmCurrentTelemetryPayload(const bool telemetryConfirmValue)
 {
-    stubborn_sender_state_s nextSenderState = senderState;
+    stubbornSenderState_e nextSenderState = senderState;
 
     switch (senderState) {
     case ELRS_SENDING:
@@ -277,26 +277,27 @@ void mspReceiverUnlock(void)
 
 static uint8_t mspFrameSize = 0;
 
-static void bufferMspResponse(uint8_t *payload, const uint8_t payloadSize) {
+static void bufferMspResponse(uint8_t *payload, const uint8_t payloadSize)
+{
     mspFrameSize = getCrsfMspFrame(tlmBuffer, payload, payloadSize);
 }
 
 void processMspPacket(uint8_t *packet)
 {
     switch (packet[2]) {
-        case CRSF_FRAMETYPE_DEVICE_PING:
-            deviceInfoReplyPending = true;
-            break;
-        case CRSF_FRAMETYPE_MSP_REQ:
-            FALLTHROUGH;
-        case CRSF_FRAMETYPE_MSP_WRITE: //TODO: MSP_EEPROM_WRITE command is disabled.
-            if (packet[ELRS_MSP_COMMAND_INDEX] != MSP_EEPROM_WRITE && bufferCrsfMspFrame(&packet[ELRS_MSP_PACKET_OFFSET], CRSF_FRAME_RX_MSP_FRAME_SIZE)) {
-                handleCrsfMspFrameBuffer(&bufferMspResponse);
-                mspReplyPending = true;
-            }
-            break;
-        default:
-            break;
+    case CRSF_FRAMETYPE_DEVICE_PING:
+        deviceInfoReplyPending = true;
+        break;
+    case CRSF_FRAMETYPE_MSP_REQ:
+        FALLTHROUGH;
+    case CRSF_FRAMETYPE_MSP_WRITE: //TODO: MSP_EEPROM_WRITE command is disabled.
+        if (packet[ELRS_MSP_COMMAND_INDEX] != MSP_EEPROM_WRITE && bufferCrsfMspFrame(&packet[ELRS_MSP_PACKET_OFFSET], CRSF_FRAME_RX_MSP_FRAME_SIZE)) {
+            handleCrsfMspFrameBuffer(&bufferMspResponse);
+            mspReplyPending = true;
+        }
+        break;
+    default:
+        break;
     }
 }
 #endif

@@ -28,7 +28,7 @@ typedef enum {
     ELRS_MSP_DATA_PACKET = 0x01,
     ELRS_SYNC_PACKET = 0x02,
     ELRS_TLM_PACKET = 0x03,
-} elrs_packet_type_e;
+} elrsPacketType_e;
 
 typedef enum {
     ELRS_DIO_UNKNOWN = 0,
@@ -59,8 +59,8 @@ typedef struct elrsReceiver_s {
 
     volatile uint8_t nonceRX; // nonce that we THINK we are up to.
 
-    elrs_mod_settings_t *mod_params;
-    elrs_rf_perf_params_t *rf_perf_params;
+    elrsModSettings_t *modParams;
+    elrsRfPerfParams_t *rfPerfParams;
 
     const uint8_t *UID;
 

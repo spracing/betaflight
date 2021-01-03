@@ -42,6 +42,7 @@ extern "C" {
 
     #include "telemetry/telemetry.h"
     #include "telemetry/msp_shared.h"
+    #include "rx/crsf_protocol.h"
     #include "rx/expresslrs_telemetry.h"
     #include "flight/imu.h"
 

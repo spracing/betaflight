@@ -296,7 +296,6 @@ FAST_CODE float laggedMovingAverageUpdate(laggedMovingAverage_t *filter, float i
 
 int32_t simpleLPFilterUpdate(simpleLowpassFilter_t *filter, int32_t newVal)
 {
-
     filter->fp = (filter->fp << filter->beta) - filter->fp;
     filter->fp += newVal << filter->fpShift;
     filter->fp >>= filter->beta;

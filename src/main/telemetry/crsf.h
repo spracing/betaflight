@@ -26,9 +26,7 @@
 #include "common/time.h"
 
 #include "rx/crsf_protocol.h"
-
-// type of function to send MSP response chunk over telemetry.
-typedef void (*mspResponseFnPtr)(uint8_t *payload, const uint8_t payloadSize);
+#include "telemetry/msp_shared.h"
 
 void initCrsfTelemetry(void);
 uint32_t getCrsfDesiredSpeed(void);

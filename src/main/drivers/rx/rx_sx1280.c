@@ -237,7 +237,8 @@ void sx1280ConfigLoraDefaults(void)
     sx1280SetDioIrqParams(SX1280_IRQ_RADIO_ALL, SX1280_IRQ_TX_DONE | SX1280_IRQ_RX_DONE, SX1280_IRQ_RADIO_NONE, SX1280_IRQ_RADIO_NONE); //set IRQ to both RXdone/TXdone on DIO1
 }
 
-void sx1280Config(const sx1280_lora_bandwidths_e bw, const sx1280_lora_spreading_factors_e sf, const sx1280_lora_coding_rates_e cr, const uint32_t freq, const uint8_t preambleLength, const bool iqInverted)
+void sx1280Config(const sx1280LoraBandwidths_e bw, const sx1280LoraSpreadingFactors_e sf, const sx1280LoraCodingRates_e cr, 
+                  const uint32_t freq, const uint8_t preambleLength, const bool iqInverted)
 {
     sx1280SetMode(SX1280_MODE_SLEEP);
     sx1280PollBusy();
@@ -247,7 +248,7 @@ void sx1280Config(const sx1280_lora_bandwidths_e bw, const sx1280_lora_spreading
     sx1280SetMode(SX1280_MODE_STDBY_XOSC); 
     sx1280ClearIrqStatus(SX1280_IRQ_RADIO_ALL);
     sx1280ConfigLoraModParams(bw, sf, cr);
-    sx1280SetPacketParams(preambleLength, SX1280_LORA_PACKET_IMPLICIT, 8, SX1280_LORA_CRC_OFF, (sx1280_lora_iq_modes_e)((uint8_t)!iqInverted << 6)); // TODO don't make static etc.
+    sx1280SetPacketParams(preambleLength, SX1280_LORA_PACKET_IMPLICIT, 8, SX1280_LORA_CRC_OFF, (sx1280LoraIqModes_e)((uint8_t)!iqInverted << 6)); // TODO don't make static etc.
     sx1280SetFrequencyReg(freq);
 }
 
@@ -259,7 +260,8 @@ void sx1280SetOutputPower(const int8_t power)
     sx1280WriteCommandBurst(SX1280_RADIO_SET_TXPARAMS, buf, 2);
 }
 
-void sx1280SetPacketParams(const uint8_t preambleLength, const sx1280_lora_packet_lengths_modes_e headerType, const uint8_t payloadLength, const sx1280_lora_crc_modes_e crc, const sx1280_lora_iq_modes_e invertIQ)
+void sx1280SetPacketParams(const uint8_t preambleLength, const sx1280LoraPacketLengthsModes_e headerType, const uint8_t payloadLength, 
+                           const sx1280LoraCrcModes_e crc, const sx1280LoraIqModes_e invertIQ)
 {
     uint8_t buf[7];
 
@@ -274,39 +276,31 @@ void sx1280SetPacketParams(const uint8_t preambleLength, const sx1280_lora_packe
     sx1280WriteCommandBurst(SX1280_RADIO_SET_PACKETPARAMS, buf, 7);
 }
 
-void sx1280SetMode(const sx1280_operating_modes_e opMode)
+void sx1280SetMode(const sx1280OperatingModes_e opMode)
 {
     uint8_t buf[3];
 
-    switch (opMode)
-    {
-
+    switch (opMode) {
     case SX1280_MODE_SLEEP:
         sx1280WriteCommand(SX1280_RADIO_SET_SLEEP, 0x01);
         break;
-
     case SX1280_MODE_CALIBRATION:
         break;
-
     case SX1280_MODE_STDBY_RC:
         sx1280WriteCommand(SX1280_RADIO_SET_STANDBY, SX1280_STDBY_RC);
         break;
-        
     case SX1280_MODE_STDBY_XOSC:
         sx1280WriteCommand(SX1280_RADIO_SET_STANDBY, SX1280_STDBY_XOSC);
         break;
-
     case SX1280_MODE_FS:
         sx1280WriteCommand(SX1280_RADIO_SET_FS, 0x00);
         break;
-
     case SX1280_MODE_RX:
         buf[0] = 0x00; // periodBase = 1ms, page 71 datasheet, set to FF for cont RX
         buf[1] = 0xFF;
         buf[2] = 0xFF;
         sx1280WriteCommandBurst(SX1280_RADIO_SET_RX, buf, 3);
         break;
-
     case SX1280_MODE_TX:
         //uses timeout Time-out duration = periodBase * periodBaseCount
         buf[0] = 0x00; // periodBase = 1ms, page 71 datasheet
@@ -314,16 +308,14 @@ void sx1280SetMode(const sx1280_operating_modes_e opMode)
         buf[2] = 0xFF; // TODO dynamic timeout based on expected onairtime
         sx1280WriteCommandBurst(SX1280_RADIO_SET_TX, buf, 3);
         break;
-
     case SX1280_MODE_CAD:
         break;
-
     default:
         break;
     }
 }
 
-void sx1280ConfigLoraModParams(const sx1280_lora_bandwidths_e bw, const sx1280_lora_spreading_factors_e sf, const sx1280_lora_coding_rates_e cr)
+void sx1280ConfigLoraModParams(const sx1280LoraBandwidths_e bw, const sx1280LoraSpreadingFactors_e sf, const sx1280LoraCodingRates_e cr)
 {
     // Care must therefore be taken to ensure that modulation parameters are set using the command
     // SetModulationParam() only after defining the packet type SetPacketType() to be used
@@ -336,8 +328,7 @@ void sx1280ConfigLoraModParams(const sx1280_lora_bandwidths_e bw, const sx1280_l
 
     sx1280WriteCommandBurst(SX1280_RADIO_SET_MODULATIONPARAMS, rfparams, 3);
 
-    switch (sf)
-    {
+    switch (sf) {
     case SX1280_LORA_SF5:
     case SX1280_LORA_SF6:
         sx1280WriteRegister(0x925, 0x1E); // for SF5 or SF6
@@ -355,7 +346,7 @@ void sx1280SetFrequencyHZ(const uint32_t reqFreq)
 {
     uint8_t buf[3] = {0};
 
-    uint32_t freq = (uint32_t)((double)reqFreq / (double)SX1280_FREQ_STEP);
+    uint32_t freq = (uint32_t)(reqFreq / SX1280_FREQ_STEP);
     buf[0] = (uint8_t)((freq >> 16) & 0xFF);
     buf[1] = (uint8_t)((freq >> 8) & 0xFF);
     buf[2] = (uint8_t)(freq & 0xFF);
@@ -374,26 +365,9 @@ void sx1280SetFrequencyReg(const uint32_t freq)
     sx1280WriteCommandBurst(SX1280_RADIO_SET_RFFREQUENCY, buf, 3);
 }
 
-int32_t sx1280GetFrequencyError(void)
-{
-    uint8_t efeRaw[3] = {0};
-    uint32_t efe = 0;
-    double efeHz = 0.0;
-
-    efeRaw[0] = sx1280ReadRegister(SX1280_REG_LR_ESTIMATED_FREQUENCY_ERROR_MSB);
-    efeRaw[1] = sx1280ReadRegister(SX1280_REG_LR_ESTIMATED_FREQUENCY_ERROR_MSB + 1);
-    efeRaw[2] = sx1280ReadRegister(SX1280_REG_LR_ESTIMATED_FREQUENCY_ERROR_MSB + 2);
-    efe = (efeRaw[0] << 16) | (efeRaw[1] << 8) | efeRaw[2];
-
-    efe &= SX1280_REG_LR_ESTIMATED_FREQUENCY_ERROR_MASK;
-
-    //efeHz = 1.55 * (double)complement2(efe, 20) / (1600.0 / (double)GetLoRaBandwidth() * 1000.0);
-    return efeHz;
-}
-
 void sx1280AdjustFrequency(int32_t offset, const uint32_t freq)
 {
-    //Not implemented
+    // just a stub to show that frequency adjustment is not used on this chip as opposed to sx127x
     UNUSED(offset);
     UNUSED(freq);
 }
@@ -475,17 +449,6 @@ void sx1280ReceiveData(uint8_t *data, const uint8_t length)
 void sx1280StartReceiving(void)
 {
     sx1280SetMode(SX1280_MODE_RX);
-}
-
-bool sx1280GetFrequencyErrorbool(void)
-{
-    uint8_t regEFI[3];
-
-    sx1280ReadRegisterBurst(SX1280_REG_LR_ESTIMATED_FREQUENCY_ERROR_MSB, regEFI, 3);
-
-    //bool result = (val & 0b00001000) >> 3;
-    //return result; // returns true if pos freq error, neg if false
-    return 0;
 }
 
 void sx1280GetLastPacketStats(int8_t *rssi, int8_t *snr)

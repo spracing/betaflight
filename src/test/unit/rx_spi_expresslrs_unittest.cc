@@ -98,7 +98,7 @@ TEST(RxSpiExpressLrsUnitTest, TestCrc14)
     };
 
     generateCrc14Table();
-    for(int i=0; i < ELRS_CRC_LEN; i++) {
+    for (int i = 0; i < ELRS_CRC_LEN; i++) {
         EXPECT_EQ(expectedCrc14Tab[i], crc14tab[i]);
     }
 }
@@ -163,12 +163,12 @@ TEST(RxSpiExpressLrsUnitTest, TestFHSSTable)
     };
 
     FHSSrandomiseFHSSsequence(UID, ISM2400);
-    for(int i=0; i < ELRS_NR_SEQUENCE_ENTRIES; i++) {
+    for (int i = 0; i < ELRS_NR_SEQUENCE_ENTRIES; i++) {
         EXPECT_EQ(expectedSequence[0][i], FHSSsequence[i]);
     }
 
     FHSSrandomiseFHSSsequence(UID, FCC915);
-    for(int i=0; i < ELRS_NR_SEQUENCE_ENTRIES; i++) {
+    for (int i = 0; i < ELRS_NR_SEQUENCE_ENTRIES; i++) {
         EXPECT_EQ(expectedSequence[1][i], FHSSsequence[i]);
     }
 }
@@ -201,7 +201,7 @@ TEST(RxSpiExpressLrsUnitTest, TestInitUnbound)
         FREQ_HZ_TO_REG_VAL_24(2440400000)
     };
 
-    for (int i=0; i < 7; i++) {
+    for (int i = 0; i < 7; i++) {
         receiver = empty;
         rxExpressLrsSpiConfigMutable()->domain = i;
         expressLrsSpiInit(&injectedConfig, &config, &extiConfig);
@@ -213,29 +213,29 @@ TEST(RxSpiExpressLrsUnitTest, TestInitUnbound)
     rxExpressLrsSpiConfigMutable()->rateIndex = 1;
     rxExpressLrsSpiConfigMutable()->domain = FCC915;
     expressLrsSpiInit(&injectedConfig, &config, &extiConfig);
-    EXPECT_EQ(air_rate_config[0][2].index, receiver.mod_params->index);
-    EXPECT_EQ(air_rate_config[0][2].enumRate, receiver.mod_params->enumRate);
-    EXPECT_EQ(air_rate_config[0][2].bw, receiver.mod_params->bw);
-    EXPECT_EQ(air_rate_config[0][2].sf, receiver.mod_params->sf);
-    EXPECT_EQ(air_rate_config[0][2].cr, receiver.mod_params->cr);
-    EXPECT_EQ(air_rate_config[0][2].interval, receiver.mod_params->interval);
-    EXPECT_EQ(air_rate_config[0][2].tlmInterval, receiver.mod_params->tlmInterval);
-    EXPECT_EQ(air_rate_config[0][2].fhssHopInterval, receiver.mod_params->fhssHopInterval);
-    EXPECT_EQ(air_rate_config[0][2].preambleLen, receiver.mod_params->preambleLen);
+    EXPECT_EQ(airRateConfig[0][2].index, receiver.modParams->index);
+    EXPECT_EQ(airRateConfig[0][2].enumRate, receiver.modParams->enumRate);
+    EXPECT_EQ(airRateConfig[0][2].bw, receiver.modParams->bw);
+    EXPECT_EQ(airRateConfig[0][2].sf, receiver.modParams->sf);
+    EXPECT_EQ(airRateConfig[0][2].cr, receiver.modParams->cr);
+    EXPECT_EQ(airRateConfig[0][2].interval, receiver.modParams->interval);
+    EXPECT_EQ(airRateConfig[0][2].tlmInterval, receiver.modParams->tlmInterval);
+    EXPECT_EQ(airRateConfig[0][2].fhssHopInterval, receiver.modParams->fhssHopInterval);
+    EXPECT_EQ(airRateConfig[0][2].preambleLen, receiver.modParams->preambleLen);
 
     receiver = empty;
     rxExpressLrsSpiConfigMutable()->rateIndex = 1;
     rxExpressLrsSpiConfigMutable()->domain = ISM2400;
     expressLrsSpiInit(&injectedConfig, &config, &extiConfig);
-    EXPECT_EQ(air_rate_config[1][3].index, receiver.mod_params->index);
-    EXPECT_EQ(air_rate_config[1][3].enumRate, receiver.mod_params->enumRate);
-    EXPECT_EQ(air_rate_config[1][3].bw, receiver.mod_params->bw);
-    EXPECT_EQ(air_rate_config[1][3].sf, receiver.mod_params->sf);
-    EXPECT_EQ(air_rate_config[1][3].cr, receiver.mod_params->cr);
-    EXPECT_EQ(air_rate_config[1][3].interval, receiver.mod_params->interval);
-    EXPECT_EQ(air_rate_config[1][3].tlmInterval, receiver.mod_params->tlmInterval);
-    EXPECT_EQ(air_rate_config[1][3].fhssHopInterval, receiver.mod_params->fhssHopInterval);
-    EXPECT_EQ(air_rate_config[1][3].preambleLen, receiver.mod_params->preambleLen);
+    EXPECT_EQ(airRateConfig[1][3].index, receiver.modParams->index);
+    EXPECT_EQ(airRateConfig[1][3].enumRate, receiver.modParams->enumRate);
+    EXPECT_EQ(airRateConfig[1][3].bw, receiver.modParams->bw);
+    EXPECT_EQ(airRateConfig[1][3].sf, receiver.modParams->sf);
+    EXPECT_EQ(airRateConfig[1][3].cr, receiver.modParams->cr);
+    EXPECT_EQ(airRateConfig[1][3].interval, receiver.modParams->interval);
+    EXPECT_EQ(airRateConfig[1][3].tlmInterval, receiver.modParams->tlmInterval);
+    EXPECT_EQ(airRateConfig[1][3].fhssHopInterval, receiver.modParams->fhssHopInterval);
+    EXPECT_EQ(airRateConfig[1][3].preambleLen, receiver.modParams->preambleLen);
 
     //check switch mode
     receiver = empty;
@@ -255,34 +255,34 @@ TEST(RxSpiExpressLrsUnitTest, TestInitBound)
     memcpy(rxExpressLrsSpiConfigMutable()->UID, validUID, 6);
     
     // check mod params
-    for (int i=0; i < ELRS_RATE_MAX; i++) {
+    for (int i = 0; i < ELRS_RATE_MAX; i++) {
         receiver = empty;
         rxExpressLrsSpiConfigMutable()->rateIndex = i;
         rxExpressLrsSpiConfigMutable()->domain = FCC915;
         expressLrsSpiInit(&injectedConfig, &config, &extiConfig);
-        EXPECT_EQ(air_rate_config[0][i].index, receiver.mod_params->index);
-        EXPECT_EQ(air_rate_config[0][i].enumRate, receiver.mod_params->enumRate);
-        EXPECT_EQ(air_rate_config[0][i].bw, receiver.mod_params->bw);
-        EXPECT_EQ(air_rate_config[0][i].sf, receiver.mod_params->sf);
-        EXPECT_EQ(air_rate_config[0][i].cr, receiver.mod_params->cr);
-        EXPECT_EQ(air_rate_config[0][i].interval, receiver.mod_params->interval);
-        EXPECT_EQ(air_rate_config[0][i].tlmInterval, receiver.mod_params->tlmInterval);
-        EXPECT_EQ(air_rate_config[0][i].fhssHopInterval, receiver.mod_params->fhssHopInterval);
-        EXPECT_EQ(air_rate_config[0][i].preambleLen, receiver.mod_params->preambleLen);
+        EXPECT_EQ(airRateConfig[0][i].index, receiver.modParams->index);
+        EXPECT_EQ(airRateConfig[0][i].enumRate, receiver.modParams->enumRate);
+        EXPECT_EQ(airRateConfig[0][i].bw, receiver.modParams->bw);
+        EXPECT_EQ(airRateConfig[0][i].sf, receiver.modParams->sf);
+        EXPECT_EQ(airRateConfig[0][i].cr, receiver.modParams->cr);
+        EXPECT_EQ(airRateConfig[0][i].interval, receiver.modParams->interval);
+        EXPECT_EQ(airRateConfig[0][i].tlmInterval, receiver.modParams->tlmInterval);
+        EXPECT_EQ(airRateConfig[0][i].fhssHopInterval, receiver.modParams->fhssHopInterval);
+        EXPECT_EQ(airRateConfig[0][i].preambleLen, receiver.modParams->preambleLen);
 
         receiver = empty;
         rxExpressLrsSpiConfigMutable()->rateIndex = i;
         rxExpressLrsSpiConfigMutable()->domain = ISM2400;
         expressLrsSpiInit(&injectedConfig, &config, &extiConfig);
-        EXPECT_EQ(air_rate_config[1][i].index, receiver.mod_params->index);
-        EXPECT_EQ(air_rate_config[1][i].enumRate, receiver.mod_params->enumRate);
-        EXPECT_EQ(air_rate_config[1][i].bw, receiver.mod_params->bw);
-        EXPECT_EQ(air_rate_config[1][i].sf, receiver.mod_params->sf);
-        EXPECT_EQ(air_rate_config[1][i].cr, receiver.mod_params->cr);
-        EXPECT_EQ(air_rate_config[1][i].interval, receiver.mod_params->interval);
-        EXPECT_EQ(air_rate_config[1][i].tlmInterval, receiver.mod_params->tlmInterval);
-        EXPECT_EQ(air_rate_config[1][i].fhssHopInterval, receiver.mod_params->fhssHopInterval);
-        EXPECT_EQ(air_rate_config[1][i].preambleLen, receiver.mod_params->preambleLen);
+        EXPECT_EQ(airRateConfig[1][i].index, receiver.modParams->index);
+        EXPECT_EQ(airRateConfig[1][i].enumRate, receiver.modParams->enumRate);
+        EXPECT_EQ(airRateConfig[1][i].bw, receiver.modParams->bw);
+        EXPECT_EQ(airRateConfig[1][i].sf, receiver.modParams->sf);
+        EXPECT_EQ(airRateConfig[1][i].cr, receiver.modParams->cr);
+        EXPECT_EQ(airRateConfig[1][i].interval, receiver.modParams->interval);
+        EXPECT_EQ(airRateConfig[1][i].tlmInterval, receiver.modParams->tlmInterval);
+        EXPECT_EQ(airRateConfig[1][i].fhssHopInterval, receiver.modParams->fhssHopInterval);
+        EXPECT_EQ(airRateConfig[1][i].preambleLen, receiver.modParams->preambleLen);
     }
 
     expressLrsSpiInit(&injectedConfig, &config, &extiConfig);
@@ -361,6 +361,13 @@ TEST(RxSpiExpressLrsUnitTest, Test4bSwitchDecode)
     EXPECT_EQ(1500, convertSwitchNb(255, 15));
 }
 
+TEST(RxSpiExpressLrsUnitTest, TestAnalogDecode)
+{
+    EXPECT_EQ(988, convertAnalog(172));
+    EXPECT_EQ(1500, convertAnalog(992));
+    EXPECT_EQ(2012, convertAnalog(1811));
+}
+
 // STUBS
 
 extern "C" {
@@ -392,7 +399,7 @@ extern "C" {
     bool rxSpiExtiConfigured(void) { return true; }
 
     bool sx1280IsBusy(void) { return false; }
-    void sx1280Config(const sx1280_lora_bandwidths_e , const sx1280_lora_spreading_factors_e , const sx1280_lora_coding_rates_e , const uint32_t , const uint8_t , const bool ) {}
+    void sx1280Config(const sx1280LoraBandwidths_e , const sx1280LoraSpreadingFactors_e , const sx1280LoraCodingRates_e , const uint32_t , const uint8_t , const bool ) {}
     void sx1280StartReceiving(void) {}
     uint8_t sx1280ISR(uint32_t *timestamp)
     {
@@ -410,7 +417,7 @@ extern "C" {
     void sx1280AdjustFrequency(int32_t , const uint32_t ) {}
     bool sx1280Init(IO_t , IO_t ) { return true; }
 
-    void sx127xConfig(const sx127x_bandwidth_e , const sx127x_spreading_factor_e , const sx127x_coding_rate_e , const uint32_t , const uint8_t , const bool ) {}
+    void sx127xConfig(const sx127xBandwidth_e , const sx127xSpreadingFactor_e , const sx127xCodingRate_e , const uint32_t , const uint8_t , const bool ) {}
     void sx127xStartReceiving(void) {}
     uint8_t sx127xISR(uint32_t *timestamp)
     {

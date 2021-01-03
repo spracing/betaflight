@@ -40,7 +40,7 @@ typedef enum {
     ELRS_WAIT_UNTIL_NEXT_CONFIRM,
     ELRS_RESYNC,
     ELRS_RESYNC_THEN_SEND, // perform a RESYNC then go to SENDING
-} stubborn_sender_state_s;
+} stubbornSenderState_e;
 
 void initTelemetry(void);
 bool getNextTelemetryPayload(uint8_t *nextPayloadSize, uint8_t **payloadData);
@@ -58,3 +58,4 @@ void receiveMspData(const uint8_t packageIndex, const volatile uint8_t* receiveD
 bool hasFinishedMspData(void);
 void mspReceiverUnlock(void);
 void processMspPacket(uint8_t *packet);
+
