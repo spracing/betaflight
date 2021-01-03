@@ -1,0 +1,45 @@
+{
+	"folders": [
+		{
+			"path": "."
+		}
+	],
+	"settings": {
+		"files.associations": {
+			"rx_spi_common.h": "c",
+			"functional": "c",
+			"array": "cpp",
+			"string": "cpp",
+			"string_view": "cpp",
+			"*.tcc": "c",
+			"random": "c",
+			"io_impl.h": "c",
+			"io.h": "c",
+			"rope": "c",
+			"variant": "c",
+			"bitset": "c",
+			"slist": "c",
+			"initializer_list": "c",
+			"regex": "c",
+			"utility": "c",
+			"valarray": "c",
+			"condition_variable": "c",
+			"future": "c",
+			"numeric": "c",
+			"cmath": "c",
+			"complex": "c",
+			"expresslrs_common.h": "c",
+			"any": "c",
+			"chrono": "c",
+			"istream": "c",
+			"memory_resource": "c",
+			"ostream": "c",
+			"ratio": "c",
+			"scoped_allocator": "c",
+			"tuple": "c",
+			"type_traits": "c",
+			"optional": "cpp",
+			"system_error": "cpp"
+		}
+	}
+}
