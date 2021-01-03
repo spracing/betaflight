@@ -336,8 +336,6 @@
 
 #define USE_RX_EXPRESSLRS
 #define USE_RX_SX1280
-#if !defined(STM32F745)
 #define USE_RX_SX127X
-#endif
 
 #endif

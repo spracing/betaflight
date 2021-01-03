@@ -30,6 +30,7 @@
 
 #include "build/build_config.h"
 #include "common/utils.h"
+#include "common/maths.h"
 #include "rx/expresslrs_common.h"
 #include "drivers/rx/rx_sx127x.h"
 #include "drivers/rx/rx_sx1280.h"
@@ -39,7 +40,9 @@ STATIC_UNIT_TESTED uint16_t crc14tab[ELRS_CRC_LEN] = {0};
 static uint8_t volatile FHSSptr = 0;
 STATIC_UNIT_TESTED uint8_t FHSSsequence[ELRS_NR_SEQUENCE_ENTRIES] = {0};
 static const uint32_t *FHSSfreqs;
-static uint8_t numEntries = 0; // The number of FHSS frequencies in the table
+static uint8_t numFreqs = 0; // The number of FHSS frequencies in the table
+static uint8_t seqCount = 0;
+static uint8_t syncChannel = 0;
 
 #define MS_TO_US(ms) (ms * 1000)
 
@@ -50,18 +53,40 @@ static uint8_t numEntries = 0; // The number of FHSS frequencies in the table
 elrs_mod_settings_t air_rate_config[][ELRS_RATE_MAX] = {
 #ifdef USE_RX_SX127X
     {
-        {0, RATE_200HZ, SX127x_BW_500_00_KHZ, SX127x_SF_6, SX127x_CR_4_7, 5000, TLM_RATIO_1_64, 4, 8, -112, MS_TO_US(3000)},
-        {1, RATE_100HZ, SX127x_BW_500_00_KHZ, SX127x_SF_7, SX127x_CR_4_7, 10000, TLM_RATIO_1_64, 4, 8, -117, MS_TO_US(3500)},
-        {2, RATE_50HZ, SX127x_BW_500_00_KHZ, SX127x_SF_8, SX127x_CR_4_7, 20000, TLM_RATIO_NO_TLM, 4, 10, -120, MS_TO_US(4000)},
-        {3, RATE_25HZ, SX127x_BW_500_00_KHZ, SX127x_SF_9, SX127x_CR_4_7, 40000, TLM_RATIO_NO_TLM, 4, 10, -123, MS_TO_US(6000)}
+        {0, RATE_200HZ, SX127x_BW_500_00_KHZ, SX127x_SF_6, SX127x_CR_4_7, 5000, TLM_RATIO_1_64, 4, 8},
+        {1, RATE_100HZ, SX127x_BW_500_00_KHZ, SX127x_SF_7, SX127x_CR_4_7, 10000, TLM_RATIO_1_64, 4, 8},
+        {2, RATE_50HZ, SX127x_BW_500_00_KHZ, SX127x_SF_8, SX127x_CR_4_7, 20000, TLM_RATIO_NO_TLM, 4, 10},
+        {3, RATE_25HZ, SX127x_BW_500_00_KHZ, SX127x_SF_9, SX127x_CR_4_7, 40000, TLM_RATIO_NO_TLM, 2, 10}
     },
 #endif
 #ifdef USE_RX_SX1280
     {
-        {0, RATE_500HZ, SX1280_LORA_BW_0800, SX1280_LORA_SF5, SX1280_LORA_CR_LI_4_6, 2000, TLM_RATIO_1_128, 4, 12, -105, MS_TO_US(2500)},
-        {1, RATE_250HZ, SX1280_LORA_BW_0800, SX1280_LORA_SF6, SX1280_LORA_CR_LI_4_7, 4000, TLM_RATIO_1_64, 4, 14, -108, MS_TO_US(3000)},
-        {2, RATE_150HZ, SX1280_LORA_BW_0800, SX1280_LORA_SF7, SX1280_LORA_CR_LI_4_7, 6666, TLM_RATIO_1_32, 4, 12, -112, MS_TO_US(3500)},
-        {3, RATE_50HZ, SX1280_LORA_BW_0800, SX1280_LORA_SF9, SX1280_LORA_CR_LI_4_6, 20000, TLM_RATIO_NO_TLM, 4, 12, -117, MS_TO_US(4000)}
+        {0, RATE_500HZ, SX1280_LORA_BW_0800, SX1280_LORA_SF5, SX1280_LORA_CR_LI_4_6, 2000, TLM_RATIO_1_128, 4, 12},
+        {1, RATE_250HZ, SX1280_LORA_BW_0800, SX1280_LORA_SF6, SX1280_LORA_CR_LI_4_7, 4000, TLM_RATIO_1_64, 4, 14},
+        {2, RATE_150HZ, SX1280_LORA_BW_0800, SX1280_LORA_SF7, SX1280_LORA_CR_LI_4_7, 6666, TLM_RATIO_1_32, 4, 12},
+        {3, RATE_50HZ, SX1280_LORA_BW_0800, SX1280_LORA_SF9, SX1280_LORA_CR_LI_4_6, 20000, TLM_RATIO_NO_TLM, 2, 12}
+    },
+#endif
+#if !defined(USE_RX_SX127X) && !defined(USE_RX_SX1280)
+    {{0}},
+#endif
+};
+
+elrs_rf_perf_params_t rf_perf_config[][ELRS_RATE_MAX] = {
+#ifdef USE_RX_SX127X
+    {
+        {0, RATE_200HZ, -112, 4380, 3000, 2500, 600, 5000},
+        {1, RATE_100HZ, -117, 8770, 3500, 2500, 600, 5000},
+        {2, RATE_50HZ, -120, 17540, 4000, 2500, 600, 5000},
+        {3, RATE_25HZ, -123, 17540, 6000, 4000, 0, 5000}
+    },
+#endif
+#ifdef USE_RX_SX1280
+    {
+        {0, RATE_500HZ, -105, 1665, 2500, 2500, 3, 5000},
+        {1, RATE_250HZ, -108, 3300, 3000, 2500, 6, 5000},
+        {2, RATE_150HZ, -112, 5871, 3500, 2500, 10, 5000},
+        {3, RATE_50HZ, -117, 18443, 4000, 2500, 0, 5000}
     },
 #endif
 #if !defined(USE_RX_SX127X) && !defined(USE_RX_SX1280)
@@ -123,6 +148,19 @@ const uint32_t FHSSfreqsEU868[] = {
     FREQ_HZ_TO_REG_VAL_900(868525000), // Band H3, 868.7-869.2MHz, 0.1% dutycycle or CSMA, 25mW EIRP
     FREQ_HZ_TO_REG_VAL_900(869050000),
     FREQ_HZ_TO_REG_VAL_900(869575000)};
+
+/**
+ * India currently delicensed the 865-867 MHz band with a maximum of 1W Transmitter power,
+ * 4Watts Effective Radiated Power and 200Khz carrier bandwidth as per
+ * https://dot.gov.in/sites/default/files/Delicensing%20in%20865-867%20MHz%20band%20%5BGSR%20564%20%28E%29%5D_0.pdf .
+ * There is currently no mention of Direct-sequence spread spectrum,
+ * So these frequencies are a subset of Regulatory_Domain_EU_868 frequencies.
+ */
+const uint32_t FHSSfreqsIN866[] = {
+    FREQ_HZ_TO_REG_VAL_900(865375000),
+    FREQ_HZ_TO_REG_VAL_900(865900000),
+    FREQ_HZ_TO_REG_VAL_900(866425000),
+    FREQ_HZ_TO_REG_VAL_900(866950000)};
 
 /* Frequency band G, taken from https://wetten.overheid.nl/BWBR0036378/2016-12-28#Bijlagen
  * Note: As is the case with the 868Mhz band, these frequencies only comply to the license free portion
@@ -310,87 +348,77 @@ static void initializeFHSSFrequencies(const elrs_freq_domain_e dom) {
 #ifdef USE_RX_SX127X
         case AU433:
             FHSSfreqs = FHSSfreqsAU433;
-            numEntries = sizeof(FHSSfreqsAU433) / sizeof(uint32_t);
+            numFreqs = sizeof(FHSSfreqsAU433) / sizeof(uint32_t);
             break;
         case AU915:
             FHSSfreqs = FHSSfreqsAU915;
-            numEntries = sizeof(FHSSfreqsAU915) / sizeof(uint32_t);
+            numFreqs = sizeof(FHSSfreqsAU915) / sizeof(uint32_t);
             break;
         case EU433:
             FHSSfreqs = FHSSfreqsEU433;
-            numEntries = sizeof(FHSSfreqsEU433) / sizeof(uint32_t);
+            numFreqs = sizeof(FHSSfreqsEU433) / sizeof(uint32_t);
             break;
         case EU868:
             FHSSfreqs = FHSSfreqsEU868;
-            numEntries = sizeof(FHSSfreqsEU868) / sizeof(uint32_t);
+            numFreqs = sizeof(FHSSfreqsEU868) / sizeof(uint32_t);
+            break;
+        case IN866:
+            FHSSfreqs = FHSSfreqsIN866;
+            numFreqs = sizeof(FHSSfreqsIN866) / sizeof(uint32_t);
             break;
         case FCC915:
             FHSSfreqs = FHSSfreqsFCC915;
-            numEntries = sizeof(FHSSfreqsFCC915) / sizeof(uint32_t);
+            numFreqs = sizeof(FHSSfreqsFCC915) / sizeof(uint32_t);
             break;
 #endif
 #ifdef USE_RX_SX1280
         case ISM2400:
             FHSSfreqs = FHSSfreqsISM2400;
-            numEntries = sizeof(FHSSfreqsISM2400) / sizeof(uint32_t);
+            numFreqs = sizeof(FHSSfreqsISM2400) / sizeof(uint32_t);
             break;
 #endif
         default:
             FHSSfreqs = NULL;
-            numEntries = 0;
+            numFreqs = 0;
     }
 }
 
 uint32_t getInitialFreq(const int32_t freqCorrection)
 {
-    return FHSSfreqs[0] - freqCorrection;
+    return FHSSfreqs[syncChannel] - freqCorrection;
 }
 
 uint8_t getFHSSNumEntries(void)
 {
-    return numEntries;
+    return numFreqs;
 }
 
-uint8_t FHSSgetCurrIndex(void) {
+uint8_t FHSSgetCurrIndex(void)
+{
     return FHSSptr;
 }
 
-void FHSSsetCurrIndex(const uint8_t value) {
-    FHSSptr = value;
+void FHSSsetCurrIndex(const uint8_t value)
+{
+    FHSSptr = value % seqCount;
 }
 
 uint32_t FHSSgetNextFreq(const int32_t freqCorrection)
 {
-    return FHSSfreqs[FHSSsequence[FHSSptr++]] - freqCorrection;
+    FHSSptr = (FHSSptr + 1) % seqCount;
+    return FHSSfreqs[FHSSsequence[FHSSptr]] - freqCorrection;
 }
 
-static unsigned long seed = 0;
+static uint32_t seed = 0;
 
-// returns 0 <= x < max where max <= 256
-// (actual upper limit is higher, but there is one and I haven't
-//  thought carefully about what it is)
-static unsigned int rngN(unsigned int max)
+// returns 0 <= x < max where max < 256
+static uint8_t rngN(const uint8_t max)
 {
-    unsigned long m = 2147483648;
-    long a = 214013;
-    long c = 2531011;
+    const uint32_t m = 2147483648;
+    const uint32_t a = 214013;
+    const uint32_t c = 2531011;
     seed = (a * seed + c) % m;
-    unsigned int result = ((seed >> 16) * max) / ELRS_RNG_MAX;
-    return result;
-}
-
-// Set all of the flags in the array to true, except for the first one
-// which corresponds to the sync channel and is never available for normal
-// allocation.
-static void resetIsAvailable(uint8_t *array, const uint8_t size)
-{
-    // channel 0 is the sync channel and is never considered available
-    array[0] = 0;
-
-    // all other entires to 1
-    for (unsigned int i = 1; i < size; i++) {
-        array[i] = 1;
-    }
+    return (seed >> 16) % max;
 }
 
 /**
@@ -398,17 +426,13 @@ Requirements:
 1. 0 every n hops
 2. No two repeated channels
 3. Equal occurance of each (or as even as possible) of each channel
-4. Pesudorandom
+4. Pseudorandom
 
 Approach:
-  Initialise an array of flags indicating which channels have not yet been assigned and a counter of how many channels are available
-  Iterate over the FHSSsequence array using index
-    if index is a multiple of numEntries assign the sync channel index (0)
-    otherwise, generate a random number between 0 and the number of channels left to be assigned
-    find the index of the nth remaining channel
-    if the index is a repeat, generate a new random number
-    if the index is not a repeat, assing it to the FHSSsequence array, clear the availability flag and decrement the available count
-    if there are no available channels left, reset the flags array and the count
+  Fill the sequence array with the sync channel every FHSS_FREQ_CNT
+  Iterate through the array, and for each block, swap each entry in it with
+  another random entry, excluding the sync channel.
+
 */
 void FHSSrandomiseFHSSsequence(const uint8_t UID[], const elrs_freq_domain_e dom)
 {
@@ -416,68 +440,33 @@ void FHSSrandomiseFHSSsequence(const uint8_t UID[], const elrs_freq_domain_e dom
 
     initializeFHSSFrequencies(dom);
 
-    uint8_t isAvailable[numEntries];
+    seqCount = (256 / MAX(numFreqs, 1)) * numFreqs;
 
-    resetIsAvailable(isAvailable, numEntries);
+    syncChannel = numFreqs / 2;
 
-    // Fill the FHSSsequence with channel indices
-    // The 0 index is special - the 'sync' channel. The sync channel appears every
-    // syncInterval hops. The other channels are randomly distributed between the
-    // sync channels
-    int nLeft = numEntries - 1; // how many channels are left to be allocated. Does not include the sync channel
-    unsigned int prev = 0;           // needed to prevent repeats of the same index
-
-    // for each slot in the sequence table
-    for (int i = 0; i < ELRS_NR_SEQUENCE_ENTRIES; i++)
-    {
-        if (i % numEntries == 0)
-        {
-            // assign sync channel 0
+    // initialize the sequence array
+    for (uint8_t i = 0; i < seqCount; i++) {
+        if (i % numFreqs == 0) {
+            FHSSsequence[i] = syncChannel;
+        } else if (i % numFreqs == syncChannel) {
             FHSSsequence[i] = 0;
-            prev = 0;
+        } else {
+            FHSSsequence[i] = i % numFreqs;
         }
-        else
-        {
-            // pick one of the available channels. May need to loop to avoid repeats
-            unsigned int index;
-            do
-            {
-                int c = rngN(nLeft); // returnc 0<c<nLeft
-                // find the c'th entry in the isAvailable array
-                // can skip 0 as that's the sync channel and is never available for normal allocation
-                index = 1;
-                int found = 0;
-                while (index < numEntries)
-                {
-                    if (isAvailable[index])
-                    {
-                        if (found == c)
-                            break;
-                        found++;
-                    }
-                    index++;
-                }
-                if (index == numEntries)
-                {
-                    // This should never happen
-                    // Use the sync channel
-                    index = 0;
-                    break;
-                }
-            } while (index == prev); // can't use index if it repeats the previous value
+    }
 
-            FHSSsequence[i] = index; // assign the value to the sequence array
-            isAvailable[index] = 0;  // clear the flag
-            prev = index;            // remember for next iteration
-            nLeft--;                 // reduce the count of available channels
-            if (nLeft == 0)
-            {
-                // we've assigned all of the channels, so reset for next cycle
-                resetIsAvailable(isAvailable, numEntries);
-                nLeft = numEntries - 1;
-            }
+    for (uint8_t i = 0; i < seqCount; i++) {
+        // if it's not the sync channel
+        if (i % numFreqs != 0) {
+            uint8_t offset = (i / numFreqs) * numFreqs; // offset to start of current block
+            uint8_t rand = rngN(numFreqs - 1) + 1; // random number between 1 and numFreqs
+
+            // switch this entry and another random entry in the same block
+            uint8_t temp = FHSSsequence[i];
+            FHSSsequence[i] = FHSSsequence[offset + rand];
+            FHSSsequence[offset + rand] = temp;
         }
-    } // for each element in FHSSsequence
+    }
 }
 
 uint8_t tlmRatioEnumToValue(const elrs_tlm_ratio_e enumval)
@@ -513,13 +502,46 @@ uint8_t tlmRatioEnumToValue(const elrs_tlm_ratio_e enumval)
     }
 }
 
+uint16_t rateEnumToHz(const elrs_rf_rate_e eRate)
+{
+    switch (eRate)
+    {
+    case RATE_500HZ: return 500;
+    case RATE_250HZ: return 250;
+    case RATE_200HZ: return 200;
+    case RATE_150HZ: return 150;
+    case RATE_100HZ: return 100;
+    case RATE_50HZ: return 50;
+    case RATE_25HZ: return 25;
+    case RATE_4HZ: return 4;
+    default: return 1;
+    }
+}
+
+uint16_t txPowerIndexToValue(const uint8_t index)
+{
+    switch (index)
+    {
+    case 0: return 0;
+    case 1: return 10;
+    case 2: return 25;
+    case 3: return 100;
+    case 4: return 500;
+    case 5: return 1000;
+    case 6: return 2000;
+    case 7: return 250;
+    case 8: return 50;
+    default: return 0;
+    }
+}
+
 #define ELRS_LQ_BIT_COUNT 100
 #define ELRS_LQ_DEPTH ((ELRS_LQ_BIT_COUNT + 31) / 32)
 
 typedef struct linkQuality_s {
     uint32_t array[ELRS_LQ_DEPTH];
     uint8_t value;
-    uint8_t byte;
+    uint8_t index;
     uint32_t mask;
 } linkQuality_t;
 
@@ -536,7 +558,7 @@ void lqIncrease(void)
     if (lqPeriodIsSet()) {
         return;
     }
-    lq.array[lq.byte] |= lq.mask;
+    lq.array[lq.index] |= lq.mask;
     lq.value += 1;
 }
 
@@ -545,17 +567,17 @@ void lqNewPeriod(void)
     lq.mask <<= 1;
     if (lq.mask == 0) {
         lq.mask = (1 << 0);
-        lq.byte += 1;
+        lq.index += 1;
     }
 
     // At idx N / 32 and bit N % 32, wrap back to idx=0, bit=0
-    if ((lq.byte == (ELRS_LQ_BIT_COUNT / 32)) && (lq.mask & (1 << (ELRS_LQ_BIT_COUNT % 32)))) {
-        lq.byte = 0;
+    if ((lq.index == (ELRS_LQ_BIT_COUNT / 32)) && (lq.mask & (1 << (ELRS_LQ_BIT_COUNT % 32)))) {
+        lq.index = 0;
         lq.mask = (1 << 0);
     }
 
-    if ((lq.array[lq.byte] & lq.mask) != 0) {
-        lq.array[lq.byte] &= ~lq.mask;
+    if ((lq.array[lq.index] & lq.mask) != 0) {
+        lq.array[lq.index] &= ~lq.mask;
         lq.value -= 1;
     }
 }
@@ -567,7 +589,7 @@ uint8_t lqGet(void)
 
 bool lqPeriodIsSet(void)
 {
-    return lq.array[lq.byte] & lq.mask;
+    return lq.array[lq.index] & lq.mask;
 }
 
 void lqReset(void)
@@ -576,13 +598,13 @@ void lqReset(void)
     lq.mask = (1 << 0);
 }
 
-inline uint16_t convertSwitch1b(const uint16_t val)
+uint16_t convertSwitch1b(const uint16_t val)
 {
     return val ? 2000 : 1000;
 }
 
 // 3b to decode 7 pos switches
-inline uint16_t convertSwitch3b(const uint16_t val) 
+uint16_t convertSwitch3b(const uint16_t val) 
 {
     switch (val) {
         case 0:
@@ -602,15 +624,26 @@ inline uint16_t convertSwitch3b(const uint16_t val)
     }
 }
 
-// 4b to decode 16 pos switches
-inline uint16_t convertSwitch4b(const uint16_t val) 
+uint16_t convertSwitchNb(const uint16_t val, const uint16_t max)
 {
-    return (val > 15) ? 1500 : val * 66.67f + 1000;
+    return (val > max) ? 1500 : val * 1000 / max + 1000;
 }
 
-inline uint16_t convertAnalog(const uint16_t val)
+uint16_t convertAnalog(const uint16_t val)
 {
     return 0.62477120195241f * val + 881;
+}
+
+uint8_t hybridWideNonceToSwitchIndex(const uint8_t nonce)
+{
+    // Returns the sequence (0 to 7, then 0 to 7 rotated left by 1):
+    // 0, 1, 2, 3, 4, 5, 6, 7,
+    // 1, 2, 3, 4, 5, 6, 7, 0
+    // Because telemetry can occur on every 2, 4, 8, 16, 32, 64, 128th packet
+    // this makes sure each of the 8 values is sent at least once every 16 packets
+    // regardless of the TLM ratio
+    // Index 7 also can never fall on a telemetry slot
+    return ((nonce & 0x07) + ((nonce >> 3) & 0x01)) % 8;
 }
 
 #endif /* USE_RX_EXPRESSLRS */

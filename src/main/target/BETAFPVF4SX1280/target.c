@@ -18,27 +18,25 @@
  * If not, see <http://www.gnu.org/licenses/>.
  */
 
-/*
- * Author: Dominic Clifton / Seriously Pro Racing
- */
+#include <stdint.h>
 
-#pragma once
+#include "platform.h"
+#include "drivers/io.h"
 
-void expressLrsInitialiseTimer(TIM_TypeDef *timer, timerOvrHandlerRec_t *timerUpdateCb);
-void expressLrsTimerEnableIRQs(void);
-void expressLrsUpdateTimerInterval(uint16_t intervalUs);
-void expressLrsUpdatePhaseShift(int32_t newPhaseShift);
-void expressLrsOnTimerTickISR(void);
-void expressLrsOnTimerTockISR(void);
+#include "drivers/dma.h"
+#include "drivers/timer.h"
+#include "drivers/timer_def.h"
 
-void expressLrsTimerIncreaseFrequencyOffset(void);
-void expressLrsTimerDecreaseFrequencyOffset(void);
-void expressLrsTimerResetFrequencyOffset(void);
+const timerHardware_t timerHardware[USABLE_TIMER_CHANNEL_COUNT] = {
 
-void expressLrsTimerStop(void);
-void expressLrsTimerResume(void);
+    DEF_TIM( TIM3, CH4, PB1, TIM_USE_LED,              0, 0 ), // LED Strip
+    DEF_TIM( TIM4, CH3, PB8, TIM_USE_MOTOR,            0, 0 ), // M1
+    DEF_TIM( TIM2, CH1, PA0, TIM_USE_MOTOR,            0, 0 ), // M2
+    DEF_TIM( TIM2, CH3, PB10,TIM_USE_MOTOR,            0, 0 ), // M3
+    DEF_TIM( TIM4, CH2, PB7, TIM_USE_MOTOR,            0, 0 ), // M4
+    
+    DEF_TIM( TIM1, CH1, PA8, TIM_USE_MOTOR,            0, 0 ), //S5
+    DEF_TIM( TIM1, CH3, PA10,TIM_USE_MOTOR,            0, 0 ), //S6 
+};
 
-bool expressLrsTimerIsRunning(void);
-
-void expressLrsTimerDebug(void);
 

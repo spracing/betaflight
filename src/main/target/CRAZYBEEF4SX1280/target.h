@@ -67,11 +67,11 @@
 #define MAX7456_SPI_INSTANCE    SPI2
 #define MAX7456_SPI_CS_PIN      PB12
 
-// #define ENABLE_BLACKBOX_LOGGING_ON_SPIFLASH_BY_DEFAULT
-// #define USE_FLASHFS
-// #define USE_FLASH_M25P16
-// #define FLASH_CS_PIN            PB2
-// #define FLASH_SPI_INSTANCE      SPI2
+#define ENABLE_BLACKBOX_LOGGING_ON_SPIFLASH_BY_DEFAULT
+#define USE_FLASHFS
+#define USE_FLASH_M25P16
+#define FLASH_CS_PIN            PA14
+#define FLASH_SPI_INSTANCE      SPI2
 
 // *************** SPI RX **********************
 #define USE_RX_SPI

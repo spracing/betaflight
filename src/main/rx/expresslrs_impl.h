@@ -24,23 +24,30 @@
 // 11 -> tlm packet
 // 10 -> sync packet with hop data
 typedef enum {
-    ELRS_RC_DATA_PACKET=0x00,
-    ELRS_MSP_DATA_PACKET=0x01,
-    ELRS_SYNC_PACKET=0x02,
-    ELRS_TLM_PACKET=0x03,
+    ELRS_RC_DATA_PACKET = 0x00,
+    ELRS_MSP_DATA_PACKET = 0x01,
+    ELRS_SYNC_PACKET = 0x02,
+    ELRS_TLM_PACKET = 0x03,
 } elrs_packet_type_e;
 
 typedef enum {
-    DIO_UNKNOWN = 0,
-    DIO_RX_DONE,
-    DIO_TX_DONE
+    ELRS_DIO_UNKNOWN = 0,
+    ELRS_DIO_RX_DONE = 1,
+    ELRS_DIO_TX_DONE = 2
 } dioReason_e;
 
 typedef enum {
-    LQ_NONE,
-    LQ_TRANSMITTING,
-    LQ_RECEIVING
-} lqMode_e;
+    ELRS_CONNECTED,
+    ELRS_TENTATIVE,
+    ELRS_DISCONNECTED,
+    ELRS_DISCONNECT_PENDING // used on modelmatch change to drop the connection
+} connectionState_e;
+
+typedef enum {
+    ELRS_TIM_DISCONNECTED = 0,
+    ELRS_TIM_TENTATIVE = 1,
+    ELRS_TIM_LOCKED = 2
+} timerState_e;
 
 typedef struct elrsReceiver_s {
 
@@ -53,6 +60,7 @@ typedef struct elrsReceiver_s {
     volatile uint8_t nonceRX; // nonce that we THINK we are up to.
 
     elrs_mod_settings_t *mod_params;
+    elrs_rf_perf_params_t *rf_perf_params;
 
     const uint8_t *UID;
 
@@ -61,28 +69,31 @@ typedef struct elrsReceiver_s {
     int8_t rssiFiltered;
 
     uint8_t uplinkLQ;
-    lqMode_e lqMode;
 
-    dioReason_e dioReason;
+    bool alreadyFHSS;
+    bool alreadyTLMresp;
+    bool lockRFmode;
 
-    uint32_t validPacketReceivedAtUs;
-    uint16_t missedPackets;
+    timerState_e timerState;
+    connectionState_e connectionState;
 
-    uint16_t packetHandlingToTockDelayUs;
-
+    uint8_t rfModeCycleMultiplier;
     uint16_t cycleIntervalMs;
     uint32_t rfModeCycledAtMs;
     uint8_t rateIndex;
+    uint8_t nextRateIndex;
+
+    uint32_t gotConnectionMs;
+    uint32_t lastSyncPacketMs;
+    uint32_t lastValidPacketMs;
 
     uint32_t configCheckedAtMs;
     bool configChanged;
 
-    bool bound;
-    bool failsafe;
-    bool firstConnection;
-    bool synced;
-    volatile bool nextChannelRequired;
+    bool inBindingMode;
+    volatile bool fhssRequired;
 
+    uint32_t statsUpdatedAtMs;
 
     elrsRxInitFnPtr init;
     elrsRxConfigFnPtr config;
@@ -93,7 +104,6 @@ typedef struct elrsReceiver_s {
     elrsRxGetRFlinkInfoFnPtr getRFlinkInfo;
     elrsRxSetFrequencyFnPtr setFrequency;
     elrsRxHandleFreqCorrectionFnPtr handleFreqCorrection;
-    elrsRxIsBusyFnPtr isBusy;
 
     timerOvrHandlerRec_t timerUpdateCb;
 } elrsReceiver_t;

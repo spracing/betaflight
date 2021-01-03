@@ -27,6 +27,8 @@
 
 #include "rx/crsf_protocol.h"
 
+// type of function to send MSP response chunk over telemetry.
+typedef void (*mspResponseFnPtr)(uint8_t *payload, const uint8_t payloadSize);
 
 void initCrsfTelemetry(void);
 uint32_t getCrsfDesiredSpeed(void);
@@ -43,6 +45,8 @@ void crsfProcessDisplayPortCmd(uint8_t *frameStart);
 #if defined(USE_MSP_OVER_TELEMETRY)
 void initCrsfMspBuffer(void);
 bool bufferCrsfMspFrame(uint8_t *frameStart, int frameLength);
+bool handleCrsfMspFrameBuffer(mspResponseFnPtr responseFn);
+int getCrsfMspFrame(uint8_t *frame, uint8_t *payload, const uint8_t payloadSize);
 #endif
 #if defined(USE_CRSF_V3)
 void speedNegotiationProcess(uint32_t currentTime);

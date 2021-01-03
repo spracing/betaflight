@@ -815,7 +815,7 @@ static void timCCxHandler(TIM_TypeDef *tim, timerConfig_t *timerConfig)
 #endif
 }
 
-static void timUpdateHandler(TIM_TypeDef *tim, timerConfig_t *timerConfig)
+static inline void timUpdateHandler(TIM_TypeDef *tim, timerConfig_t *timerConfig)
 {
     uint16_t capture;
     unsigned tim_status;
@@ -907,7 +907,7 @@ _TIM_IRQ_HANDLER_UPDATE_ONLY(TIM6_DAC_IRQHandler, 6);
 #endif
 #if USED_TIMERS & TIM_N(7)
 // The USB VCP_HAL driver conflicts with TIM7, see TIMx_IRQHandler in usbd_cdc_interface.h
-#  if !(defined(USE_VCP) && (defined(STM32F4) || defined(STM32G4) || defined(STM32H7)))
+#  if !(defined(USE_VCP) && (defined(STM32F4) || defined(STM32G4) || defined(STM32H7) || defined(STM32F7)))
 #    if defined(STM32G4)
 _TIM_IRQ_HANDLER_UPDATE_ONLY(TIM7_DAC_IRQHandler, 7);
 #    else
