@@ -353,6 +353,10 @@
 #define RX_EXPRESSLRS_SPI_BUSY_PIN NONE
 #endif
 
+#if !defined(RX_EXPRESSLRS_TIMER_INSTANCE)
+#define RX_EXPRESSLRS_TIMER_INSTANCE NULL
+#endif
+
 #endif
 
 #endif

@@ -34,10 +34,10 @@
 
 typedef enum
 {
-    SX1280_RF_IDLE = 0x00, //!< The radio is idle
-    SX1280_RF_RX_RUNNING,  //!< The radio is in reception state
-    SX1280_RF_TX_RUNNING,  //!< The radio is in transmission state
-    SX1280_RF_CAD,         //!< The radio is doing channel activity detection
+    SX1280_RF_IDLE = 0x00, // The radio is idle
+    SX1280_RF_RX_RUNNING,  // The radio is in reception state
+    SX1280_RF_TX_RUNNING,  // The radio is in transmission state
+    SX1280_RF_CAD,         // The radio is doing channel activity detection
 } sxx1280_states_e;
 
 /*!
@@ -45,14 +45,14 @@ typedef enum
  */
 typedef enum
 {
-    SX1280_MODE_SLEEP = 0x00, //! The radio is in sleep mode
-    SX1280_MODE_CALIBRATION,  //! The radio is in calibration mode
-    SX1280_MODE_STDBY_RC,     //! The radio is in standby mode with RC oscillator
-    SX1280_MODE_STDBY_XOSC,   //! The radio is in standby mode with XOSC oscillator
-    SX1280_MODE_FS,           //! The radio is in frequency synthesis mode
-    SX1280_MODE_RX,           //! The radio is in receive mode
-    SX1280_MODE_TX,           //! The radio is in transmit mode
-    SX1280_MODE_CAD           //! The radio is in channel activity detection mode
+    SX1280_MODE_SLEEP = 0x00, // The radio is in sleep mode
+    SX1280_MODE_CALIBRATION,  // The radio is in calibration mode
+    SX1280_MODE_STDBY_RC,     // The radio is in standby mode with RC oscillator
+    SX1280_MODE_STDBY_XOSC,   // The radio is in standby mode with XOSC oscillator
+    SX1280_MODE_FS,           // The radio is in frequency synthesis mode
+    SX1280_MODE_RX,           // The radio is in receive mode
+    SX1280_MODE_TX,           // The radio is in transmit mode
+    SX1280_MODE_CAD           // The radio is in channel activity detection mode
 } sx1280_operating_modes_e;
 
 /*!
@@ -75,8 +75,8 @@ typedef enum
  */
 typedef enum
 {
-    SX1280_USE_LDO = 0x00,  //! Use LDO (default value)
-    SX1280_USE_DCDC = 0x01, //! Use DCDC
+    SX1280_USE_LDO = 0x00,  // Use LDO (default value)
+    SX1280_USE_DCDC = 0x01, // Use DCDC
 } sx1280_regulator_modes_e;
 
 /*!
@@ -100,7 +100,7 @@ typedef enum
 
 typedef enum
 {
-    SX1280_RADIO_CRC_OFF = 0x00, //!< No CRC in use
+    SX1280_RADIO_CRC_OFF = 0x00, // No CRC in use
     SX1280_RADIO_CRC_1_BYTES = 0x10,
     SX1280_RADIO_CRC_2_BYTES = 0x20,
     SX1280_RADIO_CRC_3_BYTES = 0x30,
@@ -175,16 +175,16 @@ typedef enum
 
 typedef enum
 {
-    SX1280_LORA_PACKET_VARIABLE_LENGTH = 0x00, //!< The packet is on variable size, header included
-    SX1280_LORA_PACKET_FIXED_LENGTH = 0x80,    //!< The packet is known on both sides, no header included in the packet
+    SX1280_LORA_PACKET_VARIABLE_LENGTH = 0x00, // The packet is on variable size, header included
+    SX1280_LORA_PACKET_FIXED_LENGTH = 0x80,    // The packet is known on both sides, no header included in the packet
     SX1280_LORA_PACKET_EXPLICIT = SX1280_LORA_PACKET_VARIABLE_LENGTH,
     SX1280_LORA_PACKET_IMPLICIT = SX1280_LORA_PACKET_FIXED_LENGTH,
 } sx1280_lora_packet_lengths_modes_e;
 
 typedef enum
 {
-    SX1280_LORA_CRC_ON = 0x20,  //!< CRC activated
-    SX1280_LORA_CRC_OFF = 0x00, //!< CRC not used
+    SX1280_LORA_CRC_ON = 0x20,  // CRC activated
+    SX1280_LORA_CRC_OFF = 0x00, // CRC not used
 } sx1280_lora_crc_modes_e;
 
 typedef enum
@@ -265,7 +265,7 @@ typedef enum
 } sx1280_tick_sizes_e;
 
 bool sx1280Init(IO_t resetPin, IO_t busyPin);
-bool sx1280ISR(uint32_t *timeStamp);
+uint8_t sx1280ISR(uint32_t *timeStamp);
 bool sx1280IsBusy(void);
 void sx1280WriteCommand(const uint8_t address, const uint8_t data);
 void sx1280WriteCommandBurst(const uint8_t address, const uint8_t *data, const uint8_t length);
@@ -290,7 +290,9 @@ int32_t sx1280GetFrequencyError(void);
 void sx1280AdjustFrequency(int32_t offset, const uint32_t freq);
 void sx1280SetFIFOaddr(const uint8_t txBaseAddr, const uint8_t rxBaseAddr);
 void sx1280SetDioIrqParams(const uint16_t irqMask, const uint16_t dio1Mask, const uint16_t dio2Mask, const uint16_t dio3Mask);
+uint16_t sx1280GetIrqStatus(void);
 void sx1280ClearIrqStatus(const uint16_t irqMask);
+uint8_t sx1280GetIrqReason(void);
 
 void sx1280TransmitData(const uint8_t *data, const uint8_t length);
 void sx1280ReceiveData(uint8_t *data, const uint8_t length);

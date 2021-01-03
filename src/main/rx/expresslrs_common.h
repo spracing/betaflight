@@ -36,24 +36,32 @@
 
 #define ELRS_NR_SEQUENCE_ENTRIES 256
 
-#define ELRS_RNG_MAX 0x7FFF
-
 #define ELRS_RX_TX_BUFF_SIZE 8
 
 #define ELRS_TELEMETRY_TYPE_LINK 0x01
+#define ELRS_TELEMETRY_TYPE_DATA 0x02
 #define ELRS_MSP_BIND 0x09
+#define ELRS_MSP_MODEL_ID 0x0A
+#define ELRS_MSP_SET_RX_CONFIG 45
+
+#define ELRS_MODELMATCH_MASK 0x3F
 
 #define FREQ_HZ_TO_REG_VAL_900(freq) ((uint32_t)((double) freq / (double) SX127x_FREQ_STEP))
 #define FREQ_HZ_TO_REG_VAL_24(freq) ((uint32_t)((double) freq / (double) SX1280_FREQ_STEP))
 
 #define ELRS_RATE_MAX 4
-#define ELRS_RATE_DEFAULT 0
+#define ELRS_BINDING_RATE_24 3
+#define ELRS_BINDING_RATE_900 2
 
 #define ELRS_MAX_CHANNELS 16
 #define ELRS_RSSI_CHANNEL 15
 #define ELRS_LQ_CHANNEL 14
 
 #define ELRS_CONFIG_CHECK_MS 200
+#define ELRS_LINK_STATS_CHECK_MS 100
+#define ELRS_CONSIDER_CONNECTION_GOOD_MS 1000
+
+#define ELRS_MODE_CYCLE_MULTIPLIER_SLOW 10
 
 typedef enum {
 #ifdef USE_RX_SX127X
@@ -61,6 +69,7 @@ typedef enum {
     AU915,
     EU433,
     EU868,
+    IN866,
     FCC915,
 #endif
 #ifdef USE_RX_SX1280
@@ -70,6 +79,11 @@ typedef enum {
     NONE,
 #endif
 } elrs_freq_domain_e;
+
+typedef enum {
+    SM_HYBRID = 0,
+    SM_HYBRID_WIDE = 1
+} elrs_switch_mode_e;
 
 typedef enum {
     TLM_RATIO_NO_TLM = 0,
@@ -95,30 +109,40 @@ typedef enum {
 
 typedef struct elrs_mod_settings_s {
     uint8_t index;
-    elrs_rf_rate_e enumRate; // Max value of 16 since only 4 bits have been assigned in the sync package.
+    elrs_rf_rate_e enumRate;            // Max value of 16 since only 4 bits have been assigned in the sync package.
     uint8_t bw;
     uint8_t sf;
     uint8_t cr;
     uint32_t interval;                  // interval in us seconds that corresponds to that frequency
-    elrs_tlm_ratio_e tlmInterval; // every X packets is a response TLM packet, should be a power of 2
+    elrs_tlm_ratio_e tlmInterval;       // every X packets is a response TLM packet, should be a power of 2
     uint8_t fhssHopInterval;            // every X packets we hop to a new frequency. Max value of 16 since only 4 bits have been assigned in the sync package.
     uint8_t preambleLen;
-    int8_t sensitivity;                 // expected RF sensitivity
-    uint32_t failsafeIntervalUs;
 } elrs_mod_settings_t;
+
+typedef struct elrs_rf_perf_params_s
+{
+    int8_t index;
+    elrs_rf_rate_e enumRate;        // Max value of 16 since only 4 bits have been assigned in the sync package.
+    int32_t sensitivity;            // expected RF sensitivity based on
+    uint32_t toa;                   // time on air in microseconds
+    uint32_t disconnectTimeoutMs;   // Time without a packet before receiver goes to disconnected (ms)
+    uint32_t rxLockTimeoutMs;       // Max time to go from tentative -> connected state on receiver (ms)
+    uint32_t syncPktIntervalDisconnected; // how often to send the SYNC_PACKET packet (ms) when there is no response from RX
+    uint32_t syncPktIntervalConnected;    // how often to send the SYNC_PACKET packet (ms) when there we have a connection
+} elrs_rf_perf_params_t;
 
 typedef bool (*elrsRxInitFnPtr)(IO_t resetPin, IO_t busyPin);
 typedef void (*elrsRxConfigFnPtr)(const uint8_t bw, const uint8_t sf, const uint8_t cr, const uint32_t freq, const uint8_t preambleLen, const bool iqInverted);
 typedef void (*elrsRxStartReceivingFnPtr)(void);
-typedef bool (*elrsRxISRFnPtr)(timeUs_t *timeStamp);
+typedef uint8_t (*elrsRxISRFnPtr)(timeUs_t *timeStamp);
 typedef void (*elrsRxTransmitDataFnPtr)(const uint8_t *data, const uint8_t length);
 typedef void (*elrsRxReceiveDataFnPtr)(uint8_t *data, const uint8_t length);
 typedef void (*elrsRxGetRFlinkInfoFnPtr)(int8_t *rssi, int8_t *snr);
 typedef void (*elrsRxSetFrequencyFnPtr)(const uint32_t freq);
 typedef void (*elrsRxHandleFreqCorrectionFnPtr)(int32_t offset, const uint32_t freq);
-typedef bool (*elrsRxIsBusyFnPtr)(void);
 
 extern elrs_mod_settings_t air_rate_config[][ELRS_RATE_MAX];
+extern elrs_rf_perf_params_t rf_perf_config[][ELRS_RATE_MAX];
 
 void generateCrc14Table(void);
 uint16_t calcCrc14(uint8_t *data, uint8_t len, uint16_t crc);
@@ -130,6 +154,8 @@ void FHSSsetCurrIndex(const uint8_t value);
 uint32_t FHSSgetNextFreq(const int32_t freqCorrection);
 void FHSSrandomiseFHSSsequence(const uint8_t UID[], const elrs_freq_domain_e dom);
 uint8_t tlmRatioEnumToValue(const elrs_tlm_ratio_e enumval);
+uint16_t rateEnumToHz(const elrs_rf_rate_e eRate);
+uint16_t txPowerIndexToValue(const uint8_t index);
 
 //
 // Link Quality
@@ -143,5 +169,6 @@ uint32_t *lqGetArray(uint8_t *bitCount);
 
 uint16_t convertSwitch1b(const uint16_t val);
 uint16_t convertSwitch3b(const uint16_t val);
-uint16_t convertSwitch4b(const uint16_t val);
+uint16_t convertSwitchNb(const uint16_t val, const uint16_t max);
 uint16_t convertAnalog(const uint16_t val);
+uint8_t hybridWideNonceToSwitchIndex(const uint8_t nonce);

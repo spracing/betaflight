@@ -35,8 +35,9 @@ PG_RESET_TEMPLATE(rxExpressLrsSpiConfig_t, rxExpressLrsSpiConfig,
     .resetIoTag = IO_TAG(RX_EXPRESSLRS_SPI_RESET_PIN),
     .busyIoTag = IO_TAG(RX_EXPRESSLRS_SPI_BUSY_PIN),
     .UID = {0, 0, 0, 0, 0, 0},
-    .hybridSwitches = false,
+    .switchMode = 0,
     .domain = 0,
     .rateIndex = 0,
+    .modelId = 0xFF,
 );
 #endif
