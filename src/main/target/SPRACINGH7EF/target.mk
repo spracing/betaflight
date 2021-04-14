@@ -7,12 +7,6 @@ EXST = yes
 EXST_ADJUST_VMA = 0x90100000
 endif
 
-ifneq ($(EXST),yes)
-# pretend there's 1MB of flash, on the H750 there is, H730 requires testing
-TARGET_FLASH_SIZE   := 1024
-LD_SCRIPT       = $(LINKER_DIR)/stm32_flash_h730_1m.ld
-endif
-
 FEATURES       += VCP ONBOARDFLASH
 
 TARGET_SRC += \
