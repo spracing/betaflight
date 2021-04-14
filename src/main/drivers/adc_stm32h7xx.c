@@ -328,9 +328,9 @@ void adcInit(const adcConfig_t *config)
             // Found a tag map entry for this input pin
             // Find an ADC device that can handle this input pin
 
-            bool useConfiguredDevice = (dev != ADCINVALID) && (adcTagMap[map].devices & (1 << dev)); {
+            bool useConfiguredDevice = (dev != ADCINVALID) && (adcTagMap[map].devices & (1 << dev));
 
-            if (!useConfiguredDevice)
+            if (!useConfiguredDevice) {
                 // If the ADC was configured to use a specific device, but that device was not active, then try and find another active instance that works for the pin.
 
                 for (dev = 0; dev < ADCDEV_COUNT; dev++) {
