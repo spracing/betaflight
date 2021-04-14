@@ -12,7 +12,6 @@ FEATURES       += VCP ONBOARDFLASH
 TARGET_SRC += \
             drivers/bus_quadspi_hal.c \
             drivers/bus_quadspi.c \
-            drivers/max7456.c \
             drivers/accgyro/accgyro_mpu.c \
             drivers/accgyro/accgyro_mpu6500.c \
             drivers/accgyro/accgyro_spi_icm42605.c \
