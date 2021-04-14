@@ -224,6 +224,7 @@ CROSS_CXX   := $(CCACHE) $(ARM_SDK_PREFIX)g++
 CROSS_GDB   := $(ARM_SDK_PREFIX)gdb
 OBJCOPY     := $(ARM_SDK_PREFIX)objcopy
 OBJDUMP     := $(ARM_SDK_PREFIX)objdump
+READELF     := $(ARM_SDK_PREFIX)readelf
 SIZE        := $(ARM_SDK_PREFIX)size
 DFUSE-PACK  := src/utils/dfuse-pack.py
 
@@ -398,8 +399,8 @@ $(TARGET_BIN): $(TARGET_UNPATCHED_BIN)
 	$(V1) @echo "Patching updated HASH section into $(TARGET_EXST_ELF)" "$(STDOUT)"
 	$(OBJCOPY) $(TARGET_ELF) $(TARGET_EXST_ELF) --remove-section ._user_heap_stack --update-section .exst_hash=$(TARGET_EXST_HASH_SECTION_FILE)
 
-	$(V1) readelf -S $(TARGET_EXST_ELF)
-	$(V1) readelf -l $(TARGET_EXST_ELF)
+	$(V1) $(READELF) -S $(TARGET_EXST_ELF)
+	$(V1) $(READELF) -l $(TARGET_EXST_ELF)
 
 $(TARGET_HEX): $(TARGET_BIN)
 	$(if $(EXST_ADJUST_VMA),,$(error "EXST_ADJUST_VMA not specified"))
