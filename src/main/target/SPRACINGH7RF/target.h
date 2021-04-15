@@ -172,7 +172,6 @@
 
 #define USE_GYRO
 #define USE_GYRO_SPI_ICM42605
-#define USE_MULTI_GYRO
 #undef USE_GYRO_REGISTER_DUMP
 
 #define USE_EXTI
