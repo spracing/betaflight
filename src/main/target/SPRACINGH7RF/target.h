@@ -155,13 +155,11 @@
 #define USE_I2C_DEVICE_1
 #define I2C1_SCL                PB8 // J8:5
 #define I2C1_SDA                PB9 // J8:6
-#define I2C_DEVICE              (I2CDEV_1)
 
 // I2C2 has BMP388 internally connected, 10k pull-ups
 #define USE_I2C_DEVICE_2
 #define I2C2_SCL                PB10
 #define I2C2_SDA                PB11
-//#define I2C_DEVICE              (I2CDEV_2)
 
 #define USE_MAG
 #define USE_MAG_HMC5883
@@ -169,6 +167,7 @@
 
 #define USE_BARO
 #define USE_BARO_BMP388
+#define BARO_I2C_INSTANCE           (I2CDEV_2)
 
 #define USE_GYRO
 #define USE_GYRO_SPI_ICM42605
