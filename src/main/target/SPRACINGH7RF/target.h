@@ -262,15 +262,17 @@
 #define DEFAULT_RX_FEATURE      FEATURE_RX_SERIAL
 #define DEFAULT_FEATURES        (FEATURE_TELEMETRY | FEATURE_LED_STRIP)
 
+// Disable OCTOSPI pins PB2/CLK, PB6/NCS, PD11/IO0, PD12/IO1, PD13/IO3, PE2/IO2
+// PE7/IO4, PE8/IO5, PE9/IO6, PE10/IO7
+
 #define TARGET_IO_PORTA 0xffff
-#define TARGET_IO_PORTB 0xffff
+#define TARGET_IO_PORTB (0xffff & ~(BIT(2)|BIT(6)))
 #define TARGET_IO_PORTC 0xffff
-#define TARGET_IO_PORTD 0xffff
-#define TARGET_IO_PORTE 0xffff
+#define TARGET_IO_PORTD (0xffff & ~(BIT(11)|BIT(12)|BIT(13)))
+#define TARGET_IO_PORTE (0xffff & ~(BIT(2)|BIT(7)|BIT(8)|BIT(9)|BIT(10)))
 #define TARGET_IO_PORTF 0xffff
 #define TARGET_IO_PORTG 0xffff
 #define TARGET_IO_PORTH 0xffff
-#define TARGET_IO_PORTI 0xffff
 
 #define USABLE_TIMER_CHANNEL_COUNT 13
 
