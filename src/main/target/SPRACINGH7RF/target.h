@@ -31,14 +31,14 @@
 #define LED1_PIN                PE6
 
 #define USE_BEEPER
-#define BEEPER_PIN              PD11
+#define BEEPER_PIN              PE4
 #define BEEPER_INVERTED
 
 // Force two buttons to look at the single button so config reset on button works
 #define USE_BUTTONS
-#define BUTTON_A_PIN            PD10
+#define BUTTON_A_PIN            PC14
 #define BUTTON_A_PIN_INVERTED // Active high
-#define BUTTON_B_PIN            PD10
+#define BUTTON_B_PIN            PC14
 #define BUTTON_B_PIN_INVERTED // Active high
 
 // FC has an a OctoSPI flash chip, for code/data storage on OCTOSPIM_P1 (Memory mapped mode)
