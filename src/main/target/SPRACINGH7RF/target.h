@@ -235,6 +235,13 @@
 #define VBAT_ADC_PIN                PC3 // ADC3_INP1
 #define VBAT_ADC_INSTANCE           ADC3
 
+// ADC mapping from actual intended use to BF inputs
+#define RSSI_ADC_PIN            CURRENT_METER_2_ADC_PIN
+#define CURRENT_METER_ADC_PIN   CURRENT_METER_1_ADC_PIN
+//#define VBAT_ADC_PIN            VBAT_ADC_PIN
+//#define EXTERNAL1_ADC_PIN       EXTERNAL1_ADC_PIN
+
+
 #define VIDEO_IN_ADC_PIN        PC5 // ADC1_INP4 - Reserved for video
 #define VIDEO_OUT_ADC_PIN       PC4 // ADC1_INP8 - Reserved for video
 
