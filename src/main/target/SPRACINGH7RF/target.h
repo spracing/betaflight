@@ -218,7 +218,6 @@
 #endif
 
 #define USE_ADC
-#define USE_ADC_INTERNAL // ADC3
 
 #define ADC_INSTANCE ADC3 // Use ADC3 by default, for as many pins as possible.
 
