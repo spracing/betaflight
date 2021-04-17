@@ -233,6 +233,7 @@ FIRMWARE_SIZE      := 1024
 # and the maximum size of the data stored on the external flash device.
 MCU_FLASH_SIZE     := FIRMWARE_SIZE
 DEFAULT_LD_SCRIPT   = $(LINKER_DIR)/stm32_ram_h730_exst.ld
+LD_SCRIPTS          = $(LINKER_DIR)/stm32_h730_common.ld $(LINKER_DIR)/stm32_h730_common_post.ld
 endif
 
 
