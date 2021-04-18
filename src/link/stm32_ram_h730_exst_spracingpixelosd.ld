@@ -53,16 +53,16 @@ possible.
 /* see .exst section below */
 _exst_hash_size = 64;
 
-_spracing_pixel_osd_framebuffer_size = (360 * 288 * 2 / 8) * 2; /* (H * V * Bit-per-pixel / Bits-per-byte) * 2 framebuffers */
-
+_spracing_pixel_osd_framebuffer_size = (360 * 288 * 2 / 8) * 2; /* (H * V * Bit-per-pixel / Bits-per-byte) * 2 framebuffers  = 51840 bytes */
 /* Specify the memory areas */
 MEMORY
 {
     ITCM_RAM                          (rwx) : ORIGIN = 0x00000000, LENGTH = 64K - 32K
     SPRACINGPIXELOSD_CODE              (rx) : ORIGIN = ORIGIN(ITCM_RAM) + LENGTH(ITCM_RAM), LENGTH = 32K
     
-    DTCM_RAM                          (rwx) : ORIGIN = 0x20000000, LENGTH = 128K - 4K
+    DTCM_RAM                          (rwx) : ORIGIN = 0x20000000, LENGTH = 128K - 64K - 4K
     SPRACINGPIXELOSD_DTCM_RAM         (rwx) : ORIGIN = ORIGIN(DTCM_RAM) + LENGTH(DTCM_RAM), LENGTH = 4K
+    FRAMEBUFFER_RAM                    (rw) : ORIGIN = ORIGIN(DTCM_RAM) + 64K, LENGTH = _spracing_pixel_osd_framebuffer_size
     
     RAM                               (rwx) : ORIGIN = 0x24000000, LENGTH = 128K + 192K - 2K /* 128K AXI SRAM + 192K ITCM & AXI = 320K */
     SPRACINGPIXELOSD_D1_RAM            (rw) : ORIGIN = ORIGIN(RAM) + LENGTH(RAM) - 2K, LENGTH = 2K
@@ -72,8 +72,9 @@ MEMORY
     OCTOSPI1_CODE                      (rx) : ORIGIN = ORIGIN(OCTOSPI1) + 1M, LENGTH = 1M - _exst_hash_size /* hard coded start address, as required by SPRACINGH7 boot loader, don't change! */
     EXST_HASH                          (rx) : ORIGIN = ORIGIN(OCTOSPI1_CODE) + LENGTH(OCTOSPI1_CODE), LENGTH = _exst_hash_size
 
-    FRAMEBUFFER_RAM                    (rw) : ORIGIN = 0x30000000, LENGTH = _spracing_pixel_osd_framebuffer_size
-    SPRACINGPIXELOSD_D2_RAM            (rw) : ORIGIN = ORIGIN(FRAMEBUFFER_RAM) + LENGTH(FRAMEBUFFER_RAM), LENGTH = 1K
+    D2_RAM_REGION                     (rwx) : ORIGIN = 0x30000000, LENGTH = 32K /* SRAM1 16K + SRAM2 16K */
+    
+    SPRACINGPIXELOSD_D2_RAM            (rw) : ORIGIN = ORIGIN(D2_RAM_REGION), LENGTH = 1K
     D2_RAM                            (rwx) : ORIGIN = ORIGIN(SPRACINGPIXELOSD_D2_RAM) + LENGTH(SPRACINGPIXELOSD_D2_RAM), LENGTH = 32K - LENGTH(FRAMEBUFFER_RAM)- LENGTH(SPRACINGPIXELOSD_D2_RAM) /* SRAM1 16K + SRAM2 16K */
     D3_RAM                            (rwx) : ORIGIN = 0x38000000, LENGTH = 16K /* SRAM4 16K */
 
