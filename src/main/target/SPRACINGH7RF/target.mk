@@ -24,14 +24,10 @@ EXST ?= yes
 ifneq ($(EXST),)
 EXST = yes
 EXST_ADJUST_VMA = 0x90100000
+LD_SCRIPT       = $(LINKER_DIR)/stm32_ram_h730_exst_spracingpixelosd.ld
 endif
 
-ifneq ($(EXST),)
-EXST = yes
-LD_SCRIPT       = $(LINKER_DIR)/stm32_ram_h730_exst.ld
-endif
-
-FEATURES       += VCP ONBOARDFLASH SDCARD_SDIO
+FEATURES       += VCP ONBOARDFLASH SDCARD_SDIO SPRACING_PIXEL_OSD
 
 TARGET_SRC += \
             drivers/bus_quadspi_hal.c \
