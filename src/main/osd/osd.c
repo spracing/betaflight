@@ -1114,7 +1114,6 @@ void osdUpdate(timeUs_t currentTimeUs)
             doDrawScreen = (counter % OSD_DRAW_FREQ_DENOM == 1);
         }
 #endif
-        // Redraw a portion of the chars per idle to spread out the load and SPI bus utilization
         if (doDrawScreen) {
             displayDrawScreen(osdDisplayPort);
         }
