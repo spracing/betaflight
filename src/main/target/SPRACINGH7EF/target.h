@@ -49,7 +49,9 @@
 #define USE_OCTOSPI_DEVICE_1
 
 #define OCTOSPIM_P1_SCK_PIN PB2
+#define OCTOSPIM_P1_CS_PIN PB10
 
+// Not using IO0:3
 #define OCTOSPIM_P1_IO0_PIN NONE
 #define OCTOSPIM_P1_IO1_PIN NONE
 #define OCTOSPIM_P1_IO2_PIN NONE
@@ -60,7 +62,6 @@
 #define OCTOSPIM_P1_IO5_PIN PE8
 #define OCTOSPIM_P1_IO6_PIN PE9
 #define OCTOSPIM_P1_IO7_PIN PE10
-#define OCTOSPIM_P1_CS_PIN PB10
 
 #define OCTOSPIM_P1_MODE OCTOSPIM_P1_MODE_IO47_ONLY
 #define OCTOSPIM_P1_CS_FLAGS (OCTOSPIM_P1_CS_HARDWARE)
@@ -76,23 +77,25 @@
 #define USE_UART
 
 #define USE_UART1
-#define UART1_RX_PIN            PB7
-#define UART1_TX_PIN            PB6
+#define UART1_RX_PIN            PB7 // NC
+#define UART1_TX_PIN            PB6 // NC
 
 #define USE_UART2
-#define UART2_RX_PIN            PD4
-#define UART2_TX_PIN            PD5
+#define UART2_RX_PIN            PD6 // J8:7
+#define UART2_TX_PIN            PD5 // J8:8
+#define UART2_RTS_PIN           PD4 // J8:9
+#define UART2_CTS_PIN           PD3 // J8:10
 
 #define USE_UART3
-#define UART3_RX_PIN            PD9
-#define UART3_TX_PIN            PD8
+#define UART3_RX_PIN            PD9 // NC
+#define UART3_TX_PIN            PD8 // Jumper to select between J14:3/4
 
 #define USE_UART4
-#define UART4_RX_PIN            PD0
-#define UART4_TX_PIN            PD1
+#define UART4_RX_PIN            PD0 // J5:3 - FDCAN_RX
+#define UART4_TX_PIN            PD1 // J5:4 - FDCAN_TX
 
 #define USE_UART5
-#define UART5_RX_PIN            PD2
+#define UART5_RX_PIN            PD2   // J6:5, J9:5 ESC TLM
 #define UART5_TX_PIN            NONE
 
 //#define USE_UART6
@@ -104,16 +107,16 @@
 #define UART7_TX_PIN            NONE
 
 #define USE_UART8
-#define UART8_RX_PIN            PE0
-#define UART8_TX_PIN            PE1
+#define UART8_RX_PIN            PE0 // NC
+#define UART8_TX_PIN            PE1 // NC
 
-#define USE_UART9
-#define UART9_RX_PIN            PD14
-#define UART9_TX_PIN            PD15
+#define USE_UART9               // Main receiver connection, on connector and though-hole pads.
+#define UART9_RX_PIN            PD14 // J11:3, J8:3 
+#define UART9_TX_PIN            PD15 // J11:4, J8:4
 
 #define USE_UART10
-#define UART10_RX_PIN           PE2
-#define UART10_TX_PIN           PE3
+#define UART10_RX_PIN           PE2 // NC
+#define UART10_TX_PIN           PE3 // NC
 
 #define USE_VCP
 #define USE_USB_ID
@@ -138,24 +141,21 @@
 #define SPI6_SCK_PIN            PB3
 #define SPI6_MISO_PIN           PB4
 #define SPI6_MOSI_PIN           PB5
-#define SPI6_NSS_PIN            PD7 // SOFTWARE CS ONLY, SPI6_NSS signal unavailable (Only on PA15, PA4, PA0)
+#define SPI6_NSS_PIN            NONE
 
 #define USE_I2C
 #define USE_I2C_DEVICE_1
-#define I2C1_SCL                PB6
-#define I2C1_SDA                PB7
-#define I2C_DEVICE              (I2CDEV_1)
+#define I2C1_SCL                PB6 // NC
+#define I2C1_SDA                PB7 // NC
 
 #define USE_I2C_DEVICE_4
-#define I2C4_SCL                PD12
-#define I2C4_SDA                PD13
+#define I2C4_SCL                PD12 // J8:5
+#define I2C4_SDA                PD13 // J8:6
 
 #define USE_MAG
 #define USE_MAG_HMC5883
 #define USE_MAG_QMC5883
-
-#define USE_BARO
-#define USE_BARO_BMP388
+#define MAG_I2C_INSTANCE        (I2CDEV_2)
 
 #define USE_GYRO
 #define USE_GYRO_SPI_ICM42605
@@ -165,15 +165,13 @@
 #define USE_EXTI
 #define USE_GYRO_EXTI
 
-// TODO Verify EXTI/FSYNC pins
-#define GYRO_1_EXTI_PIN         PC6
-#define GYRO_2_EXTI_PIN         PC7
-#define GYRO_1_FSYNC_PIN        PC8
-#define GYRO_2_FSYNC_PIN        PC9
+#define GYRO_1_EXTI_PIN         PC6 // TIM8 CH1
+#define GYRO_1_FSYNC_PIN        PC7 // TIM8 CH2
+#define GYRO_2_EXTI_PIN         PC8 // TIM8 CH3
+#define GYRO_2_FSYNC_PIN        PC9 // TIM8 CH4
 
 #define USE_MPU_DATA_READY_SIGNAL
 #define ENSURE_MPU_DATA_READY_IS_LOW
-
 
 #define GYRO_1_CS_PIN           SPI3_NSS_PIN
 #define GYRO_1_SPI_INSTANCE     SPI3
@@ -194,7 +192,7 @@
 #define USE_FLASH_W25Q128
 #define USE_FLASH_M25P16
 
-#define FLASH_CS_PIN            SPI6_NSS_PIN
+#define FLASH_CS_PIN            PD7 // *NOT* SPI6_NSS, SOFTWARE CS ONLY
 #define FLASH_SPI_INSTANCE      SPI6
 
 #define ENABLE_BLACKBOX_LOGGING_ON_SPIFLASH_BY_DEFAULT
@@ -218,42 +216,69 @@
 #endif
 
 #define USE_ADC
-#define USE_ADC_INTERNAL // ADC3
 
-#define ADC_INSTANCE ADC3 // Use ADC3 by default, for as many pins as possible.
+#define ADC_INSTANCE                  ADC3 // Use ADC3 by default, for as many pins as possible.
 
-#define ADC1_INSTANCE ADC1 // ADC1 reserved for VIDEO
-//#define ADC2_INSTANCE ADC2 // ADC2 not used
-#define ADC3_INSTANCE ADC3 // ADC3 for monitoring, core temp and vrefint
+#define ADC1_INSTANCE                 ADC1 // ADC1 reserved for VIDEO
+//#define ADC2_INSTANCE               ADC2 // ADC2 not used
+#define ADC3_INSTANCE                 ADC3 // ADC3 for monitoring, core temp and vrefint
 
-// TODO verify ADC pins
-#define RSSI_ADC_PIN                PC0 // ADC3_INP10
-#define RSSI_ADC_INSTANCE           ADC3
-#define VBAT_ADC_PIN                PC1 // ADC3_INP11
-#define VBAT_ADC_INSTANCE           ADC3
-#define CURRENT_METER_ADC_PIN       PC2 // ADC3_INP0
-#define CURRENT_METER_ADC_INSTANCE  ADC3
-#define EXTERNAL1_ADC_PIN           PC3 // ADC3_INP1
-#define EXTERNAL1_ADC_INSTANCE      ADC3
+// 2 Current meter ADC inputs, one on each 4in1ESC connector. NO RSSI input due to on-board SX1280 RF chip.
+#define CURRENT_METER_1_ADC_PIN       PC0 // ADC3_INP10
+#define CURRENT_METER_1_ADC_INSTANCE  ADC3
+#define CURRENT_METER_2_ADC_PIN       PC1 // ADC3_INP10
+#define CURRENT_METER_2_ADC_INSTANCE  ADC3
+#define RSSI_ADC_PIN                  PC2 // ADC3_INP0 - NOT CONNECTED
+#define RSSI_ADC_INSTANCE             ADC3
+#define VBAT_ADC_PIN                  PC3 // ADC3_INP1
+#define VBAT_ADC_INSTANCE             ADC3
 
-// TODO verify ADC pins
-#define VIDEO_IN_ADC_PIN        PC4 // ADC1_INP4 - Reserved for video
-#define VIDEO_OUT_ADC_PIN       PC5 // ADC1_INP8 - Reserved for video
+// ADC mapping from actual intended use to BF inputs
+//#define RSSI_ADC_PIN                RSSI_ADC_PIN
+//#define RSSI_ADC_INSTANCE           RSSI_ADC_INSTANCE
+#define CURRENT_METER_ADC_PIN         CURRENT_METER_1_ADC_PIN
+#define CURRENT_METER_ADC_INSTANCE    ADC3
+//#define VBAT_ADC_PIN                VBAT_ADC_PIN
+//#define VBAT_ADC_INSTANCE           VBAT_ADC_INSTANCE
+#define EXTERNAL1_ADC_PIN             CURRENT_METER_2_ADC_PIN
+#define EXTERNAL1_ADC_INSTANCE        CURRENT_METER_2_ADC_INSTANCE
+
+#define VIDEO_IN_ADC_PIN              PC5 // ADC1_INP4 - Reserved for video
+#define VIDEO_OUT_ADC_PIN             PC4 // ADC1_INP8 - Reserved for video
 
 #define DEFAULT_VOLTAGE_METER_SOURCE VOLTAGE_METER_ADC
 #define DEFAULT_CURRENT_METER_SOURCE CURRENT_METER_ADC
 
 #define DEFAULT_RX_FEATURE      FEATURE_RX_SERIAL
-#define DEFAULT_FEATURES        (FEATURE_RSSI_ADC | FEATURE_TELEMETRY | FEATURE_LED_STRIP)
+#define DEFAULT_FEATURES        (FEATURE_OSD | FEATURE_RSSI_ADC | FEATURE_TELEMETRY | FEATURE_LED_STRIP)
+
+#define SPRACING_PIXEL_OSD_BLACK_PIN                    PE12
+#define SPRACING_PIXEL_OSD_WHITE_PIN                    PE13
+#define SPRACING_PIXEL_OSD_MASK_ENABLE_PIN              PE14
+#define SPRACING_PIXEL_OSD_WHITE_SOURCE_SELECT_PIN      PE15
+
+#define SPRACING_PIXEL_OSD_SYNC_IN_PIN                  PE11 // COMP2_INP
+#define SPRACING_PIXEL_OSD_SYNC_OUT_PIN                 PA8  // TIM1_CH1
+
+#define SPRACING_PIXEL_OSD_WHITE_SOURCE_PIN             PA4  // DAC1_OUT1
+#define SPRACING_PIXEL_OSD_VIDEO_THRESHOLD_DEBUG_PIN    PA5  // DAC1_OUT2
+#define SPRACING_PIXEL_OSD_PIXEL_DEBUG_1_PIN            PE5  // TIM15_CH1 - For DMA updates
+#define SPRACING_PIXEL_OSD_PIXEL_DEBUG_2_PIN            PE6  // TIM15_CH2 - Spare
+#define SPRACING_PIXEL_OSD_PIXEL_GATING_DEBUG_PIN       PB0 // TIM1_CH2N // actual gating is on CH4
+#define SPRACING_PIXEL_OSD_PIXEL_BLANKING_DEBUG_PIN     PB1 // TIM1_CH3N // actual blanking is on CH5
+
+// Disable OCTOSPI pins PB2/CLK, PB10/NCS
+// PE7/IO4, PE8/IO5, PE9/IO6, PE10/IO7
 
 #define TARGET_IO_PORTA 0xffff
-#define TARGET_IO_PORTB 0xffff
+#define TARGET_IO_PORTB (0xffff & ~(BIT(2)|BIT(10)))
 #define TARGET_IO_PORTC 0xffff
 #define TARGET_IO_PORTD 0xffff
-#define TARGET_IO_PORTE 0xffff
+#define TARGET_IO_PORTE (0xffff & ~(BIT(7)|BIT(8)|BIT(9)|BIT(10)))
 #define TARGET_IO_PORTF 0xffff
 #define TARGET_IO_PORTG 0xffff
+#define TARGET_IO_PORTH 0xffff
 
 #define USABLE_TIMER_CHANNEL_COUNT 19
 
-#define USED_TIMERS  ( TIM_N(1) | TIM_N(2) | TIM_N(3) | TIM_N(4) | TIM_N(5) | TIM_N(8) | TIM_N(12) | TIM_N(15) )
+#define USED_TIMERS  ( TIM_N(1) | TIM_N(3) | TIM_N(5) | TIM_N(8) | TIM_N(15) | TIM_N(16) | TIM_N(17) )
