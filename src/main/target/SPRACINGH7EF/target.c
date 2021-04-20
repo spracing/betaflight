@@ -37,20 +37,25 @@ const timerHardware_t timerHardware[USABLE_TIMER_CHANNEL_COUNT] = {
     DEF_TIM(TIM5,  CH3, PA2,  TIM_USE_MOTOR,               0,  2,  0 ), // ..
     DEF_TIM(TIM5,  CH4, PA3,  TIM_USE_MOTOR,               0,  3,  0 ), // M4
 
-	// On 4in1ESC_2
+    // On 4in1ESC_2
     DEF_TIM(TIM3,  CH1, PA6,  TIM_USE_NONE,                0,  4,  0 ), // M5
     DEF_TIM(TIM3,  CH2, PA7,  TIM_USE_NONE,                0,  5,  0 ), // ..
     DEF_TIM(TIM3,  CH3, PB0,  TIM_USE_NONE,                0,  6,  0 ), // ..
     DEF_TIM(TIM3,  CH4, PB1,  TIM_USE_NONE,                0,  7,  0 ), // M8
 
-	// On GPS_IO1
+    // On GPS_IO1
     DEF_TIM(TIM4,  CH1, PD12, TIM_USE_MOTOR,               0,  8,  1 ), // M9  / I2C4_SCL
     DEF_TIM(TIM4,  CH2, PD13, TIM_USE_MOTOR,               0,  9,  1 ), // ..  / I2C4_SDA
     DEF_TIM(TIM4,  CH3, PD14, TIM_USE_MOTOR,               0,  10, 1 ), // ..  / UART9_RX
     DEF_TIM(TIM4,  CH4, PD15, TIM_USE_MOTOR,               0,  0, 0 ), // M12 / UART9_TX
 
-	// On B_L_IO2
+    // On B_L_IO2
     DEF_TIM(TIM16, CH1, PB8,  TIM_USE_LED,                 0,  12, 1 ), // LED Strip
+    DEF_TIM(TIM17, CH1, PB9,  TIM_USE_CAMERA_CONTROL,      0,  13, 1 ), // Camera Control
+    
+    DEF_TIM(TIM15, CH1, PE5,  TIM_USE_VIDEO_PIXEL,         0,  15, 15 ), // Pixel DMA
+    DEF_TIM(TIM1,  CH1, PA8,  TIM_USE_VIDEO_SYNC,          0,  14, 14 ), // Sync
+    
 };
 
 
