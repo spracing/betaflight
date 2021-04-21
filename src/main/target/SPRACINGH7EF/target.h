@@ -98,14 +98,6 @@
 #define UART5_RX_PIN            PD2   // J6:5, J9:5 ESC TLM
 #define UART5_TX_PIN            NONE
 
-//#define USE_UART6
-#define UART6_RX_PIN            NONE
-#define UART6_TX_PIN            NONE
-
-//#define USE_UART7
-#define UART7_RX_PIN            NONE
-#define UART7_TX_PIN            NONE
-
 #define USE_UART8
 #define UART8_RX_PIN            PE0 // NC
 #define UART8_TX_PIN            PE1 // NC
