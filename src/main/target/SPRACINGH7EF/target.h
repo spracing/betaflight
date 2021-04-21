@@ -103,10 +103,12 @@
 #define UART8_TX_PIN            PE1 // NC
 
 #define USE_UART9               // Main receiver connection, on connector and though-hole pads.
+#define SERIAL_PORT_UART9_INSTANCE SERIAL_PORT_UART9
 #define UART9_RX_PIN            PD14 // J11:3, J8:3 
 #define UART9_TX_PIN            PD15 // J11:4, J8:4
 
 #define USE_UART10
+#define SERIAL_PORT_UART10_INSTANCE SERIAL_PORT_USART10
 #define UART10_RX_PIN           PE2 // NC
 #define UART10_TX_PIN           PE3 // NC
 
