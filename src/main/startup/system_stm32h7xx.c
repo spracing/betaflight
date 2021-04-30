@@ -629,11 +629,22 @@ void SystemClock_Config(void)
 
 #ifdef USE_SDCARD_SDIO
     RCC_PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_SDMMC;
+
+#if defined(STM32H743xx) || defined(STM32H750xx) || defined(STM32H723xx) || defined(STM32H7A3xx)
     RCC_PeriphClkInit.PLL2.PLL2M = 5;
     RCC_PeriphClkInit.PLL2.PLL2N = 500;
     RCC_PeriphClkInit.PLL2.PLL2P = 2; // 500Mhz
     RCC_PeriphClkInit.PLL2.PLL2Q = 3; // 266Mhz - 133Mhz can be derived from this for for QSPI if flash chip supports the speed.
     RCC_PeriphClkInit.PLL2.PLL2R = 4; // 200Mhz HAL LIBS REQUIRE 200MHZ SDMMC CLOCK, see HAL_SD_ConfigWideBusOperation, SDMMC_HSpeed_CLK_DIV, SDMMC_NSpeed_CLK_DIV
+#elif defined(STM32H730xx)
+    RCC_PeriphClkInit.PLL2.PLL2M = 8;
+    RCC_PeriphClkInit.PLL2.PLL2N = 400;
+    RCC_PeriphClkInit.PLL2.PLL2P = 3; // 133Mhz // ADC does't like much higher when using PLL2P
+    RCC_PeriphClkInit.PLL2.PLL2Q = 2; // 133Mhz // SPI6 does't like much higher when using PLL2Q
+    RCC_PeriphClkInit.PLL2.PLL2R = 2; // 200Mhz HAL LIBS REQUIRE 200MHZ SDMMC CLOCK, see HAL_SD_ConfigWideBusOperation, SDMMC_HSpeed_CLK_DIV, SDMMC_NSpeed_CLK_DIV
+#else
+#error MCU not defined
+#endif
     RCC_PeriphClkInit.PLL2.PLL2RGE = RCC_PLL2VCIRANGE_0;
     RCC_PeriphClkInit.PLL2.PLL2VCOSEL = RCC_PLL2VCOWIDE;
     RCC_PeriphClkInit.PLL2.PLL2FRACN = 0;
