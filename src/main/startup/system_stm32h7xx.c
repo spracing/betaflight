@@ -628,26 +628,33 @@ void SystemClock_Config(void)
     HAL_RCCEx_PeriphCLKConfig(&RCC_PeriphClkInit);
 
 #ifdef USE_SDCARD_SDIO
+    __HAL_RCC_SDMMC1_CLK_ENABLE(); // FIXME enable SDMMC1 or SDMMC2 depending on target.
+
     RCC_PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_SDMMC;
 
 #if defined(STM32H743xx) || defined(STM32H750xx) || defined(STM32H723xx) || defined(STM32H7A3xx)
     RCC_PeriphClkInit.PLL2.PLL2M = 5;
     RCC_PeriphClkInit.PLL2.PLL2N = 500; // 8Mhz (Oscilator Frequency) / 5 (PLL2M) = 1.6 * 500 (PLL2N) = 800Mhz.
+    RCC_PeriphClkInit.PLL2.PLL2VCOSEL = RCC_PLL2VCOWIDE; // Wide VCO range:192 to 836 MHz
+    RCC_PeriphClkInit.PLL2.PLL2RGE = RCC_PLL2VCIRANGE_0; // PLL2 input between 1 and 2Mhz (1.6)
+    RCC_PeriphClkInit.PLL2.PLL2FRACN = 0;
+
     RCC_PeriphClkInit.PLL2.PLL2P = 2; // 800Mhz / 2 = 400Mhz
     RCC_PeriphClkInit.PLL2.PLL2Q = 3; // 800Mhz / 3 = 266Mhz // 133Mhz can be derived from this for for QSPI if flash chip supports the speed.
     RCC_PeriphClkInit.PLL2.PLL2R = 4; // 800Mhz / 4 = 200Mhz // HAL LIBS REQUIRE 200MHZ SDMMC CLOCK, see HAL_SD_ConfigWideBusOperation, SDMMC_HSpeed_CLK_DIV, SDMMC_NSpeed_CLK_DIV
 #elif defined(STM32H730xx)
     RCC_PeriphClkInit.PLL2.PLL2M = 8;
-    RCC_PeriphClkInit.PLL2.PLL2N = 400; // 8Mhz (Oscilator Frequency) / 8 (PLL2M) = 1 * 400 (PLL2N) = 400Mhz.
+    RCC_PeriphClkInit.PLL2.PLL2N = 400; // 8Mhz (Oscilator Frequency) / 8 (PLL2M) = 1.0 * 400 (PLL2N) = 400Mhz.
+    RCC_PeriphClkInit.PLL2.PLL2VCOSEL = RCC_PLL2VCOMEDIUM; // Medium VCO range:150 to 420 MHz
+    RCC_PeriphClkInit.PLL2.PLL2RGE = RCC_PLL2VCIRANGE_0; // PLL2 input between 1 and 2Mhz (1.0)
+    RCC_PeriphClkInit.PLL2.PLL2FRACN = 0;
+
     RCC_PeriphClkInit.PLL2.PLL2P = 3; // 400Mhz / 3 = 133Mhz // ADC does't like much higher when using PLL2P
     RCC_PeriphClkInit.PLL2.PLL2Q = 3; // 400Mhz / 3 = 133Mhz // SPI6 does't like much higher when using PLL2Q
     RCC_PeriphClkInit.PLL2.PLL2R = 2; // 400Mhz / 2 = 200Mhz // HAL LIBS REQUIRE 200MHZ SDMMC CLOCK, see HAL_SD_ConfigWideBusOperation, SDMMC_HSpeed_CLK_DIV, SDMMC_NSpeed_CLK_DIV
 #else
 #error MCU not defined
 #endif
-    RCC_PeriphClkInit.PLL2.PLL2RGE = RCC_PLL2VCIRANGE_0;
-    RCC_PeriphClkInit.PLL2.PLL2VCOSEL = RCC_PLL2VCOWIDE;
-    RCC_PeriphClkInit.PLL2.PLL2FRACN = 0;
     RCC_PeriphClkInit.SdmmcClockSelection = RCC_SDMMCCLKSOURCE_PLL2;
     HAL_RCCEx_PeriphCLKConfig(&RCC_PeriphClkInit);
 #endif
