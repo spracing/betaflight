@@ -93,7 +93,35 @@ DMA_RAM uint32_t fillColor __attribute__((aligned(32)));
 #define MDMA_BLOCK_COUNT 4096
 #define PARALLEL_STREAM_COUNT (int)((FRAME_BUFFER_SIZE / MDMA_BLOCK_COUNT / sizeof(uint32_t)) + 1) // + 1 to avoid integer rounding
 static MDMA_HandleTypeDef     frameBuffer_MDMA_Handle_Erase_Parallel[PARALLEL_STREAM_COUNT] = { 0 };
-bool streamActive[PARALLEL_STREAM_COUNT] = {0};
+volatile bool streamActive[PARALLEL_STREAM_COUNT] = {0}; // updated by ISR callbacks
+
+void MDMA_IRQHandler(void)
+{
+    for (int i = 0; i < PARALLEL_STREAM_COUNT; i ++) {
+        if (!streamActive[i]) {
+          continue;
+        }
+
+        MDMA_HandleTypeDef *handle = &frameBuffer_MDMA_Handle_Erase_Parallel[i];
+        HAL_MDMA_IRQHandler(handle);
+    }
+}
+
+void frameBuffer_xferBlockCpltHandler( struct __MDMA_HandleTypeDef * hmdma)
+{
+    for (int i = 0; i < PARALLEL_STREAM_COUNT; i ++) {
+        if (!streamActive[i]) {
+          continue;
+        }
+
+        MDMA_HandleTypeDef *handle = &frameBuffer_MDMA_Handle_Erase_Parallel[i];
+        bool handleIsForThisStream = (hmdma == handle);
+        if (!handleIsForThisStream) {
+            continue;
+        }
+        streamActive[i] = false;
+    }
+}
 
 void frameBuffer_eraseInit(void)
 {
@@ -132,11 +160,17 @@ void frameBuffer_eraseInit(void)
       memcpy(handle, &frameBuffer_MDMA_Handle_Erase, sizeof(MDMA_HandleTypeDef));
 
       handle->Instance = (MDMA_Channel_TypeDef *)mdmaChannelInstances[i];
+      handle->XferCpltCallback = frameBuffer_xferBlockCpltHandler;
 
       if (HAL_MDMA_Init(handle) != HAL_OK) {
           Error_Handler();
       }
     }
+
+    HAL_NVIC_SetPriority(MDMA_IRQn, 0, 0);
+
+    /* Enable the MDMA channel global Interrupt */
+    HAL_NVIC_EnableIRQ(MDMA_IRQn);
 
     fillColor = BLOCK_FILL << 24 | BLOCK_FILL << 16 | BLOCK_FILL << 8 | BLOCK_FILL;
 }
@@ -171,8 +205,9 @@ void frameBuffer_eraseBegin(uint8_t *frameBuffer)
             hal_status = HAL_MDMA_Abort(handle);
         }
 
+        streamActive[streamIndex] = true; // must be set *before* the ISR handler can be called.
 
-        hal_status = HAL_MDMA_Start(handle, (uint32_t)&fillColor,
+        hal_status = HAL_MDMA_Start_IT(handle, (uint32_t)&fillColor,
                                                   (uint32_t)frameBuffer + offset,
                                                   sizeof(fillColor),
                                                   bytesToFill / sizeof(fillColor));
@@ -182,7 +217,6 @@ void frameBuffer_eraseBegin(uint8_t *frameBuffer)
           Error_Handler();
         }
 
-        streamActive[streamIndex] = true;
 
         bytesRemaining -= bytesToFill;
         streamIndex++;
@@ -190,50 +224,23 @@ void frameBuffer_eraseBegin(uint8_t *frameBuffer)
     TIME_SECTION_END(0);
 }
 
-void frameBuffer_eraseWaitForComplete(void)
-{
-    for (int i = 0; i < PARALLEL_STREAM_COUNT; i ++) {
-        if (!streamActive[i]) {
-          continue;
-        }
-
-        MDMA_HandleTypeDef *handle = &frameBuffer_MDMA_Handle_Erase_Parallel[i];
-
-
-        const uint32_t eraseTimeoutTicks = 1000;
-        uint32_t hal_status = HAL_MDMA_PollForTransfer(handle, HAL_MDMA_FULL_TRANSFER, eraseTimeoutTicks);
-        if (hal_status != HAL_OK)
-        {
-            /* Transfer Error */
-            Error_Handler();
-        }
-
-        streamActive[i] = false;
-    }
-}
-
 bool frameBuffer_eraseInProgress(void)
 {
-    // The HAL MDMA API doesn't let you check the transfer state without clearing flags, you have to poll with zero timeout then react.
-
-    bool busy = false;
-
     for (int i = 0; i < PARALLEL_STREAM_COUNT; i ++) {
         if (!streamActive[i]) {
             continue;
         }
 
-        MDMA_HandleTypeDef *handle = &frameBuffer_MDMA_Handle_Erase_Parallel[i];
-
-        const uint32_t noWaitTicks = 0; //
-        uint32_t hal_status = HAL_MDMA_PollForTransfer(handle, HAL_MDMA_FULL_TRANSFER, noWaitTicks);
-        if (hal_status != HAL_OK) {
-          busy = true;
-        }
-
-        streamActive[i] = false;
+        return true;
     }
-    return busy;
+    return false;
+}
+
+void frameBuffer_eraseWaitForComplete(void)
+{
+    while (frameBuffer_eraseInProgress()) {
+        NOOP;
+    }
 }
 
 //
