@@ -933,9 +933,9 @@ static timeDelta_t osdShowArmed(void)
     return ret;
 }
 
-enum state {BEGIN, PREPARE_SCREEN, RENDERING_ELEMENTS, END};
+enum state {PREPARE_CYCLE, IDLE, PREPARE_SCREEN, RENDERING_ELEMENTS, END};
 
-static uint8_t state = BEGIN;
+static uint8_t state = PREPARE_CYCLE;
 
 
 STATIC_UNIT_TESTED void osdRefresh(timeUs_t currentTimeUs)
@@ -944,9 +944,15 @@ STATIC_UNIT_TESTED void osdRefresh(timeUs_t currentTimeUs)
     static bool osdStatsEnabled = false;
     static bool osdStatsVisible = false;
     static timeUs_t osdStatsRefreshTimeUs;
+    static bool clearScreen = false;
 
     switch(state) {
-    case BEGIN: {
+    case PREPARE_CYCLE: {
+            clearScreen = false;
+            state++;
+        }
+        break;
+    case IDLE: {
 
             // detect arm/disarm
             if (armState != ARMING_FLAG(ARMED)) {
@@ -982,7 +988,7 @@ STATIC_UNIT_TESTED void osdRefresh(timeUs_t currentTimeUs)
                 } else {
                     if (IS_RC_MODE_ACTIVE(BOXOSD) && osdStatsVisible) {
                         osdStatsVisible = false;
-                        displayClearScreen(osdDisplayPort);
+                        clearScreen = true;
                     } else if (!IS_RC_MODE_ACTIVE(BOXOSD)) {
                         if (!osdStatsVisible) {
                             osdStatsVisible = true;
@@ -997,9 +1003,6 @@ STATIC_UNIT_TESTED void osdRefresh(timeUs_t currentTimeUs)
             }
             lastTimeUs = currentTimeUs;
 
-
-            displayBeginTransaction(osdDisplayPort, DISPLAY_TRANSACTION_OPT_RESET_DRAWING);
-
             if (resumeRefreshAt) {
                 if (cmp32(currentTimeUs, resumeRefreshAt) < 0) {
                     // in timeout period, check sticks for activity to resume display.
@@ -1009,12 +1012,14 @@ STATIC_UNIT_TESTED void osdRefresh(timeUs_t currentTimeUs)
                     displayHeartbeat(osdDisplayPort);
                     return;
                 } else {
-                    displayClearScreen(osdDisplayPort);
+                    clearScreen = true;
                     resumeRefreshAt = 0;
                     osdStatsEnabled = false;
                     stats.armed_time = 0;
                 }
             }
+
+            displayBeginTransaction(osdDisplayPort, DISPLAY_TRANSACTION_OPT_RESET_DRAWING);
 
 #ifdef USE_ESC_SENSOR
             if (featureIsEnabled(FEATURE_ESC_SENSOR)) {
@@ -1048,7 +1053,8 @@ STATIC_UNIT_TESTED void osdRefresh(timeUs_t currentTimeUs)
             }
 
             if (IS_RC_MODE_ACTIVE(BOXOSD)) {
-                displayClearScreen(osdDisplayPort);
+
+                clearScreen = true;
                 state = END;
                 break;
             }
@@ -1060,6 +1066,10 @@ STATIC_UNIT_TESTED void osdRefresh(timeUs_t currentTimeUs)
             } else {
                 // Background layer not supported, just clear the foreground in preparation
                 // for drawing the elements including their backgrounds.
+                clearScreen = true;
+            }
+
+            if (clearScreen) {
                 displayClearScreen(osdDisplayPort);
             }
 
@@ -1069,7 +1079,6 @@ STATIC_UNIT_TESTED void osdRefresh(timeUs_t currentTimeUs)
 
     case RENDERING_ELEMENTS: {
             bool allElementsDrawn = osdDrawActiveElements(osdDisplayPort);
-
             if (allElementsDrawn) {
                 displayHeartbeat(osdDisplayPort);
                 state++;
@@ -1079,7 +1088,7 @@ STATIC_UNIT_TESTED void osdRefresh(timeUs_t currentTimeUs)
     case END: {
             displayCommitTransaction(osdDisplayPort);
             displayDrawScreen(osdDisplayPort);
-            state = BEGIN;
+            state = PREPARE_CYCLE;
         }
         break;
     }
