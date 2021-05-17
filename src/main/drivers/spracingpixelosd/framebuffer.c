@@ -95,7 +95,7 @@ DMA_RAM uint32_t fillColor __attribute__((aligned(32)));
 static MDMA_HandleTypeDef     frameBuffer_MDMA_Handle_Erase_Parallel[PARALLEL_STREAM_COUNT] = { 0 };
 volatile bool streamActive[PARALLEL_STREAM_COUNT] = {0}; // updated by ISR callbacks
 
-void MDMA_IRQHandler(void)
+FAST_CODE void MDMA_IRQHandler(void)
 {
     for (int i = 0; i < PARALLEL_STREAM_COUNT; i ++) {
         if (!streamActive[i]) {
