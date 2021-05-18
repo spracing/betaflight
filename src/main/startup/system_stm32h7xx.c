@@ -603,11 +603,11 @@ void SystemClock_Config(void)
 #ifdef USE_SDCARD_SDIO
     RCC_PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_SDMMC;
 
-#if (HSE_VALUE != 8000000)
-#error Unsupported external oscillator speed.  The calculations below are based on 8Mhz resonators
+#  if (HSE_VALUE != 8000000)
+#    error Unsupported external oscillator speed.  The calculations below are based on 8Mhz resonators
 // if you are seeing this, then calculate the PLL2 settings for your resonator and add support as required.
-#else
-#  if defined(STM32H743xx) || defined(STM32H750xx) || defined(STM32H723xx) || defined(STM32H7A3xx) || defined(STM32H7A3xxQ) || defined(STM32H725xx)
+#  else
+#    if defined(STM32H743xx) || defined(STM32H750xx) || defined(STM32H723xx) || defined(STM32H7A3xx) || defined(STM32H7A3xxQ) || defined(STM32H725xx)
     RCC_PeriphClkInit.PLL2.PLL2M = 5;
     RCC_PeriphClkInit.PLL2.PLL2N = 500; // 8Mhz (Oscillator Frequency) / 5 (PLL2M) = 1.6 * 500 (PLL2N) = 800Mhz.
     RCC_PeriphClkInit.PLL2.PLL2VCOSEL = RCC_PLL2VCOWIDE; // Wide VCO range:192 to 836 MHz
@@ -619,10 +619,11 @@ void SystemClock_Config(void)
     RCC_PeriphClkInit.PLL2.PLL2R = 4; // 800Mhz / 4 = 200Mhz // HAL LIBS REQUIRE 200MHZ SDMMC CLOCK, see HAL_SD_ConfigWideBusOperation, SDMMC_HSpeed_CLK_DIV, SDMMC_NSpeed_CLK_DIV
     RCC_PeriphClkInit.SdmmcClockSelection = RCC_SDMMCCLKSOURCE_PLL2;
     HAL_RCCEx_PeriphCLKConfig(&RCC_PeriphClkInit);
-#  endif // 8Mhz HSE_VALUE
-#else
-#  error Unknown MCU type
-#endif
+#    endif // 8Mhz HSE_VALUE
+#  else
+#    error Unknown MCU type
+#  endif
+#endif // 8Mhz HSE_VALUE
 
 #endif
 
