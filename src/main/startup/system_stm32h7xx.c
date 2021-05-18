@@ -622,7 +622,7 @@ void SystemClock_Config(void)
 #    else
 #      error Unknown MCU type
 #    endif
-#  endif
+#  endif // 8Mhz HSE_VALUE
 #endif
 
     // Configure MCO clocks for clock test/verification
