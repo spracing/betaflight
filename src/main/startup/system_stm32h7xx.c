@@ -632,7 +632,7 @@ void SystemClock_Config(void)
 
     RCC_PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_SDMMC;
 
-#if defined(STM32H743xx) || defined(STM32H750xx) || defined(STM32H723xx) || defined(STM32H7A3xx)
+#if defined(STM32H743xx) || defined(STM32H750xx) || defined(STM32H723xx) || defined(STM32H7A3xx) || defined(STM32H7A3xxQ) || defined(STM32H725xx)
     RCC_PeriphClkInit.PLL2.PLL2M = 5;
     RCC_PeriphClkInit.PLL2.PLL2N = 500; // 8Mhz (Oscilator Frequency) / 5 (PLL2M) = 1.6 * 500 (PLL2N) = 800Mhz.
     RCC_PeriphClkInit.PLL2.PLL2VCOSEL = RCC_PLL2VCOWIDE; // Wide VCO range:192 to 836 MHz
