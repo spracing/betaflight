@@ -217,6 +217,7 @@ void displayInit(displayPort_t *instance, const displayPortVTable_t *vTable, dis
 {
     instance->vTable = vTable;
     instance->useFullscreen = false;
+    instance->cleared = false;
     instance->grabCount = 0;
     instance->deviceType = deviceType;
 
