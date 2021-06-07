@@ -25,6 +25,10 @@
 
 #define USE_TARGET_CONFIG
 
+// The PCB heat dissipation doesn't support 480Mhz CPUs with higher power usage requirements.
+// 480Mhz CPUs were not available at the time the FC was designed.
+#define USE_H7_LEGACY_CPU_REVISION_SPEED
+
 #define LED0_PIN                PE3
 
 #define USE_BEEPER
