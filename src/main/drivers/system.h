@@ -71,6 +71,10 @@ uint32_t getCycleCounter(void);
 void systemCheckResetReason(void);
 #endif
 
+// memory
+void memoryMappedModeInit(void);
+bool isMemoryMappedModeEnabled(void);
+
 void initialiseMemorySections(void);
 
 void enableGPIOPowerUsageAndNoiseReductions(void);
