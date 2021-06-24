@@ -46,6 +46,7 @@
 #include "drivers/adc.h"
 #include "drivers/bus.h"
 #include "drivers/bus_i2c.h"
+#include "drivers/bus_octospi.h"
 #include "drivers/bus_quadspi.h"
 #include "drivers/bus_spi.h"
 #include "drivers/buttons.h"
@@ -246,7 +247,7 @@ bool requiresSpiLeadingEdge(SPIDevice device)
     return false;
 }
 
-static void configureSPIAndQuadSPI(void)
+static void configureSPIBusses(void)
 {
 #ifdef USE_SPI
     spiPinConfigure(spiPinConfig(0));
@@ -284,6 +285,11 @@ static void configureSPIAndQuadSPI(void)
     quadSpiInit(QUADSPIDEV_1);
 #endif
 #endif // USE_QUAD_SPI
+
+#ifdef USE_OCTOSPI
+    octoSpiInit();
+#endif
+
 }
 
 #ifdef USE_SDCARD
@@ -334,7 +340,7 @@ void init(void)
     enum {
         FLASH_INIT_ATTEMPTED            = (1 << 0),
         SD_INIT_ATTEMPTED               = (1 << 1),
-        SPI_AND_QSPI_INIT_ATTEMPTED      = (1 << 2),
+        SPI_BUSSES_INIT_ATTEMPTED      = (1 << 2),
     };
     uint8_t initFlags = 0;
 
@@ -349,14 +355,14 @@ void init(void)
     // This would cause undefined behaviour once the config is loaded.  so for now, users must NOT change sdio/spi configs needed for
     // the system to boot and/or to save the config.
     //
-    // note that target specific SDCARD/SDIO/SPI/QUADSPI configs are
+    // note that target specific SDCARD/SDIO/SPI/QUADSPI/OCTOSPI configs are
     // also not supported in USE_TARGET_CONFIG/targetConfigure() when using CONFIG_IN_SDCARD.
     //
 
     //
     // IMPORTANT: all default flash and pin configurations must be valid for the target after pgResetAll() is called.
-    // Target designers must ensure other devices connected the same SPI/QUADSPI interface as the flash chip do not
-    // cause communication issues with the flash chip.  e.g. use external pullups on SPI/QUADSPI CS lines.
+    // Target designers must ensure other devices connected the same SPI/QUADSPI/OCTOSPI interface as the flash chip do not
+    // cause communication issues with the flash chip.  e.g. use external pullups on SPI/QUADSPI/OCTOSPI CS lines.
     //
 
 #ifdef TARGET_BUS_INIT
@@ -370,8 +376,8 @@ void init(void)
     SDIO_GPIO_Init();
 #endif
 #ifdef USE_SDCARD_SPI
-    configureSPIAndQuadSPI();
-    initFlags |= SPI_AND_QSPI_INIT_ATTEMPTED;
+    configureSPIBusses();
+    initFlags |= SPI_BUSSES_INIT_ATTEMPTED;
 #endif
 
     sdCardAndFSInit();
@@ -401,14 +407,14 @@ void init(void)
     // This would cause undefined behaviour once the config is loaded.  so for now, users must NOT change flash/pin configs needed for
     // the system to boot and/or to save the config.
     //
-    // note that target specific FLASH/SPI/QUADSPI configs are
+    // note that target specific FLASH/SPI/QUADSPI/OCTOSPI configs are
     // also not supported in USE_TARGET_CONFIG/targetConfigure() when using CONFIG_IN_EXTERNAL_FLASH.
     //
 
     //
     // IMPORTANT: all default flash and pin configurations must be valid for the target after pgResetAll() is called.
-    // Target designers must ensure other devices connected the same SPI/QUADSPI interface as the flash chip do not
-    // cause communication issues with the flash chip.  e.g. use external pullups on SPI/QUADSPI CS lines.
+    // Target designers must ensure other devices connected the same SPI/QUADSPI/OCTOSPI interface as the flash chip do not
+    // cause communication issues with the flash chip.  e.g. use external pullups on SPI/QUADSPI/OCTOSPI CS lines.
     //
     pgResetAll();
 
@@ -416,8 +422,8 @@ void init(void)
 #error "CONFIG_IN_EXTERNAL_FLASH and TARGET_BUS_INIT are mutually exclusive"
 #endif
 
-    configureSPIAndQuadSPI();
-    initFlags |= SPI_AND_QSPI_INIT_ATTEMPTED;
+    configureSPIBusses();
+    initFlags |= SPI_BUSSES_INIT_ATTEMPTED;
 
 
 #ifndef USE_FLASH_CHIP
@@ -639,10 +645,10 @@ void init(void)
 
 #else
 
-    // Depending on compilation options SPI/QSPI initialisation may already be done.
-    if (!(initFlags & SPI_AND_QSPI_INIT_ATTEMPTED)) {
-        configureSPIAndQuadSPI();
-        initFlags |= SPI_AND_QSPI_INIT_ATTEMPTED;
+    // Depending on compilation options SPI/QSPI/OSPI initialisation may already be done.
+    if (!(initFlags & SPI_BUSSES_INIT_ATTEMPTED)) {
+        configureSPIBusses();
+        initFlags |= SPI_BUSSES_INIT_ATTEMPTED;
     }
 
 #ifdef USE_USB_MSC
