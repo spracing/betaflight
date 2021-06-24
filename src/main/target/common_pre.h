@@ -160,7 +160,6 @@
 #define DEFAULT_CPU_OVERCLOCK 0
 #endif
 
-
 #ifdef USE_ITCM_RAM
 #define FAST_CODE                   __attribute__((section(".tcm_code")))
 #define FAST_CODE_NOINLINE          NOINLINE
