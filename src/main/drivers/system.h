@@ -73,7 +73,7 @@ void systemCheckResetReason(void);
 
 // memory
 void memoryMappedModeInit(void);
-bool isMemoryMappedModeEnabled(void);
+bool isMemoryMappedModeEnabledOnBoot(void);
 
 void initialiseMemorySections(void);
 
