@@ -107,10 +107,10 @@ static bool w25m_waitForReady(flashDevice_t *fdevice)
     return true;
 }
 
-bool w25m_detect(flashDevice_t *fdevice, uint32_t chipID)
+bool w25m_identify(flashDevice_t *fdevice, uint32_t jedecID)
 {
 
-    switch (chipID) {
+    switch (jedecID) {
 #ifdef USE_FLASH_W25M512
     case JEDEC_ID_WINBOND_W25M512:
         // W25Q256 x 2
@@ -120,7 +120,7 @@ bool w25m_detect(flashDevice_t *fdevice, uint32_t chipID)
             w25m_dieSelect(fdevice->io.handle.busdev, die);
             dieDevice[die].io.handle.busdev = fdevice->io.handle.busdev;
             dieDevice[die].io.mode = fdevice->io.mode;
-            m25p16_detect(&dieDevice[die], JEDEC_ID_WINBOND_W25Q256);
+            m25p16_identify(&dieDevice[die], JEDEC_ID_WINBOND_W25Q256);
         }
 
         fdevice->geometry.flashType = FLASH_TYPE_NOR;
@@ -136,7 +136,7 @@ bool w25m_detect(flashDevice_t *fdevice, uint32_t chipID)
             w25m_dieSelect(fdevice->io.handle.busdev, die);
             dieDevice[die].io.handle.busdev = fdevice->io.handle.busdev;
             dieDevice[die].io.mode = fdevice->io.mode;
-            w25n01g_detect(&dieDevice[die], JEDEC_ID_WINBOND_W25N01GV);
+            w25n01g_identify(&dieDevice[die], JEDEC_ID_WINBOND_W25N01GV);
         }
 
         fdevice->geometry.flashType = FLASH_TYPE_NAND;
@@ -161,6 +161,14 @@ bool w25m_detect(flashDevice_t *fdevice, uint32_t chipID)
     fdevice->vTable = &w25m_vTable;
 
     return true;
+}
+
+void w25m_configure(flashDevice_t *fdevice, uint32_t configurationFlags)
+{
+    for (int dieNumber = 0 ; dieNumber < dieCount ; dieNumber++) {
+        w25m_dieSelect(fdevice->io.handle.busdev, dieNumber);
+        dieDevice[dieNumber].vTable->configure(&dieDevice[dieNumber], configurationFlags);
+    }
 }
 
 void w25m_eraseSector(flashDevice_t *fdevice, uint32_t address)
@@ -250,6 +258,7 @@ const flashGeometry_t* w25m_getGeometry(flashDevice_t *fdevice)
 }
 
 static const flashVTable_t w25m_vTable = {
+    .configure = w25m_configure,
     .isReady = w25m_isReady,
     .waitForReady = w25m_waitForReady,
     .eraseSector = w25m_eraseSector,
