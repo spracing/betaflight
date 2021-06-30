@@ -94,12 +94,13 @@
 //#define W25Q128FV_INSTRUCTION_WRITE_DISABLE    0x04
 //#define W25Q128FV_INSTRUCTION_PAGE_PROGRAM     0x02
 
-#define W25Q128FV_TIMEOUT_PAGE_READ_MS          4
+// Values from W25Q128FV Datasheet Rev L.
+#define W25Q128FV_TIMEOUT_PAGE_READ_MS          1           // No minimum specified in datasheet
 #define W25Q128FV_TIMEOUT_RESET_MS              1           // tRST = 30us
 #define W25Q128FV_TIMEOUT_BLOCK_ERASE_64KB_MS   2000        // tBE2max = 2000ms, tBE2typ = 150ms
 #define W25Q128FV_TIMEOUT_CHIP_ERASE_MS        (200 * 1000) // tCEmax 200s, tCEtyp = 40s
 
-#define W25Q128FV_TIMEOUT_PAGE_PROGRAM_MS       1           // tPPmax = 700us, tPPtyp = 250us
+#define W25Q128FV_TIMEOUT_PAGE_PROGRAM_MS       3           // tPPmax = 3ms, tPPtyp = 0.7ms
 #define W25Q128FV_TIMEOUT_WRITE_ENABLE_MS       1
 
 
