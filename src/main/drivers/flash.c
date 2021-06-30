@@ -399,17 +399,17 @@ bool flashDeviceInit(const flashConfig_t *flashConfig)
     return haveFlash;
 }
 
-bool flashIsReady(void)
+MMFLASH_CODE bool flashIsReady(void)
 {
     return flashDevice.vTable->isReady(&flashDevice);
 }
 
-bool flashWaitForReady(void)
+MMFLASH_CODE bool flashWaitForReady(void)
 {
     return flashDevice.vTable->waitForReady(&flashDevice);
 }
 
-void flashEraseSector(uint32_t address)
+MMFLASH_CODE void flashEraseSector(uint32_t address)
 {
     flashDevice.vTable->eraseSector(&flashDevice, address);
 }
@@ -419,32 +419,32 @@ void flashEraseCompletely(void)
     flashDevice.vTable->eraseCompletely(&flashDevice);
 }
 
-void flashPageProgramBegin(uint32_t address)
+MMFLASH_CODE void flashPageProgramBegin(uint32_t address)
 {
     flashDevice.vTable->pageProgramBegin(&flashDevice, address);
 }
 
-void flashPageProgramContinue(const uint8_t *data, int length)
+MMFLASH_CODE void flashPageProgramContinue(const uint8_t *data, int length)
 {
     flashDevice.vTable->pageProgramContinue(&flashDevice, data, length);
 }
 
-void flashPageProgramFinish(void)
+MMFLASH_CODE void flashPageProgramFinish(void)
 {
     flashDevice.vTable->pageProgramFinish(&flashDevice);
 }
 
-void flashPageProgram(uint32_t address, const uint8_t *data, int length)
+MMFLASH_CODE void flashPageProgram(uint32_t address, const uint8_t *data, int length)
 {
     flashDevice.vTable->pageProgram(&flashDevice, address, data, length);
 }
 
-int flashReadBytes(uint32_t address, uint8_t *buffer, int length)
+MMFLASH_CODE int flashReadBytes(uint32_t address, uint8_t *buffer, int length)
 {
     return flashDevice.vTable->readBytes(&flashDevice, address, buffer, length);
 }
 
-void flashFlush(void)
+MMFLASH_CODE void flashFlush(void)
 {
     if (flashDevice.vTable->flush) {
         flashDevice.vTable->flush(&flashDevice);
