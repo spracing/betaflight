@@ -287,6 +287,12 @@
 #define SPRACING_PIXEL_OSD_PIXEL_GATING_DEBUG_PIN       PB0 // TIM1_CH2N // actual gating is on CH4
 #define SPRACING_PIXEL_OSD_PIXEL_BLANKING_DEBUG_PIN     PB1 // TIM1_CH3N // actual blanking is on CH5
 
+#define VTX_ENABLE_PIN          PB11
+
+#define USE_PINIO
+#define PINIO1_PIN              VTX_ENABLE_PIN
+#define USE_PINIOBOX
+
 // Disable OCTOSPI pins PB2/CLK, PB10/NCS
 // PE7/IO4, PE8/IO5, PE9/IO6, PE10/IO7
 
