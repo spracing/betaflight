@@ -126,6 +126,9 @@ uint8_t icm42605SpiDetect(const busDevice_t *bus)
         case ICM42605_WHO_AM_I_CONST:
             icmDetected = ICM_42605_SPI;
             break;
+        case ICM42688P_WHO_AM_I_CONST:
+            icmDetected = ICM_42688P_SPI;
+            break;
         default:
             icmDetected = MPU_NONE;
             break;
