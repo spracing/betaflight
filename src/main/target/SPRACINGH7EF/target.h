@@ -158,7 +158,7 @@
 #define USE_MAG
 #define USE_MAG_HMC5883
 #define USE_MAG_QMC5883
-#define MAG_I2C_INSTANCE        (I2CDEV_2)
+#define MAG_I2C_INSTANCE        (I2CDEV_4)
 
 #define USE_GYRO
 #define USE_GYRO_SPI_ICM42605
