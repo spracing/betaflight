@@ -87,6 +87,8 @@ REGION_ALIAS("MAIN", OCTOSPI1_CODE)
 
 REGION_ALIAS("VECTAB", MAIN)
 
+INCLUDE "stm32_h730_common.ld"
+
 SECTIONS
 {
   /* note the location of dmaram_start and dmaram_end on the following sections */
@@ -127,9 +129,9 @@ SECTIONS
   /* used during startup to initialized dmaram_data */
   _sdmaram_idata = LOADADDR(.dmaram_data);
 
-  . = ALIGN(32);
   .dmaram_data :
   {
+    . = ALIGN(32);
     PROVIDE(dmaram_start = .);
     _sdmaram = .;
     _dmaram_start__ = _sdmaram;
@@ -140,9 +142,9 @@ SECTIONS
     _edmaram_data = .;        /* define a global symbol at data end */
   } >RAM AT >MAIN
 
-  . = ALIGN(32);
   .dmaram_bss (NOLOAD) :
   {
+    . = ALIGN(32);
     _sdmaram_bss = .;
     __dmaram_bss_start__ = _sdmaram_bss;
     *(.dmaram_bss)
@@ -152,9 +154,9 @@ SECTIONS
     __dmaram_bss_end__ = _edmaram_bss;
   } >RAM
 
-  . = ALIGN(32);
   .DMA_RAM (NOLOAD) :
   {
+    . = ALIGN(32);
     KEEP(*(.DMA_RAM))
     PROVIDE(dmaram_end = .);
     _edmaram = .;
@@ -208,7 +210,6 @@ SECTIONS
   
 }
 
-INCLUDE "stm32_h730_common.ld"
 INCLUDE "stm32_h730_common_post.ld"
 INCLUDE "stm32_ram_h730_exst_post.ld"
 
