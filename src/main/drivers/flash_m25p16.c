@@ -204,6 +204,7 @@ void m25p16_configure(flashDevice_t *fdevice, uint32_t configurationFlags)
     // Adjust the SPI bus clock frequency
     spiSetClkDivisor(fdevice->io.handle.dev, spiCalculateDivider(maxReadClkSPIHz));
 
+    flashGeometry_t *geometry = &fdevice->geometry;
     if (geometry->totalSize > 16 * 1024 * 1024) {
         fdevice->isLargeFlash = true;
 
