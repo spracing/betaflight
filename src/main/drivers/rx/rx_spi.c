@@ -187,9 +187,7 @@ timeUs_t rxSpiGetLastExtiTimeUs(void)
 
 void rxSpiTransferCommandMulti(uint8_t *data, uint8_t length)
 {
-    ENABLE_RX();
-    spiBusRawTransfer(busdev, data, data, length);
-    DISABLE_RX();
+    spiReadWriteBuf(dev, data, data, length);
 }
 
 #endif
