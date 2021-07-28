@@ -122,6 +122,34 @@ SECTIONS
     . = ORIGIN(SPRACINGPIXELOSD_DTCM_RAM) + LENGTH(SPRACINGPIXELOSD_DTCM_RAM);
   } >SPRACINGPIXELOSD_DTCM_RAM
 
+  /* used during startup to initialized dmaram_data */
+  _sdmaram_idata = LOADADDR(.dmaram_data);
+
+  .dmaram_data :
+  {
+    . = ALIGN(32);
+    PROVIDE(dmaram_start = .);
+    _sdmaram = .;
+    _dmaram_start__ = _sdmaram;
+    _sdmaram_data = .;        /* create a global symbol at data start */
+    *(.dmaram_data)           /* .data sections */
+    *(.dmaram_data*)          /* .data* sections */
+    . = ALIGN(32);
+    _edmaram_data = .;        /* define a global symbol at data end */
+  } >RAM AT >MAIN
+
+  .dmaram_bss (NOLOAD) :
+  {
+    . = ALIGN(32);
+    _sdmaram_bss = .;
+    __dmaram_bss_start__ = _sdmaram_bss;
+    *(.dmaram_bss)
+    *(SORT_BY_ALIGNMENT(.dmaram_bss*))
+    . = ALIGN(32);
+    _edmaram_bss = .;
+    __dmaram_bss_end__ = _edmaram_bss;
+  } >RAM
+
   .DMA_RAM (NOLOAD) :
   {
     . = ALIGN(32);
@@ -129,7 +157,7 @@ SECTIONS
     PROVIDE(dmaram_end = .);
     _edmaram = .;
     _dmaram_end__ = _edmaram;
-  } >D2_RAM
+  } >RAM
 
   .DMA_RW_D2 (NOLOAD) :
   {
