@@ -46,7 +46,6 @@ void targetConfiguration(void)
     pinioBoxConfigMutable()->permanentId[0] = findBoxByBoxId(BOXUSER1)->permanentId;
     
     sdcardConfigMutable()->mode = SDCARD_MODE_SDIO;
-    sdcardConfigMutable()->useDma = true;
 }
 
 #endif
