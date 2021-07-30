@@ -51,6 +51,7 @@ mpuRegion_t mpuRegions[] = {
         .bufferable = MPU_ACCESS_BUFFERABLE,
     },
 #endif
+#ifdef USE_DMA_RAM
     {
         // DMA transmit buffer in D2 SRAM1
         // Reading needs cache coherence operation
@@ -63,6 +64,18 @@ mpuRegion_t mpuRegions[] = {
         .cacheable  = MPU_ACCESS_CACHEABLE,
         .bufferable = MPU_ACCESS_NOT_BUFFERABLE,
     },
+    {
+        // A region in AXI RAM accessible from SDIO internal DMA
+        .start      = (uint32_t)&dmarwaxi_start,
+        .end        = (uint32_t)&dmarwaxi_end,
+        .size       = 0,  // Size determined by ".end"
+        .perm       = MPU_REGION_FULL_ACCESS,
+        .exec       = MPU_INSTRUCTION_ACCESS_ENABLE,
+        .shareable  = MPU_ACCESS_NOT_SHAREABLE,
+        .cacheable  = MPU_ACCESS_CACHEABLE,
+        .bufferable = MPU_ACCESS_NOT_BUFFERABLE,
+    },
+#endif
 #ifdef USE_SPRACING_PIXEL_OSD
     {
         .start      = (uint32_t)&__spracingpixelosd_lib_d2_start,
@@ -81,19 +94,6 @@ mpuRegion_t mpuRegions[] = {
         .perm       = MPU_REGION_FULL_ACCESS,
         .exec       = MPU_INSTRUCTION_ACCESS_ENABLE,
         .shareable  = MPU_ACCESS_SHAREABLE,
-        .cacheable  = MPU_ACCESS_CACHEABLE,
-        .bufferable = MPU_ACCESS_NOT_BUFFERABLE,
-    },
-#endif
-#ifdef USE_SDCARD_SDIO
-    {
-        // A region in AXI RAM accessible from SDIO internal DMA
-        .start      = (uint32_t)&dmarwaxi_start,
-        .end        = (uint32_t)&dmarwaxi_end,
-        .size       = 0,  // Size determined by ".end"
-        .perm       = MPU_REGION_FULL_ACCESS,
-        .exec       = MPU_INSTRUCTION_ACCESS_ENABLE,
-        .shareable  = MPU_ACCESS_NOT_SHAREABLE,
         .cacheable  = MPU_ACCESS_CACHEABLE,
         .bufferable = MPU_ACCESS_NOT_BUFFERABLE,
     },
