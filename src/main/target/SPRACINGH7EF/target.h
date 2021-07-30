@@ -305,6 +305,6 @@
 #define TARGET_IO_PORTG 0xffff
 #define TARGET_IO_PORTH 0xffff
 
-#define USABLE_TIMER_CHANNEL_COUNT 19
+#define USABLE_TIMER_CHANNEL_COUNT 16
 
 #define USED_TIMERS  ( TIM_N(1) | TIM_N(3) | TIM_N(4) | TIM_N(5) | TIM_N(8) | TIM_N(15) | TIM_N(16) | TIM_N(17) )
