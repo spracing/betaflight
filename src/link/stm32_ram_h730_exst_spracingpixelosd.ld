@@ -91,15 +91,10 @@ INCLUDE "stm32_h730_common.ld"
 
 SECTIONS
 {
-  /* note the location of dmaram_start and dmaram_end on the following sections */
-  
+
   .FRAMEBUFFER_RAM (NOLOAD) :
   {
     . = ALIGN(32);
-    PROVIDE(dmaram_start = .);
-    _sdmaram = .;
-    _dmaram_start__ = _sdmaram;
-    
     PROVIDE(__frame_buffer_start = .);
     KEEP(*(.FRAMEBUFFER_RAM))
     
@@ -113,9 +108,11 @@ SECTIONS
   .spracingpixelosdlibrary_d2_ram (NOLOAD):
   {
     . = ALIGN(32);
+    PROVIDE(__spracingpixelosd_lib_d2_start = .);
     /* fill to end of the area, so the usage is 100% */
     FILL(0xDEADBEEF);
     . = ORIGIN(SPRACINGPIXELOSD_D2_RAM) + LENGTH(SPRACINGPIXELOSD_D2_RAM);
+    PROVIDE(__spracingpixelosd_lib_d2_end = .);
   } >SPRACINGPIXELOSD_D2_RAM
 
   .spracingpixelosdlibrary_dtcm_ram (NOLOAD):
@@ -162,7 +159,7 @@ SECTIONS
     _edmaram = .;
     _dmaram_end__ = _edmaram;
   } >RAM
-
+  
   .DMA_RW_D2 (NOLOAD) :
   {
     . = ALIGN(32);
