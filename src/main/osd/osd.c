@@ -922,21 +922,21 @@ static timeDelta_t osdShowArmed(void)
 }
 
 enum state {
-    INIT,
-    PREPARE_CYCLE,
-    IDLE,
-    PREPARE_SCREEN_FOR_ELEMENTS,
-    RENDERING_ELEMENTS,
-    PREPARE_SCREEN_FOR_INITIAL_STATS,
-    RENDER_INITIAL_STATS,
-    PREPARE_SCREEN_FOR_STATS_REFRESH,
-    PREPARE_SCREEN_FOR_STATS,
-    RENDER_STATS,
-    END
+    OSD_INIT,
+    OSD_PREPARE_CYCLE,
+    OSD_IDLE,
+    OSD_PREPARE_SCREEN_FOR_ELEMENTS,
+    OSD_RENDERING_ELEMENTS,
+    OSD_PREPARE_SCREEN_FOR_INITIAL_STATS,
+    OSD_RENDER_INITIAL_STATS,
+    OSD_PREPARE_SCREEN_FOR_STATS_REFRESH,
+    OSD_PREPARE_SCREEN_FOR_STATS,
+    OSD_RENDER_STATS,
+    OSD_END
 };
 
 static bool osdUpdateRequested = false;
-static uint8_t osdState = INIT;
+static uint8_t osdState = OSD_INIT;
 bool osdStatsVisible = false;
 bool osdRefreshNow = false;
 
@@ -953,14 +953,14 @@ STATIC_UNIT_TESTED void osdRefresh(timeUs_t currentTimeUs)
     osdUpdateRequested = false;
 
     switch(osdState) {
-    case INIT:
-    case PREPARE_CYCLE: {
+    case OSD_INIT:
+    case OSD_PREPARE_CYCLE: {
             osdRefreshNow = false;
             clearScreen = false;
-            nextState = IDLE;
+            nextState = OSD_IDLE;
         }
         break;
-    case IDLE: {
+    case OSD_IDLE: {
 
             // detect arm/disarm
             if (armState != ARMING_FLAG(ARMED)) {
@@ -1003,11 +1003,11 @@ STATIC_UNIT_TESTED void osdRefresh(timeUs_t currentTimeUs)
                             osdStatsVisible = true;
                             osdStatsRefreshTimeUs = 0;
 
-                            nextState = PREPARE_SCREEN_FOR_INITIAL_STATS;
+                            nextState = OSD_PREPARE_SCREEN_FOR_INITIAL_STATS;
                         }
                         osdRefreshNow = currentTimeUs >= osdStatsRefreshTimeUs;
                         if (osdRefreshNow && wasVisible) {
-                            nextState = PREPARE_SCREEN_FOR_STATS_REFRESH;
+                            nextState = OSD_PREPARE_SCREEN_FOR_STATS_REFRESH;
                         }
                     }
                 }
@@ -1031,11 +1031,11 @@ STATIC_UNIT_TESTED void osdRefresh(timeUs_t currentTimeUs)
                 }
             }
 
-            nextState = PREPARE_SCREEN_FOR_ELEMENTS;
+            nextState = OSD_PREPARE_SCREEN_FOR_ELEMENTS;
         }
         break;
 
-    case PREPARE_SCREEN_FOR_ELEMENTS: {
+    case OSD_PREPARE_SCREEN_FOR_ELEMENTS: {
 
             displayBeginTransaction(osdDisplayPort, DISPLAY_TRANSACTION_OPT_RESET_DRAWING);
 #ifdef USE_ESC_SENSOR
@@ -1064,7 +1064,7 @@ STATIC_UNIT_TESTED void osdRefresh(timeUs_t currentTimeUs)
 
                 if (IS_RC_MODE_ACTIVE(BOXOSD)) {
                     clearScreen = true;
-                    nextState = END;
+                    nextState = OSD_END;
                 } else {
                     if (backgroundLayerSupported) {
                         // Background layer is supported, overlay it onto the foreground
@@ -1075,11 +1075,11 @@ STATIC_UNIT_TESTED void osdRefresh(timeUs_t currentTimeUs)
                         // for drawing the elements including their backgrounds.
                         clearScreen = true;
                     }
-                    nextState = RENDERING_ELEMENTS;
+                    nextState = OSD_RENDERING_ELEMENTS;
                 }
 #ifdef USE_CMS
             } else {
-                nextState = END;
+                nextState = OSD_END;
 #endif
             }
             if (clearScreen) {
@@ -1088,67 +1088,67 @@ STATIC_UNIT_TESTED void osdRefresh(timeUs_t currentTimeUs)
 
         }
         break;
-    case RENDERING_ELEMENTS: {
+    case OSD_RENDERING_ELEMENTS: {
             bool allElementsDrawn = osdDrawActiveElements(osdDisplayPort);
             if (allElementsDrawn) {
                 displayHeartbeat(osdDisplayPort);
-                nextState = END;
+                nextState = OSD_END;
             } else {
                 osdUpdateRequested = true;
             }
         }
         break;
-    case PREPARE_SCREEN_FOR_INITIAL_STATS: {
+    case OSD_PREPARE_SCREEN_FOR_INITIAL_STATS: {
 
             displayBeginTransaction(osdDisplayPort, DISPLAY_TRANSACTION_OPT_RESET_DRAWING);
 
             displayClearScreen(osdDisplayPort, DISPLAY_CLEAR_NONE);
             if (!osdStatsVisible) {
-                nextState = END;
+                nextState = OSD_END;
             }
 
-            nextState = RENDER_INITIAL_STATS;
+            nextState = OSD_RENDER_INITIAL_STATS;
         }
         break;
-    case RENDER_INITIAL_STATS: {
+    case OSD_RENDER_INITIAL_STATS: {
 
             // Go through the logic one time to determine how many stats rows are actually displayed.
             osdStatsRowCount = osdShowStats(0);
 
             osdShowStats(osdStatsRowCount);
 
-            nextState = PREPARE_SCREEN_FOR_STATS;
+            nextState = OSD_PREPARE_SCREEN_FOR_STATS;
         }
         break;
 
-    case PREPARE_SCREEN_FOR_STATS_REFRESH: {
+    case OSD_PREPARE_SCREEN_FOR_STATS_REFRESH: {
             displayBeginTransaction(osdDisplayPort, DISPLAY_TRANSACTION_OPT_RESET_DRAWING);
 
-            nextState = PREPARE_SCREEN_FOR_STATS;
+            nextState = OSD_PREPARE_SCREEN_FOR_STATS;
         }
         break;
 
-    case PREPARE_SCREEN_FOR_STATS: {
+    case OSD_PREPARE_SCREEN_FOR_STATS: {
 
             displayClearScreen(osdDisplayPort, DISPLAY_CLEAR_NONE);
 
-            nextState = RENDER_STATS;
+            nextState = OSD_RENDER_STATS;
         }
         break;
-    case RENDER_STATS: {
+    case OSD_RENDER_STATS: {
             if (osdRefreshNow) {
                 osdStatsRefreshTimeUs = currentTimeUs + REFRESH_1S;
 
                 osdShowStats(osdStatsRowCount);
             }
-            nextState = END;
+            nextState = OSD_END;
         }
         break;
 
-    case END: {
+    case OSD_END: {
             displayCommitTransaction(osdDisplayPort);
             displayDrawScreen(osdDisplayPort);
-            nextState = PREPARE_CYCLE;
+            nextState = OSD_PREPARE_CYCLE;
         }
         break;
     }
