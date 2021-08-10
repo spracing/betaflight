@@ -210,7 +210,7 @@ void pwmCompleteDshotMotorUpdate(void)
     }
 }
 
-FAST_CODE static void motor_DMA_IRQHandler(dmaChannelDescriptor_t* descriptor)
+HOT_IRQ_HANDLER static void motor_DMA_IRQHandler(dmaChannelDescriptor_t* descriptor)
 {
     if (DMA_GET_FLAG_STATUS(descriptor, DMA_IT_TCIF)) {
 

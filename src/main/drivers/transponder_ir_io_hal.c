@@ -59,7 +59,7 @@ transponder_t transponder;
 #endif
 bool transponderInitialised = false;
 
-FAST_CODE static void TRANSPONDER_DMA_IRQHandler(dmaChannelDescriptor_t* descriptor)
+HOT_IRQ_HANDLER static void TRANSPONDER_DMA_IRQHandler(dmaChannelDescriptor_t* descriptor)
 {
     HAL_DMA_IRQHandler(TimHandle.hdma[descriptor->userParam]);
     TIM_DMACmd(&TimHandle, timerChannel, DISABLE);
