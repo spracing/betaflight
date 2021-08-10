@@ -1857,6 +1857,10 @@ bool osdDrawActiveElements(displayPort_t *osdDisplayPort)
         }
     }
 
+    if (activeOsdElementCount == 0) {
+        return true;
+    }
+
     if (!backgroundLayerSupported) {
         // If the background layer isn't supported then we
         // have to draw the element's static layer as well.
