@@ -53,6 +53,7 @@ extern "C" {
     #include "io/gps.h"
     #include "io/serial.h"
 
+    #include "osd/osd_impl.h"
     #include "osd/osd.h"
     #include "osd/osd_elements.h"
     #include "osd/osd_warnings.h"
@@ -64,6 +65,8 @@ extern "C" {
     #include "rx/rx.h"
 
     #include "sensors/battery.h"
+
+    extern uint8_t osdState;
 
     attitudeEulerAngles_t attitude;
     float rMat[3][3];
@@ -117,6 +120,16 @@ void setDefaultSimulationState()
     setLinkQualityDirect(LINK_QUALITY_MAX_VALUE);
 
 }
+
+
+void doOsdRefresh(timeUs_t currentTimeUs)
+{
+    do {
+        // ensure all elements are drawn and that the state is reset.
+        osdRefresh(currentTimeUs);
+    } while (osdState != OSD_PREPARE_CYCLE);
+}
+
 /*
  * Performs a test of the OSD actions on arming.
  * (reused throughout the test suite)
@@ -129,7 +142,7 @@ void doTestArm(bool testEmpty = true)
 
     // when
     // sufficient OSD updates have been called
-    osdRefresh(simulationTime);
+    doOsdRefresh(simulationTime);
 
     // then
     // arming alert displayed
@@ -141,7 +154,7 @@ void doTestArm(bool testEmpty = true)
 
     // when
     // sufficient OSD updates have been called
-    osdRefresh(simulationTime);
+    doOsdRefresh(simulationTime);
 
     // then
     // arming alert disappears
@@ -172,7 +185,7 @@ void doTestDisarm()
 
     // when
     // sufficient OSD updates have been called
-    osdRefresh(simulationTime);
+    doOsdRefresh(simulationTime);
 
     // then
     // post flight statistics displayed
@@ -214,6 +227,9 @@ TEST(LQTest, TestInit)
     simulationTime += 4e6;
     osdUpdate(simulationTime);
 
+    doOsdRefresh(simulationTime);
+
+
     // then
     // display buffer should be empty
 #ifdef DEBUG_OSD
@@ -242,8 +258,8 @@ TEST(LQTest, TestElement_LQ_SOURCE_NONE_SAMPLES)
     }
 
 
-    displayClearScreen(&testDisplayPort);
-    osdRefresh(simulationTime);
+    displayClearScreen(&testDisplayPort, DISPLAY_CLEAR_WAIT);
+    doOsdRefresh(simulationTime);
 
     // then
     displayPortTestBufferSubstring(8, 1, "%c9", SYM_LINK_QUALITY);
@@ -254,8 +270,8 @@ TEST(LQTest, TestElement_LQ_SOURCE_NONE_SAMPLES)
         setLinkQualityDirect(updateLinkQualitySamples(0));
     }
 
-    displayClearScreen(&testDisplayPort);
-    osdRefresh(simulationTime);
+    displayClearScreen(&testDisplayPort, DISPLAY_CLEAR_WAIT);
+    doOsdRefresh(simulationTime);
 
     // then
     displayPortTestBufferSubstring(8, 1, "%c4", SYM_LINK_QUALITY);
@@ -280,8 +296,8 @@ TEST(LQTest, TestElement_LQ_SOURCE_NONE_VALUES)
     for (int testdigit = 10; testdigit > 0; testdigit--) {
         testscale = testdigit * 102.3;
         setLinkQualityDirect(testscale);
-        displayClearScreen(&testDisplayPort);
-        osdRefresh(simulationTime);
+        displayClearScreen(&testDisplayPort, DISPLAY_CLEAR_WAIT);
+        doOsdRefresh(simulationTime);
 #ifdef DEBUG_OSD
         printf("%d %d\n",testscale, testdigit);
         displayPortTestPrint();
@@ -307,8 +323,8 @@ TEST(LQTest, TestElementLQ_PROTOCOL_CRSF_VALUES)
 
     osdAnalyzeActiveElements();
 
-    displayClearScreen(&testDisplayPort);
-    osdRefresh(simulationTime);
+    displayClearScreen(&testDisplayPort, DISPLAY_CLEAR_WAIT);
+    doOsdRefresh(simulationTime);
 
     // crsf setLinkQualityDirect 0-300;
 
@@ -319,12 +335,12 @@ TEST(LQTest, TestElementLQ_PROTOCOL_CRSF_VALUES)
             rxSetRfMode(m);
             // then rxGetLinkQuality Osd should be x
             // and RfMode should be m
-            displayClearScreen(&testDisplayPort);
-            osdRefresh(simulationTime);
-                displayPortTestBufferSubstring(8, 1, "%c%1d:%2d", SYM_LINK_QUALITY, m, x);
-            }
+            displayClearScreen(&testDisplayPort, DISPLAY_CLEAR_WAIT);
+            doOsdRefresh(simulationTime);
+            displayPortTestBufferSubstring(8, 1, "%c%1d:%2d", SYM_LINK_QUALITY, m, x);
         }
     }
+}
 /*
  * Tests the LQ Alarms
  *
@@ -367,7 +383,7 @@ TEST(LQTest, TestLQAlarm)
     for (int i = 0; i < 30; i++) {
         // Check for visibility every 100ms, elements should always be visible
         simulationTime += 0.1e6;
-        osdRefresh(simulationTime);
+        doOsdRefresh(simulationTime);
 
 #ifdef DEBUG_OSD
         printf("%d\n", i);
@@ -378,14 +394,14 @@ TEST(LQTest, TestLQAlarm)
 
     setLinkQualityDirect(512);
     simulationTime += 60e6;
-    osdRefresh(simulationTime);
+    doOsdRefresh(simulationTime);
 
     // then
     // elements showing values in alarm range should flash
     for (int i = 0; i < 15; i++) {
         // Blinking should happen at 5Hz
         simulationTime += 0.2e6;
-        osdRefresh(simulationTime);
+        doOsdRefresh(simulationTime);
 
 #ifdef DEBUG_OSD
         printf("%d\n", i);
@@ -400,7 +416,7 @@ TEST(LQTest, TestLQAlarm)
 
     doTestDisarm();
     simulationTime += 60e6;
-    osdRefresh(simulationTime);
+    doOsdRefresh(simulationTime);
 }
 
 // STUBS

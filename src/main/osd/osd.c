@@ -79,6 +79,7 @@
 #include "io/flashfs.h"
 #include "io/gps.h"
 
+#include "osd/osd_impl.h"
 #include "osd/osd.h"
 #include "osd/osd_elements.h"
 
@@ -921,22 +922,8 @@ static timeDelta_t osdShowArmed(void)
     return ret;
 }
 
-enum state {
-    OSD_INIT,
-    OSD_PREPARE_CYCLE,
-    OSD_IDLE,
-    OSD_PREPARE_SCREEN_FOR_ELEMENTS,
-    OSD_RENDERING_ELEMENTS,
-    OSD_PREPARE_SCREEN_FOR_INITIAL_STATS,
-    OSD_RENDER_INITIAL_STATS,
-    OSD_PREPARE_SCREEN_FOR_STATS_REFRESH,
-    OSD_PREPARE_SCREEN_FOR_STATS,
-    OSD_RENDER_STATS,
-    OSD_END
-};
-
 static bool osdUpdateRequested = false;
-static uint8_t osdState = OSD_INIT;
+STATIC_UNIT_TESTED uint8_t osdState = OSD_INIT;
 bool osdStatsVisible = false;
 bool osdRefreshNow = false;
 
@@ -1021,6 +1008,9 @@ STATIC_UNIT_TESTED void osdRefresh(timeUs_t currentTimeUs)
                         resumeRefreshAt = currentTimeUs;
                     }
                     displayHeartbeat(osdDisplayPort);
+                    if (nextState == OSD_IDLE) {
+                        nextState = OSD_PREPARE_CYCLE;
+                    }
                     break;
                 } else {
                     clearScreen = true;
