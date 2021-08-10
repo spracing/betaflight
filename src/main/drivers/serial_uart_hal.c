@@ -271,7 +271,7 @@ void uartDmaIrqHandler(dmaChannelDescriptor_t* descriptor)
 }
 #endif
 
-FAST_CODE void uartIrqHandler(uartPort_t *s)
+HOT_IRQ_HANDLER void uartIrqHandler(uartPort_t *s)
 {
     UART_HandleTypeDef *huart = &s->Handle;
     /* UART in mode Receiver ---------------------------------------------------*/
