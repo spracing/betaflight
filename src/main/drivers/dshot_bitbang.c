@@ -291,7 +291,7 @@ static void bbSetupDma(bbPort_t *bbPort)
     bbDMA_ITConfig(bbPort);
 }
 
-FAST_CODE void bbDMAIrqHandler(dmaChannelDescriptor_t *descriptor)
+HOT_IRQ_HANDLER void bbDMAIrqHandler(dmaChannelDescriptor_t *descriptor)
 {
     dbgPinHi(0);
 
