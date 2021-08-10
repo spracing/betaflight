@@ -363,7 +363,13 @@ FAST_CODE void scheduler(void)
     bool realtimeTaskRan = false;
     timeDelta_t gyroTaskDelayUs = 0;
 
-    if (gyroEnabled) {
+    task_t *rxTask = getTask(TASK_RX);
+    if (rxTask->checkFunc(currentTimeUs, cmpTimeUs(currentTimeUs, rxTask->lastExecutedAtUs))) {
+        taskExecutionTimeUs = schedulerExecuteTask(rxTask, currentTimeUs);
+        realtimeTaskRan = true;
+    }
+
+    if (gyroEnabled && !realtimeTaskRan) {
         // Realtime gyro/filtering/PID tasks get complete priority
         task_t *gyroTask = getTask(TASK_GYRO);
         const timeUs_t gyroExecuteTimeUs = getPeriodCalculationBasis(gyroTask) + gyroTask->desiredPeriodUs;
