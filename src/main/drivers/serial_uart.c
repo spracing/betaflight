@@ -361,7 +361,7 @@ void uartConfigureDma(uartDevice_t *uartdev)
 #endif
 
 #define UART_IRQHandler(type, number, dev)                    \
-    FAST_CODE void type ## number ## _IRQHandler(void)                  \
+    HOT_IRQ_HANDLER void type ## number ## _IRQHandler(void)                  \
     {                                                         \
         uartPort_t *s = &(uartDevmap[UARTDEV_ ## dev]->port); \
         uartIrqHandler(s);                                    \
