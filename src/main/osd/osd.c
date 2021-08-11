@@ -70,6 +70,9 @@
 #if defined(USE_DYN_NOTCH_FILTER)
 #include "flight/dyn_notch_filter.h"
 #endif
+
+#include "scheduler/scheduler.h"
+
 #include "flight/imu.h"
 #include "flight/mixer.h"
 #include "flight/position.h"
@@ -922,14 +925,15 @@ static timeDelta_t osdShowArmed(void)
     return ret;
 }
 
-static bool osdUpdateRequested = false;
-STATIC_UNIT_TESTED uint8_t osdState = OSD_INIT;
+static bool osdRefreshRequired = false;
+static uint8_t osdState = OSD_INIT;
 bool osdStatsVisible = false;
 bool osdRefreshNow = false;
+static timeUs_t osdNextUpdateAtUs = 0;
 
-static timeUs_t osdStatsRefreshTimeUs;
+static timeUs_t osdStatsRefreshTimeUs = 0;
 
-STATIC_UNIT_TESTED void osdRefresh(timeUs_t currentTimeUs)
+STATIC_UNIT_TESTED bool osdRefresh(timeUs_t currentTimeUs)
 {
     static timeUs_t lastTimeUs = 0;
     static bool osdStatsEnabled = false;
@@ -937,7 +941,7 @@ STATIC_UNIT_TESTED void osdRefresh(timeUs_t currentTimeUs)
     static bool clearScreen = false;
     uint8_t nextState = osdState;
 
-    osdUpdateRequested = false;
+    osdRefreshRequired = false;
 
     switch(osdState) {
     case OSD_INIT:
@@ -948,7 +952,6 @@ STATIC_UNIT_TESTED void osdRefresh(timeUs_t currentTimeUs)
         }
         break;
     case OSD_IDLE: {
-
             // detect arm/disarm
             if (armState != ARMING_FLAG(ARMED)) {
                 if (ARMING_FLAG(ARMED)) {
@@ -1009,7 +1012,7 @@ STATIC_UNIT_TESTED void osdRefresh(timeUs_t currentTimeUs)
                     }
                     displayHeartbeat(osdDisplayPort);
                     if (nextState == OSD_IDLE) {
-                        nextState = OSD_PREPARE_CYCLE;
+                        return false;
                     }
                     break;
                 } else {
@@ -1084,7 +1087,7 @@ STATIC_UNIT_TESTED void osdRefresh(timeUs_t currentTimeUs)
                 displayHeartbeat(osdDisplayPort);
                 nextState = OSD_END;
             } else {
-                osdUpdateRequested = true;
+                osdRefreshRequired = true;
             }
         }
         break;
@@ -1138,6 +1141,7 @@ STATIC_UNIT_TESTED void osdRefresh(timeUs_t currentTimeUs)
     case OSD_END: {
             displayCommitTransaction(osdDisplayPort);
             displayDrawScreen(osdDisplayPort);
+
             nextState = OSD_PREPARE_CYCLE;
         }
         break;
@@ -1145,9 +1149,13 @@ STATIC_UNIT_TESTED void osdRefresh(timeUs_t currentTimeUs)
 
     bool stateChange = nextState != osdState;
     if (stateChange) {
+        if (osdState != OSD_END) {
+            osdRefreshRequired = true;
+        }
         osdState = nextState;
-        osdUpdateRequested = true;
     }
+
+    return osdRefreshRequired;
 }
 
 bool osdUpdateCheck(timeUs_t currentTimeUs, timeDelta_t currentDeltaTimeUs)
@@ -1181,7 +1189,7 @@ bool osdUpdateCheck(timeUs_t currentTimeUs, timeDelta_t currentDeltaTimeUs)
     }
 #endif
 
-    if (osdUpdateRequested || cmpTimeUs(currentTimeUs, resumeRefreshAt) > 0 || cmpTimeUs(currentTimeUs, osdStatsRefreshTimeUs) >= 0) {
+    if (osdRefreshRequired || cmpTimeUs(currentTimeUs, osdNextUpdateAtUs) > 0 || (resumeRefreshAt && cmpTimeUs(currentTimeUs, resumeRefreshAt) > 0) || (osdStatsRefreshTimeUs && cmpTimeUs(currentTimeUs, osdStatsRefreshTimeUs) >= 0)) {
         osdUpdateRequired = true;
     }
 
@@ -1216,8 +1224,11 @@ void osdUpdate(timeUs_t currentTimeUs)
 #if (OSD_DRAW_FREQ_DENOM > 0)
     static uint32_t counter = 0;
     if (counter % OSD_DRAW_FREQ_DENOM == 0) {
-        osdRefresh(currentTimeUs);
-        showVisualBeeper = false;
+        if (!osdRefresh(currentTimeUs)) {
+            // only increase the counter when there's nothing left to do.
+            ++counter;
+            showVisualBeeper = false;
+        }
     } else {
         bool doDrawScreen = true;
 #if defined(USE_CMS) && defined(USE_MSP_DISPLAYPORT) && defined(USE_OSD_OVER_MSP_DISPLAYPORT)
@@ -1231,12 +1242,16 @@ void osdUpdate(timeUs_t currentTimeUs)
             displayDrawScreen(osdDisplayPort);
         }
         ignoreTaskShortExecTime();
+        ++counter;
     }
-    ++counter;
 #else
     osdRefresh(currentTimeUs);
     showVisualBeeper = false;
 #endif
+
+    if (!osdRefreshRequired) {
+        osdNextUpdateAtUs = currentTimeUs + TASK_PERIOD_HZ(osdConfig()->task_frequency);
+    }
 }
 
 void osdSuppressStats(bool flag)

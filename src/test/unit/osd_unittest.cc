@@ -64,9 +64,9 @@ extern "C" {
 
     #include "rx/rx.h"
 
-    extern uint8_t osdState;
+    extern bool osdStateCycleComplete;
 
-    void osdRefresh(timeUs_t currentTimeUs);
+    bool osdRefresh(timeUs_t currentTimeUs);
     void osdFormatTime(char * buff, osd_timer_precision_e precision, timeUs_t time);
     int osdConvertTemperatureToSelectedUnit(int tempInDegreesCelcius);
 
@@ -144,10 +144,7 @@ void setDefaultSimulationState()
 
 void doOsdRefresh(timeUs_t currentTimeUs)
 {
-    do {
-        // ensure all elements are drawn and that the state is reset.
-        osdRefresh(currentTimeUs);
-    } while (osdState != OSD_PREPARE_CYCLE);
+    while (osdRefresh(currentTimeUs)) {};
 }
 
 /*
