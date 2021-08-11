@@ -66,7 +66,7 @@ extern "C" {
 
     #include "sensors/battery.h"
 
-    extern uint8_t osdState;
+    extern bool osdStateCycleComplete;
 
     attitudeEulerAngles_t attitude;
     float rMat[3][3];
@@ -92,7 +92,7 @@ extern "C" {
 
     timeUs_t simulationTime = 0;
 
-    void osdRefresh(timeUs_t currentTimeUs);
+    bool osdRefresh(timeUs_t currentTimeUs);
     uint16_t updateLinkQualitySamples(uint16_t value);
 #define LINK_QUALITY_SAMPLE_COUNT 16
 }
@@ -124,10 +124,7 @@ void setDefaultSimulationState()
 
 void doOsdRefresh(timeUs_t currentTimeUs)
 {
-    do {
-        // ensure all elements are drawn and that the state is reset.
-        osdRefresh(currentTimeUs);
-    } while (osdState != OSD_PREPARE_CYCLE);
+    while (osdRefresh(currentTimeUs)) {};
 }
 
 /*
