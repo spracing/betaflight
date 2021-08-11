@@ -98,25 +98,25 @@ static volatile uint8_t frameBufferIndex = 0;
 // Low-level handlers
 //
 
-FAST_CODE static void SYNC_DMA_IRQHandler(dmaChannelDescriptor_t* descriptor)
+HOT_IRQ_HANDLER static void SYNC_DMA_IRQHandler(dmaChannelDescriptor_t* descriptor)
 {
     UNUSED(descriptor);
     spracingPixelOSDLibraryVTable->syncDMAHandler();
 }
 
-FAST_CODE static void PIXEL_DMA_IRQHandler(dmaChannelDescriptor_t* descriptor)
+HOT_IRQ_HANDLER static void PIXEL_DMA_IRQHandler(dmaChannelDescriptor_t* descriptor)
 {
     UNUSED(descriptor);
     spracingPixelOSDLibraryVTable->pixelDMAHandler();
 }
 
-FAST_CODE static void ADC_DMA_IRQHandler(dmaChannelDescriptor_t* descriptor)
+HOT_IRQ_HANDLER static void ADC_DMA_IRQHandler(dmaChannelDescriptor_t* descriptor)
 {
     UNUSED(descriptor);
     spracingPixelOSDLibraryVTable->adcDMAHandler();
 }
 
-FAST_CODE void COMP1_IRQHandler(void)
+HOT_IRQ_HANDLER void COMP1_IRQHandler(void)
 {
     // don't call this if comparator that caused the interrupt is not the one used by the OSD system
     // if your target is using both comparators then you will have to handle this here.
