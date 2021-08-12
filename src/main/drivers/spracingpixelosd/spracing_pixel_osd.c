@@ -211,7 +211,7 @@ static void configureDMAHandlers(void)
     //
 
     ioTag_t syncIoTag = timerioTagGetByUsage(TIM_USE_VIDEO_SYNC, 0);
-    const timerHardware_t *syncTimerHardware = timerGetByTag(syncIoTag);
+    const timerHardware_t *syncTimerHardware = timerGetConfiguredByTag(syncIoTag);
 
 #if defined(USE_DMA_SPEC)
     const dmaChannelSpec_t *syncDmaSpec = dmaGetChannelSpecByTimer(syncTimerHardware);
@@ -241,7 +241,7 @@ static void configureDMAHandlers(void)
 
 
     ioTag_t pixelIoTag = timerioTagGetByUsage(TIM_USE_VIDEO_PIXEL, 0);
-    const timerHardware_t *pixelTimerHardware = timerGetByTag(pixelIoTag);
+    const timerHardware_t *pixelTimerHardware = timerGetConfiguredByTag(pixelIoTag);
 
 #if defined(USE_DMA_SPEC)
     const dmaChannelSpec_t *pixelDmaSpec = dmaGetChannelSpecByTimer(pixelTimerHardware);
