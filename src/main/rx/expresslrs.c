@@ -203,7 +203,7 @@ static void initializeReceiver(void)
     receiver.freqOffset = 0;
     receiver.failsafe = false;
     receiver.sentTelemetry = false;
-    receiver.firstConnection = false;
+    receiver.shouldCycle = false;
     receiver.configChanged = false;
     receiver.rssi = 0;
     receiver.snr = 0;
@@ -283,8 +283,8 @@ static rx_spi_received_e processRFPacket(uint8_t *payload, const uint32_t timeSt
     rxSetRfMode((uint8_t)RATE_4HZ - (uint8_t)receiver.mod_params->enumRate);
 #endif
 
-    if (!receiver.firstConnection) {
-        receiver.firstConnection = true;
+    if (!receiver.shouldCycle) {
+        receiver.shouldCycle = true;
         if (receiver.rateIndex != rxExpressLrsSpiConfig()->rateIndex) {
             rxExpressLrsSpiConfigMutable()->rateIndex = receiver.rateIndex;
             receiver.configChanged = true;
@@ -478,7 +478,7 @@ static void handleTimeout(void)
             receiver.nonceRX += 1;
             setNextChannel();
         }
-    } else if (receiver.bound && !receiver.firstConnection && ((millis() - receiver.rfModeLastCycled) > receiver.cycleInterval)) {
+    } else if (receiver.bound && !receiver.shouldCycle && ((millis() - receiver.rfModeLastCycled) > receiver.cycleInterval)) {
         receiver.rfModeLastCycled += receiver.cycleInterval;
         receiver.rateIndex = (receiver.rateIndex + 1) % ELRS_RATE_MAX;
         setRFLinkRate(receiver.rateIndex);
