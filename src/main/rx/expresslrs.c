@@ -304,6 +304,7 @@ static rx_spi_received_e processRFPacket(uint8_t *payload, const uint32_t timeSt
             //not implemented
             break;
         case ELRS_SYNC_PACKET:
+            receiver.synced = true;
             indexIN = (packet[3] & 0xC0) >> 6;
             tlmRateIn = (packet[3] & 0x38) >> 3;
             switchEncMode = (packet[3] & 0x06) >> 1;
@@ -451,7 +452,6 @@ static void handleTimeout(void)
 
         if (receiver.missedPackets > 50) {
             receiver.sentTelemetry = false;
-            receiver.failsafe = true;
             receiver.rssi = 0;
             receiver.snr = 0;
             receiver.uplinkLQ = 0;
@@ -464,19 +464,26 @@ static void handleTimeout(void)
             setLinkQualityDirect(receiver.uplinkLQ);
 #endif
             resetLQ();
-            receiver.currentFreq = getInitialFreq(receiver.freqOffset);
-            receiver.setFrequency(receiver.currentFreq); // in conn lost state we always want to listen on freq index 0
-            receiver.startReceiving();
+            if (!receiver.failsafe) {
+                // FAILSAFE!
+                receiver.synced = false;
+                receiver.failsafe = true;
+                receiver.currentFreq = getInitialFreq(receiver.freqOffset);
+                receiver.setFrequency(receiver.currentFreq); // in conn lost state we always want to listen on freq index 0
+                receiver.startReceiving();
+            }
         } else if ((time - receiver.lastValidPacket) > ELRS_TIMEOUT(receiver.mod_params->interval)) {
             if (receiver.sentTelemetry) {
                 receiver.sentTelemetry = false;
             } else {
                 receiver.missedPackets += 1;
-                receiver.uplinkLQ = getLQ(false);
+                receiver.uplinkLQ = getLQ(false); // FIXME not called when task isn't called on schedule.
             }
             receiver.lastValidPacket += receiver.mod_params->interval;
             receiver.nonceRX += 1;
-            setNextChannel();
+            if (receiver.synced) {
+                setNextChannel();
+            }
         }
     } else if (receiver.bound && !receiver.shouldCycle && ((millis() - receiver.rfModeLastCycled) > receiver.cycleInterval)) {
         receiver.rfModeLastCycled += receiver.cycleInterval;
