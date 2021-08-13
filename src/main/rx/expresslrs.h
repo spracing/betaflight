@@ -73,7 +73,7 @@ typedef struct elrsReceiver_s {
     bool bound;
     bool failsafe;
     bool sentTelemetry;
-    bool firstConnection;
+    bool shouldCycle;
 
     elrsRxInitFnPtr init;
     elrsRxConfigFnPtr config;
