@@ -98,4 +98,5 @@ const char * const debugModeNames[DEBUG_COUNT] = {
     "SCHEDULER_DETERMINISM",
     "SPRACING_PIXEL_OSD",
     "RX_EXPRESSLRS_SPI",
+    "RX_EXPRESSLRS_PHASELOCK",
 };

@@ -508,44 +508,59 @@ uint8_t tlmRatioEnumToValue(const elrs_tlm_ratio_e enumval)
 }
 
 #define ELRS_LQ_DEPTH 4 //100 % 32
-static uint32_t lqArray[ELRS_LQ_DEPTH] = {0};
-static uint8_t lq = 0;
-static uint8_t lqByte = 0;
-static uint32_t lqMask = 0;
 
-uint8_t getLQ(const bool addLQ)
+typedef struct linkQuality_s {
+    uint32_t array[ELRS_LQ_DEPTH];
+    uint8_t value;
+    uint8_t byte;
+    uint32_t mask;
+} linkQuality_t;
+
+static linkQuality_t lq;
+
+void lqIncrease(void)
 {
-    lqMask <<= 1;
-    if (lqMask == 0) {
-        lqMask = (1 << 0);
-        lqByte += 1;
+    if (lqPeriodIsSet()) {
+        return;
+    }
+    lq.array[lq.byte] |= lq.mask;
+    lq.value += 1;
+}
+
+void lqNewPeriod(void)
+{
+    lq.mask <<= 1;
+    if (lq.mask == 0) {
+        lq.mask = (1 << 0);
+        lq.byte += 1;
     }
 
     // At idx N / 32 and bit N % 32, wrap back to idx=0, bit=0
-    if ((lqByte == 3) && (lqMask & (1 << ELRS_LQ_DEPTH))) {
-        lqByte = 0;
-        lqMask = (1 << 0);
+    if ((lq.byte == 3) && (lq.mask & (1 << ELRS_LQ_DEPTH))) {
+        lq.byte = 0;
+        lq.mask = (1 << 0);
     }
 
-    if ((lqArray[lqByte] & lqMask) != 0) {
-        lqArray[lqByte] &= ~lqMask;
-        lq -= 1;
+    if ((lq.array[lq.byte] & lq.mask) != 0) {
+        lq.array[lq.byte] &= ~lq.mask;
+        lq.value -= 1;
     }
-
-    if (addLQ) {
-        lqArray[lqByte] |= lqMask;
-        lq += 1;
-    }
-
-    return lq;
 }
 
-void resetLQ(void)
+uint8_t lqGet(void)
 {
-    lq = 0;
-    lqByte = 0;
-    lqMask = 0;
-    memset(lqArray, 0, sizeof(lqArray));
+    return lq.value;
+}
+
+bool lqPeriodIsSet(void)
+{
+    return lq.array[lq.byte] & lq.mask;
+}
+
+void lqReset(void)
+{
+    memset(&lq, 0, sizeof(lq));
+    lq.mask = (1 << 0);
 }
 
 inline uint16_t convertSwitch1b(const uint16_t val)

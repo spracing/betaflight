@@ -43,6 +43,11 @@
 
 static IO_t busy;
 
+bool sx1280IsBusy(void)
+{
+    return IORead(busy);
+}
+
 static bool sx1280PollBusy(void)
 {
     uint32_t startTime = micros();
@@ -231,6 +236,9 @@ void sx1280ConfigLoraDefaults(void)
 
 void sx1280Config(const sx1280_lora_bandwidths_e bw, const sx1280_lora_spreading_factors_e sf, const sx1280_lora_coding_rates_e cr, const uint32_t freq, const uint8_t preambleLength, const bool iqInverted)
 {
+    sx1280SetMode(SX1280_MODE_SLEEP);
+    sx1280PollBusy();
+
     sx1280ConfigLoraDefaults();
     sx1280SetOutputPower(13); //default is max power (12.5dBm for SX1280 RX)
     sx1280SetMode(SX1280_MODE_STDBY_XOSC); 
