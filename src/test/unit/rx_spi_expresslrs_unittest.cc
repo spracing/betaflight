@@ -37,6 +37,7 @@ extern "C" {
 
     #include "rx/rx_spi.h"
     #include "rx/expresslrs.h"
+    #include "rx/expresslrs_impl.h"
 
     #include "drivers/rx/rx_sx127x.h"
     #include "drivers/rx/rx_sx1280.h"
@@ -191,7 +192,7 @@ TEST(RxSpiExpressLrsUnitTest, TestInitUnbound)
     }
     EXPECT_EQ(0, receiver.nonceRX);
     EXPECT_EQ(0, receiver.freqOffset);
-    EXPECT_EQ(0, receiver.lastValidPacket);
+    EXPECT_EQ(0, receiver.lastValidPacketUs);
 
     const uint32_t initialFrequencies[6] = {
         FREQ_HZ_TO_REG_VAL_900(433420000), 
@@ -439,4 +440,6 @@ extern "C" {
         long int b = (long int) srcTo - (long int) srcFrom;
         return (a / b) + destFrom;
     }
+
+    void expressLrsInitialiseTimer(elrsReceiver_t *) {}
 }

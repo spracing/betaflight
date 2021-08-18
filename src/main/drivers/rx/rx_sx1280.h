@@ -266,6 +266,7 @@ typedef enum
 
 bool sx1280Init(IO_t resetPin, IO_t busyPin);
 bool sx1280ISR(uint32_t *timeStamp);
+bool sx1280IsBusy(void);
 void sx1280WriteCommand(const uint8_t address, const uint8_t data);
 void sx1280WriteCommandBurst(const uint8_t address, const uint8_t *data, const uint8_t length);
 void sx1280ReadCommandBurst(const uint8_t address, uint8_t *data, const uint8_t length);

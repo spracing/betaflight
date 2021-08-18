@@ -19,18 +19,21 @@
  */
 
 /*
- * Based on https://github.com/ExpressLRS/ExpressLRS
- * Thanks to AlessandroAU, original creator of the ExpressLRS project.
+ * Author: Dominic Clifton / Seriously Pro Racing
  */
 
 #pragma once
 
-#include <stdbool.h>
-#include <stdint.h>
+void expressLrsInitialiseTimer(TIM_TypeDef *timer, timerOvrHandlerRec_t *timerUpdateCb);
+void expressLrsUpdateTimerInterval(uint16_t intervalUs);
+void expressLrsUpdatePhaseShift(int32_t newPhaseShift);
+void expressLrsOnTimerTickISR(void);
+void expressLrsOnTimerTockISR(void);
 
-#include "drivers/timer.h"
-#include "rx/expresslrs_common.h"
+void expressLrsTimerIncreaseFrequencyOffset(void);
+void expressLrsTimerDecreaseFrequencyOffset(void);
 
-bool expressLrsSpiInit(const struct rxSpiConfig_s *rxConfig, struct rxRuntimeState_s *rxRuntimeState, rxSpiExtiConfig_t *extiConfig);
-void expressLrsSetRcDataFromPayload(uint16_t *rcData, const uint8_t *payload);
-rx_spi_received_e expressLrsDataReceived(uint8_t *payload);
+void expressLrsTimerStop(void);
+void expressLrsTimerResume(void);
+
+void expressLrsTimerDebug(void);
