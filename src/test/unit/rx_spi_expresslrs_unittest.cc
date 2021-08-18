@@ -37,6 +37,7 @@ extern "C" {
 
     #include "rx/rx_spi.h"
     #include "rx/expresslrs.h"
+    #include "rx/expresslrs_impl.h"
 
     #include "drivers/rx/rx_sx127x.h"
     #include "drivers/rx/rx_sx1280.h"
@@ -439,4 +440,6 @@ extern "C" {
         long int b = (long int) srcTo - (long int) srcFrom;
         return (a / b) + destFrom;
     }
+
+    void expressLrsInitialiseTimer(elrsReceiver_t *) {}
 }

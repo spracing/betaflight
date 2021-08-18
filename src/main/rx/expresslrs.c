@@ -21,6 +21,10 @@
 /*
  * Based on https://github.com/ExpressLRS/ExpressLRS
  * Thanks to AlessandroAU, original creator of the ExpressLRS project.
+ *
+ * Authors:
+ * Phobos- - Original port.
+ * Dominic Clifton/Hydra - Timer-based timeout implementation.
  */
 
 #include <string.h>
@@ -54,6 +58,7 @@
 
 #include "rx/expresslrs.h"
 #include "rx/expresslrs_common.h"
+#include "rx/expresslrs_impl.h"
 
 STATIC_UNIT_TESTED elrsReceiver_t receiver;
 static const uint8_t BindingUID[6] = {0,1,2,3,4,5}; // Special binding UID values
@@ -436,6 +441,8 @@ bool expressLrsSpiInit(const struct rxSpiConfig_s *rxConfig, struct rxRuntimeSta
         crcInitializer = 0;
         rxExpressLrsSpiConfigMutable()->rateIndex = ELRS_RATE_DEFAULT;
     }
+
+    expressLrsInitialiseTimer(&receiver);
 
     generateCrc14Table();
     initializeReceiver();
