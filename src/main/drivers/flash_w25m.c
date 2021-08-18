@@ -173,7 +173,7 @@ bool w25m_identify(flashDevice_t *fdevice, uint32_t jedecID)
 void w25m_configure(flashDevice_t *fdevice, uint32_t configurationFlags)
 {
     for (int dieNumber = 0 ; dieNumber < dieCount ; dieNumber++) {
-        w25m_dieSelect(fdevice->io.handle.busdev, dieNumber);
+        w25m_dieSelect(fdevice->io.handle.dev, dieNumber);
         dieDevice[dieNumber].vTable->configure(&dieDevice[dieNumber], configurationFlags);
     }
 }
