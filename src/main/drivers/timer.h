@@ -242,7 +242,20 @@ typedef enum {
     TYPE_TIMER
 } channelType_t;
 
-void timerConfigure(const timerHardware_t *timHw, uint16_t period, uint32_t hz);  // This interface should be replaced.
+//
+// Legacy API
+//
+void timerConfigure(const timerHardware_t *timHw, uint16_t period, uint32_t hz);
+
+//
+// Initialisation
+//
+void timerInit(void);
+void timerStart(void);
+
+//
+// per-channel
+//
 
 void timerChConfigIC(const timerHardware_t *timHw, bool polarityRising, unsigned inputFilterSamples);
 void timerChConfigICDual(const timerHardware_t* timHw, bool polarityRising, unsigned inputFilterSamples);
@@ -263,9 +276,13 @@ void timerChClearCCFlag(const timerHardware_t* timHw);
 
 void timerChInit(const timerHardware_t *timHw, channelType_t type, int irqPriority, uint8_t irq);
 
-void timerInit(void);
-void timerStart(void);
+//
+// per-timer
+//
+
 void timerForceOverflow(TIM_TypeDef *tim);
+
+void timerConfigUpdateCallback(const TIM_TypeDef *tim, timerOvrHandlerRec_t *updateCallback);
 
 uint32_t timerClock(TIM_TypeDef *tim);
 
