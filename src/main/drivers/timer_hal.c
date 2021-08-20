@@ -346,25 +346,24 @@ TIM_HandleTypeDef* timerFindTimerHandle(TIM_TypeDef *tim)
 
 void configTimeBase(TIM_TypeDef *tim, uint16_t period, uint32_t hz)
 {
-    uint8_t timerIndex = lookupTimerIndex(tim);
-    if (timerIndex >= USED_TIMER_COUNT) {
-        return;
-    }
-    if (timerHandle[timerIndex].Handle.Instance == tim) {
+    TIM_HandleTypeDef* handle = timerFindTimerHandle(tim);
+    if (handle == NULL) return;
+
+    if (handle->Instance == tim) {
         // already configured
         return;
     }
 
-    timerHandle[timerIndex].Handle.Instance = tim;
+    handle->Instance = tim;
 
-    timerHandle[timerIndex].Handle.Init.Period = (period - 1) & 0xffff; // AKA TIMx_ARR
-    timerHandle[timerIndex].Handle.Init.Prescaler = (timerClock(tim) / hz) - 1;
+    handle->Init.Period = (period - 1) & 0xffff; // AKA TIMx_ARR
+    handle->Init.Prescaler = (timerClock(tim) / hz) - 1;
 
-    timerHandle[timerIndex].Handle.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
-    timerHandle[timerIndex].Handle.Init.CounterMode = TIM_COUNTERMODE_UP;
-    timerHandle[timerIndex].Handle.Init.RepetitionCounter = 0x0000;
+    handle->Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+    handle->Init.CounterMode = TIM_COUNTERMODE_UP;
+    handle->Init.RepetitionCounter = 0x0000;
 
-    HAL_TIM_Base_Init(&timerHandle[timerIndex].Handle);
+    HAL_TIM_Base_Init(handle);
     if (tim == TIM1 || tim == TIM2 || tim == TIM3 || tim == TIM4 || tim == TIM5 || tim == TIM8
 #if !(defined(STM32H7) || defined(STM32G4))
         || tim == TIM9
@@ -373,7 +372,7 @@ void configTimeBase(TIM_TypeDef *tim, uint16_t period, uint32_t hz)
         TIM_ClockConfigTypeDef sClockSourceConfig;
         memset(&sClockSourceConfig, 0, sizeof(sClockSourceConfig));
         sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
-        if (HAL_TIM_ConfigClockSource(&timerHandle[timerIndex].Handle, &sClockSourceConfig) != HAL_OK) {
+        if (HAL_TIM_ConfigClockSource(handle, &sClockSourceConfig) != HAL_OK) {
             return;
         }
     }
@@ -381,11 +380,10 @@ void configTimeBase(TIM_TypeDef *tim, uint16_t period, uint32_t hz)
         TIM_MasterConfigTypeDef sMasterConfig;
         memset(&sMasterConfig, 0, sizeof(sMasterConfig));
         sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
-        if (HAL_TIMEx_MasterConfigSynchronization(&timerHandle[timerIndex].Handle, &sMasterConfig) != HAL_OK) {
+        if (HAL_TIMEx_MasterConfigSynchronization(handle, &sMasterConfig) != HAL_OK) {
             return;
         }
     }
-
 }
 
 // old interface for PWM inputs. It should be replaced
