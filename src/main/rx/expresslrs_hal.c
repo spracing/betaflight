@@ -41,21 +41,42 @@
 #include "rx/expresslrs_impl.h"
 
 #define TIMER_INTERVAL_US_DEFAULT 20000
+#define TICK_TOCK_COUNT 2
+
+typedef enum {
+    TICK,
+    TOCK
+} tickTock_e;
+
+typedef struct elrsTimerState_s {
+    volatile tickTock_e tickTock;
+    uint32_t intervalUs;
+} elrsTimerState_t;
+
+static elrsTimerState_t timerState = { 0 };
 
 static void expressLrsOnTimerUpdate(timerOvrHandlerRec_t *cbRec, captureCompare_t capture)
 {
     UNUSED(cbRec);
     UNUSED(capture);
 
-    static bool pinState = true;
-    pinState = !pinState;
-    if (pinState) {
+    elrsReceiver_t *self = container_of(cbRec, elrsReceiver_t, timerUpdateCb);
+
+    if (timerState.tickTock == TICK) {
         DEBUG_HI(0);
+
+        expressLrsOnTimerTickISR();
+
+        timerState.tickTock = TOCK;
     } else {
         DEBUG_LO(0);
+
+        expressLrsOnTimerTockISR();
+
+        timerState.tickTock = TICK;
     }
 
-    elrsReceiver_t *self = container_of(cbRec, elrsReceiver_t, timerUpdateCb);
+
     UNUSED(self);
 }
 
@@ -63,7 +84,9 @@ void expressLrsInitialiseTimer(elrsReceiver_t *receiver)
 {
     receiver->timer = RX_EXPRESSLRS_TIMER_INSTANCE;
 
-    configTimeBase(receiver->timer, TIMER_INTERVAL_US_DEFAULT, MHZ_TO_HZ(1));
+    timerState.intervalUs = TIMER_INTERVAL_US_DEFAULT;
+
+    configTimeBase(receiver->timer, timerState.intervalUs / TICK_TOCK_COUNT, MHZ_TO_HZ(1));
 
     timerChOvrHandlerInit(&receiver->timerUpdateCb, expressLrsOnTimerUpdate);
 
