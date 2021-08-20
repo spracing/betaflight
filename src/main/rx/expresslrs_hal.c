@@ -55,7 +55,7 @@ typedef struct elrsTimerState_s {
     uint32_t intervalUs;
     int32_t frequencyOffsetTicks;
 
-    int32_t phaseShift;
+    int32_t phaseShiftUs;
 
 } elrsTimerState_t;
 
@@ -70,8 +70,8 @@ elrsPhaseShiftLimits_t phaseShiftLimits;
 static elrsTimerState_t timerState = {
     TOCK, // Start on TOCK (in ELRS isTick is initialised to false)
     TIMER_INTERVAL_US_DEFAULT,
-    0,
-    0
+    50,
+    200
 };
 
 static void expressLrsRecalculatePhaseShiftLimits(void)
@@ -80,7 +80,7 @@ static void expressLrsRecalculatePhaseShiftLimits(void)
     phaseShiftLimits.min = -phaseShiftLimits.max;
 }
 
-uint16_t expressLrsCalculateMaximumExpectedPeriod(uint16_t intervalUs)
+static uint16_t expressLrsCalculateMaximumExpectedPeriod(uint16_t intervalUs)
 {
     // The timer reload register must not overflow when frequencyOffsetTicks is added to it.
     // frequencyOffsetTicks is not expected to be higher than 1/4 of the interval.
@@ -96,12 +96,12 @@ void expressLrsUpdateTimerInterval(TIM_TypeDef *timer, uint16_t intervalUs)
 
     timerReconfigureTimeBase(timer, expressLrsCalculateMaximumExpectedPeriod(timerState.intervalUs), MHZ_TO_HZ(1));
 
-    LL_TIM_SetAutoReload(timer, ((intervalUs / TICK_TOCK_COUNT) - 1) & 0xffff);
+    LL_TIM_SetAutoReload(timer, (timerState.intervalUs / TICK_TOCK_COUNT) - 1);
 }
 
 void expressLrsUpdatePhaseShift(int32_t newPhaseShift)
 {
-    timerState.phaseShift = constrain(newPhaseShift, phaseShiftLimits.min, phaseShiftLimits.max);
+    timerState.phaseShiftUs = constrain(newPhaseShift, phaseShiftLimits.min, phaseShiftLimits.max);
 }
 
 static void expressLrsOnTimerUpdate(timerOvrHandlerRec_t *cbRec, captureCompare_t capture)
@@ -114,12 +114,22 @@ static void expressLrsOnTimerUpdate(timerOvrHandlerRec_t *cbRec, captureCompare_
     if (timerState.tickTock == TICK) {
         DEBUG_HI(0);
 
+        uint32_t adjustedPeriod = (timerState.intervalUs / TICK_TOCK_COUNT) + timerState.frequencyOffsetTicks;
+        LL_TIM_SetAutoReload(self->timer, adjustedPeriod - 1);
+
         expressLrsOnTimerTickISR();
+
+        timerState.phaseShiftUs = 250;
 
         timerState.tickTock = TOCK;
     } else {
         DEBUG_LO(0);
 
+        uint32_t adjustedPeriod = (timerState.intervalUs / TICK_TOCK_COUNT) + timerState.phaseShiftUs + timerState.frequencyOffsetTicks;
+        LL_TIM_SetAutoReload(self->timer, adjustedPeriod - 1);
+
+        timerState.phaseShiftUs = 0;
+        
         expressLrsOnTimerTockISR();
 
         timerState.tickTock = TICK;
