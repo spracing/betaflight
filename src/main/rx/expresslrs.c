@@ -451,6 +451,14 @@ bool expressLrsSpiInit(const struct rxSpiConfig_s *rxConfig, struct rxRuntimeSta
     return true;
 }
 
+void expressLrsOnTimerTickISR(void) {
+
+}
+
+void expressLrsOnTimerTockISR(void) {
+
+}
+
 static void handleTimeout(void)
 {
     if (!receiver.failsafe) {

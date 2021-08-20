@@ -79,4 +79,6 @@ typedef struct elrsReceiver_s {
 } elrsReceiver_t;
 
 void expressLrsInitialiseTimer(elrsReceiver_t *receiver);
+void expressLrsOnTimerTickISR(void);
+void expressLrsOnTimerTockISR(void);
 
