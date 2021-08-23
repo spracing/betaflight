@@ -70,8 +70,8 @@ elrsPhaseShiftLimits_t phaseShiftLimits;
 static elrsTimerState_t timerState = {
     TOCK, // Start on TOCK (in ELRS isTick is initialised to false)
     TIMER_INTERVAL_US_DEFAULT,
-    50,
-    200
+    0,
+    0
 };
 
 static void expressLrsRecalculatePhaseShiftLimits(void)
@@ -104,6 +104,16 @@ void expressLrsUpdatePhaseShift(int32_t newPhaseShift)
     timerState.phaseShiftUs = constrain(newPhaseShift, phaseShiftLimits.min, phaseShiftLimits.max);
 }
 
+void expressLrsTimerIncreaseFrequencyOffset(void)
+{
+    timerState.frequencyOffsetTicks++;
+}
+
+void expressLrsTimerDecreaseFrequencyOffset(void)
+{
+    timerState.frequencyOffsetTicks--;
+}
+
 static void expressLrsOnTimerUpdate(timerOvrHandlerRec_t *cbRec, captureCompare_t capture)
 {
     UNUSED(cbRec);
@@ -118,8 +128,6 @@ static void expressLrsOnTimerUpdate(timerOvrHandlerRec_t *cbRec, captureCompare_
         LL_TIM_SetAutoReload(self->timer, adjustedPeriod - 1);
 
         expressLrsOnTimerTickISR();
-
-        timerState.phaseShiftUs = 250;
 
         timerState.tickTock = TOCK;
     } else {

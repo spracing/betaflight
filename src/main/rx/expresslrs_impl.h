@@ -84,3 +84,5 @@ void expressLrsUpdatePhaseShift(int32_t newPhaseShift);
 void expressLrsOnTimerTickISR(void);
 void expressLrsOnTimerTockISR(void);
 
+void expressLrsTimerIncreaseFrequencyOffset(void);
+void expressLrsTimerDecreaseFrequencyOffset(void);

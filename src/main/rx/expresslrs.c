@@ -68,6 +68,131 @@ static uint16_t crcInitializer = 0;
 static pt1Filter_t rssiFilter;
 #endif
 
+//
+// Event pair recorder
+//
+
+typedef enum {
+    EPR_FIRST,
+    EPR_SECOND,
+} eprEvent_e;
+
+#define EPR_EVENT_COUNT 2
+
+typedef struct eprState_s {
+    uint32_t eventAtUs[EPR_EVENT_COUNT];
+    bool eventRecorded[EPR_EVENT_COUNT];
+} eprState_t;
+
+eprState_t eprState = {0};
+
+static void expressLrsEPRRecordEvent(eprEvent_e event, uint32_t currentTimeUs)
+{
+    eprState.eventAtUs[event] = currentTimeUs;
+    eprState.eventRecorded[event] = true;
+}
+
+static int32_t expressLrsEPRGetResult(void)
+{
+    bool bothEventsRecorded = eprState.eventRecorded[EPR_SECOND] && eprState.eventRecorded[EPR_FIRST];
+
+    if (!bothEventsRecorded) {
+        return 0;
+    }
+
+    return (int32_t)(eprState.eventAtUs[EPR_SECOND] - eprState.eventAtUs[EPR_FIRST]);
+}
+
+static void expressLrsEPRReset(void)
+{
+    memset(&eprState, 0, sizeof(eprState_t));
+}
+
+
+//
+// Phase Lock
+//
+
+
+#define EPR_INTERNAL EPR_FIRST
+#define EPR_EXTERNAL EPR_SECOND
+
+typedef struct phaseLockState_s {
+    simpleLowpassFilter_t offsetFilter;
+    simpleLowpassFilter_t offsetDxFilter;
+
+    int32_t rawOffsetUs;
+    int32_t previousRawOffsetUs;
+
+    int32_t offsetUs;
+    int32_t offsetDeltaUs;
+    int32_t previousOffsetUs;
+} phaseLockState_t;
+
+phaseLockState_t pl;
+
+static void expressLrsPhaseLockReset(void)
+{
+    simpleLPFilterInit(&pl.offsetFilter, 2, 5);
+    simpleLPFilterInit(&pl.offsetDxFilter, 4, 5);
+
+    expressLrsEPRReset();
+}
+
+static void expressLrsUpdatePhaseLock(void)
+{
+    if (!receiver.synced) {
+        return;
+    }
+
+    pl.rawOffsetUs = expressLrsEPRGetResult();
+
+    pl.offsetUs = simpleLPFilterUpdate(&pl.offsetFilter, pl.rawOffsetUs);
+    pl.offsetDeltaUs = simpleLPFilterUpdate(&pl.offsetDxFilter, pl.rawOffsetUs - pl.previousRawOffsetUs);
+
+    pl.previousOffsetUs = pl.offsetUs;
+    pl.previousRawOffsetUs = pl.rawOffsetUs;
+
+    if (1) { // RXtimerState == tim_locked && LQCalc.currentIsSet()
+        if (receiver.nonceRX % 8 == 0)
+        {
+            if (pl.offsetUs > 0)
+            {
+                expressLrsTimerIncreaseFrequencyOffset();
+            }
+            else if (pl.offsetUs < 0)
+            {
+                expressLrsTimerDecreaseFrequencyOffset();
+            }
+        }
+
+        if (receiver.failsafe)
+        {
+            expressLrsUpdatePhaseShift(pl.rawOffsetUs >> 1);
+        }
+        else
+        {
+            expressLrsUpdatePhaseShift(pl.offsetUs >> 2);
+        }
+
+    }
+
+    expressLrsEPRReset();
+}
+
+void expressLrsOnTimerTickISR(void)
+{
+    expressLrsUpdatePhaseLock();
+    receiver.nonceRX += 1;
+}
+
+void expressLrsOnTimerTockISR(void)
+{
+    uint32_t currentTimeUs = micros();
+
+    expressLrsEPRRecordEvent(EPR_INTERNAL, currentTimeUs);
+}
+
 static void handleTelemetry(void)
 {
     uint8_t packet[8];
@@ -118,6 +243,8 @@ static void setRFLinkRate(const uint8_t index)
     // Wait for (11/10) 110% of time it takes to cycle through all freqs in FHSS table (in ms)
     receiver.cycleInterval = ((uint32_t)11U * getFHSSNumEntries() * receiver.mod_params->fhssHopInterval * receiver.mod_params->interval) / (10U * 1000U);
     receiver.config(receiver.mod_params->bw, receiver.mod_params->sf, receiver.mod_params->cr, receiver.currentFreq, receiver.mod_params->preambleLen, receiver.UID[5] & 0x01);
+
+    expressLrsUpdateTimerInterval(receiver.timer, receiver.mod_params->interval);
 
 #ifdef USE_RX_RSSI_DBM
     pt1FilterInit(&rssiFilter, pt1FilterGain(ELRS_RSSI_LPF_CUTOFF_FREQ_HZ, ELRS_INTERVAL_S(receiver.mod_params->interval)));
@@ -442,22 +569,20 @@ bool expressLrsSpiInit(const struct rxSpiConfig_s *rxConfig, struct rxRuntimeSta
         rxExpressLrsSpiConfigMutable()->rateIndex = ELRS_RATE_DEFAULT;
     }
 
+    expressLrsPhaseLockReset();
+
     expressLrsInitialiseTimer(&receiver);
 
     generateCrc14Table();
     initializeReceiver();
+
+
     receiver.startReceiving();
 
     return true;
 }
 
-void expressLrsOnTimerTickISR(void) {
 
-}
-
-void expressLrsOnTimerTockISR(void) {
-
-}
 
 static void handleTimeout(void)
 {
@@ -481,11 +606,15 @@ static void handleTimeout(void)
             resetLQ();
             if (!receiver.failsafe) {
                 // FAILSAFE!
+                expressLrsPhaseLockReset();
+
                 receiver.synced = false;
                 receiver.failsafe = true;
                 receiver.currentFreq = getInitialFreq(receiver.freqOffset);
                 receiver.setFrequency(receiver.currentFreq); // in conn lost state we always want to listen on freq index 0
+
                 receiver.startReceiving();
+
             }
         } else if ((time - receiver.lastValidPacket) > ELRS_TIMEOUT(receiver.mod_params->interval)) {
             if (receiver.sentTelemetry) {
@@ -495,7 +624,9 @@ static void handleTimeout(void)
                 receiver.uplinkLQ = getLQ(false); // FIXME not called when task isn't called on schedule.
             }
             receiver.lastValidPacket += receiver.mod_params->interval;
+#if 0
             receiver.nonceRX += 1;
+#endif
             if (receiver.synced) {
                 setNextChannel();
             }
@@ -504,6 +635,8 @@ static void handleTimeout(void)
         receiver.rfModeLastCycled += receiver.cycleInterval;
         receiver.rateIndex = (receiver.rateIndex + 1) % ELRS_RATE_MAX;
         setRFLinkRate(receiver.rateIndex);
+
+        expressLrsPhaseLockReset();
 
         receiver.startReceiving();
     }
@@ -532,17 +665,19 @@ void expressLrsSetRcDataFromPayload(uint16_t *rcData, const uint8_t *payload)
 rx_spi_received_e expressLrsDataReceived(uint8_t *payload)
 {
     rx_spi_received_e result = RX_SPI_RECEIVED_NONE;
-    uint32_t timeStamp;
+    uint32_t isrTimeStampUs;
 
     if (rxSpiCheckBindRequested(true)) {
         enterBindingMode();
     }
 
-    if (receiver.rxISR(&timeStamp)) {
+    if (receiver.rxISR(&isrTimeStampUs)) {
         if (receiver.sentTelemetry) {
             receiver.startReceiving();
         } else {
-            result = processRFPacket(payload, timeStamp);
+            expressLrsEPRRecordEvent(EPR_EXTERNAL, isrTimeStampUs);
+
+            result = processRFPacket(payload, isrTimeStampUs);
         }
     }
 
