@@ -51,6 +51,7 @@ typedef struct elrsReceiver_s {
     uint32_t lastValidPacketUs;
     uint8_t missedPackets;
 
+
     uint16_t cycleInterval;
     uint32_t rfModeLastCycled;
     uint8_t rateIndex;
@@ -63,6 +64,7 @@ typedef struct elrsReceiver_s {
     bool sentTelemetry;
     bool firstConnection;
     bool synced;
+    bool nextChannelRequired;
 
     elrsRxInitFnPtr init;
     elrsRxConfigFnPtr config;
@@ -73,6 +75,7 @@ typedef struct elrsReceiver_s {
     elrsRxGetRFlinkInfoFnPtr getRFlinkInfo;
     elrsRxSetFrequencyFnPtr setFrequency;
     elrsRxHandleFreqCorrectionFnPtr handleFreqCorrection;
+    elrsRxIsBusyFnPtr isBusy;
 
     TIM_TypeDef *timer;
     timerOvrHandlerRec_t timerUpdateCb;

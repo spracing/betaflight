@@ -238,12 +238,16 @@ void expressLrsOnTimerTockISR(void)
 
     expressLrsEPRRecordEvent(EPR_INTERNAL, currentTimeUs);
 
-    if (receiver.synced && !rxSpiIsBusy()) {
-        DEBUG_HI(1);
+    if (receiver.synced) {
+        if (rxSpiIsBusy() || receiver.isBusy()) {
+            receiver.nextChannelRequired = true;
+        } else {
+            DEBUG_HI(1);
 
-        setNextChannel();
+            setNextChannel();
 
-        DEBUG_LO(1);
+            DEBUG_LO(1);
+        }
     }
 }
 
@@ -498,10 +502,16 @@ static inline void configureReceiverForSX1280(void)
     receiver.getRFlinkInfo = (elrsRxGetRFlinkInfoFnPtr) sx1280GetLastPacketStats;
     receiver.setFrequency = (elrsRxSetFrequencyFnPtr) sx1280SetFrequencyReg;
     receiver.handleFreqCorrection = (elrsRxHandleFreqCorrectionFnPtr) sx1280AdjustFrequency;
+    receiver.isBusy = (elrsRxIsBusyFnPtr) sx1280IsBusy;
 }
 #endif
 
 #ifdef USE_RX_SX127X
+
+bool neverBusy(void) {
+    return false;
+}
+
 static inline void configureReceiverForSX127x(void)
 {
     receiver.init = (elrsRxInitFnPtr) sx127xInit;
@@ -513,6 +523,7 @@ static inline void configureReceiverForSX127x(void)
     receiver.getRFlinkInfo = (elrsRxGetRFlinkInfoFnPtr) sx127xGetLastPacketStats;
     receiver.setFrequency = (elrsRxSetFrequencyFnPtr) sx127xSetFrequencyReg;
     receiver.handleFreqCorrection = (elrsRxHandleFreqCorrectionFnPtr) sx127xAdjustFrequency;
+    receiver.isBusy = neverBusy;
 }
 #endif
 
@@ -697,6 +708,11 @@ rx_spi_received_e expressLrsDataReceived(uint8_t *payload)
         } else {
             result = processRFPacket(payload, isrTimeStampUs);
         }
+    }
+
+    if (receiver.nextChannelRequired) {
+        receiver.nextChannelRequired = false;
+        setNextChannel();
     }
 
     DEBUG_SET(DEBUG_RX_EXPRESSLRS_SPI, 0, receiver.missedPackets);

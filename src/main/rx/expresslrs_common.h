@@ -114,6 +114,7 @@ typedef void (*elrsRxReceiveDataFnPtr)(uint8_t *data, const uint8_t length);
 typedef void (*elrsRxGetRFlinkInfoFnPtr)(int8_t *rssi, int8_t *snr);
 typedef void (*elrsRxSetFrequencyFnPtr)(const uint32_t freq);
 typedef void (*elrsRxHandleFreqCorrectionFnPtr)(int32_t offset, const uint32_t freq);
+typedef bool (*elrsRxIsBusyFnPtr)(void);
 
 extern elrs_mod_settings_t air_rate_config[][ELRS_RATE_MAX];
 
