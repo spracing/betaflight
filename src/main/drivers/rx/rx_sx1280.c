@@ -39,6 +39,8 @@
 #include "drivers/rx/rx_spi.h"
 #include "drivers/time.h"
 
+#define SX1280_MAX_SPI_MHZ 10000000
+
 static IO_t busy;
 
 static bool sx1280PollBusy(void)
@@ -60,6 +62,9 @@ bool sx1280Init(IO_t resetPin, IO_t busyPin)
     if (!rxSpiExtiConfigured()) {
         return false;
     }
+
+    rxSpiSetNormalSpeedMhz(SX1280_MAX_SPI_MHZ);
+    rxSpiNormalSpeed();
 
     if (resetPin) {
         IOInit(resetPin, OWNER_RX_SPI_EXPRESSLRS_RESET, 0);
