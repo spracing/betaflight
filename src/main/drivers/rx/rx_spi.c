@@ -30,7 +30,6 @@
 #ifdef USE_RX_SPI
 
 #include "build/build_config.h"
-#include "build/debug_pin.h"
 
 #include "drivers/bus_spi.h"
 #include "drivers/io.h"
@@ -67,8 +66,6 @@ void rxSpiDevicePreInit(const rxSpiConfig_t *rxSpiConfig)
 void rxSpiExtiHandler(extiCallbackRec_t* callback)
 {
     UNUSED(callback);
-
-    DEBUG_HI(1);
 
     const timeUs_t extiTimeUs = microsISR();
 
@@ -177,8 +174,6 @@ bool rxSpiGetExtiState(void)
 
 bool rxSpiPollExti(void)
 {
-    DEBUG_LO(1);
-
     return extiHasOccurred;
 }
 
