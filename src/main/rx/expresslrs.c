@@ -239,7 +239,11 @@ void expressLrsOnTimerTockISR(void)
     expressLrsEPRRecordEvent(EPR_INTERNAL, currentTimeUs);
 
     if (receiver.synced && !rxSpiIsBusy()) {
+        DEBUG_HI(1);
+
         setNextChannel();
+
+        DEBUG_LO(1);
     }
 }
 
