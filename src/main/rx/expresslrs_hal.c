@@ -147,6 +147,27 @@ static void expressLrsOnTimerUpdate(timerOvrHandlerRec_t *cbRec, captureCompare_
     UNUSED(self);
 }
 
+void expressLrsTimerStop(TIM_TypeDef *timer)
+{
+    LL_TIM_DisableIT_UPDATE(timer);
+    LL_TIM_DisableCounter(timer);
+
+    LL_TIM_SetCounter(timer, 0);
+}
+
+void expressLrsTimerResume(TIM_TypeDef *timer)
+{
+    timerState.tickTock = TOCK;
+
+    LL_TIM_SetAutoReload(timer, (timerState.intervalUs / TICK_TOCK_COUNT));
+    LL_TIM_SetCounter(timer, 0);
+
+    LL_TIM_ClearFlag_UPDATE(timer);
+    LL_TIM_EnableIT_UPDATE(timer);
+    LL_TIM_EnableCounter(timer);
+
+    LL_TIM_GenerateEvent_UPDATE(timer);
+}
 
 void expressLrsInitialiseTimer(elrsReceiver_t *receiver)
 {

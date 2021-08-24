@@ -30,6 +30,7 @@
 #ifdef USE_RX_SPI
 
 #include "build/build_config.h"
+#include "build/debug_pin.h"
 
 #include "drivers/bus_spi.h"
 #include "drivers/io.h"
@@ -67,6 +68,8 @@ void rxSpiExtiHandler(extiCallbackRec_t* callback)
 {
     UNUSED(callback);
 
+    DEBUG_HI(1);
+
     const timeUs_t extiTimeUs = microsISR();
 
     if (IORead(extiPin) == extiLevel) {
@@ -90,6 +93,8 @@ bool rxSpiDeviceInit(const rxSpiConfig_t *rxSpiConfig)
     if (!spiSetBusInstance(dev, rxSpiConfig->spibus)) {
         return false;
     }
+
+    spiSetAtomicWait(dev);
 
     const IO_t rxCsPin = IOGetByTag(rxSpiConfig->csnTag);
     IOInit(rxCsPin, OWNER_RX_SPI_CS, 0);
@@ -172,6 +177,8 @@ bool rxSpiGetExtiState(void)
 
 bool rxSpiPollExti(void)
 {
+    DEBUG_LO(1);
+
     return extiHasOccurred;
 }
 

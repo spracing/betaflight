@@ -48,7 +48,7 @@ typedef struct elrsReceiver_s {
     int8_t snr;
     uint8_t uplinkLQ;
 
-    uint32_t lastValidPacket;
+    uint32_t lastValidPacketUs;
     uint8_t missedPackets;
 
     uint16_t cycleInterval;
@@ -86,3 +86,6 @@ void expressLrsOnTimerTockISR(void);
 
 void expressLrsTimerIncreaseFrequencyOffset(void);
 void expressLrsTimerDecreaseFrequencyOffset(void);
+
+void expressLrsTimerStop(TIM_TypeDef *timer);
+void expressLrsTimerResume(TIM_TypeDef *timer);

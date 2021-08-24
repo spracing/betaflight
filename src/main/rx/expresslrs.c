@@ -33,6 +33,7 @@
 #ifdef USE_RX_EXPRESSLRS
 
 #include "build/debug.h"
+#include "build/debug_pin.h"
 
 #include "common/maths.h"
 #include "common/filter.h"
@@ -67,6 +68,8 @@ static uint16_t crcInitializer = 0;
 #ifdef USE_RX_RSSI_DBM
 static pt1Filter_t rssiFilter;
 #endif
+
+#define PACKET_TO_TOCK_ISR_DELAY_US 200
 
 //
 // Event pair recorder
@@ -180,19 +183,6 @@ static void expressLrsUpdatePhaseLock(void)
     expressLrsEPRReset();
 }
 
-void expressLrsOnTimerTickISR(void)
-{
-    expressLrsUpdatePhaseLock();
-    receiver.nonceRX += 1;
-}
-
-void expressLrsOnTimerTockISR(void)
-{
-    uint32_t currentTimeUs = micros();
-
-    expressLrsEPRRecordEvent(EPR_INTERNAL, currentTimeUs);
-}
-
 static void handleTelemetry(void)
 {
     uint8_t packet[8];
@@ -229,6 +219,28 @@ static void setNextChannel(void)
         receiver.startReceiving();
     } else {
         handleTelemetry();
+    }
+}
+
+void expressLrsOnTimerTickISR(void)
+{
+    expressLrsUpdatePhaseLock();
+    receiver.nonceRX += 1;
+    receiver.missedPackets += 1;
+
+    bool shouldIncreaseLQ = !receiver.sentTelemetry;
+    receiver.uplinkLQ = getLQ(shouldIncreaseLQ);
+}
+
+void expressLrsOnTimerTockISR(void)
+{
+    uint32_t currentTimeUs = micros();
+
+    expressLrsEPRRecordEvent(EPR_INTERNAL, currentTimeUs);
+
+
+    if (receiver.synced) {
+        setNextChannel();
     }
 }
 
@@ -345,7 +357,7 @@ static void initializeReceiver(void)
 
     receiver.rfModeLastCycled = millis();
     receiver.lastConfigCheckTime = receiver.rfModeLastCycled;
-    receiver.lastValidPacket = micros();
+    receiver.lastValidPacketUs = micros();
 }
 
 static void enterBindingMode(void)
@@ -379,7 +391,7 @@ static void unpackBindPacket(uint8_t *packet)
     receiver.startReceiving();
 }
 
-static rx_spi_received_e processRFPacket(uint8_t *payload, const uint32_t timeStamp) {
+static rx_spi_received_e processRFPacket(uint8_t *payload, const uint32_t timeStampUs) {
 
     uint8_t packet[ELRS_RX_TX_BUFF_SIZE];
 
@@ -399,11 +411,11 @@ static rx_spi_received_e processRFPacket(uint8_t *payload, const uint32_t timeSt
     elrs_tlm_ratio_e tlmRateIn;
     uint8_t switchEncMode;
 
-    receiver.lastValidPacket = timeStamp;
-    receiver.nonceRX += 1;
+    expressLrsEPRRecordEvent(EPR_EXTERNAL, timeStampUs + PACKET_TO_TOCK_ISR_DELAY_US);
+
+    receiver.lastValidPacketUs = timeStampUs;
     receiver.missedPackets = 0;
     receiver.failsafe = false;
-    receiver.uplinkLQ = getLQ(true);
     receiver.getRFlinkInfo(&receiver.rssi, &receiver.snr);
     uint16_t rssiScaled = scaleRange(constrain(receiver.rssi, receiver.mod_params->sensitivity, -50), receiver.mod_params->sensitivity, -50, 0, 1023);
     setRssi(rssiScaled, RSSI_SOURCE_RX_PROTOCOL);
@@ -422,6 +434,8 @@ static rx_spi_received_e processRFPacket(uint8_t *payload, const uint32_t timeSt
             receiver.configChanged = true;
         }
     }
+
+    bool shouldStartTimer = false;
 
     switch(type) {
         case ELRS_RC_DATA_PACKET:
@@ -454,6 +468,7 @@ static rx_spi_received_e processRFPacket(uint8_t *payload, const uint32_t timeSt
                 if (receiver.nonceRX != packet[2] || FHSSgetCurrIndex() != packet[1]) {
                     FHSSsetCurrIndex(packet[1]);
                     receiver.nonceRX = packet[2];
+                    shouldStartTimer = true;
                 }
             }
             break;
@@ -461,7 +476,9 @@ static rx_spi_received_e processRFPacket(uint8_t *payload, const uint32_t timeSt
             return RX_SPI_RECEIVED_NONE;
     }
 
-    setNextChannel();
+    if (shouldStartTimer) {
+        expressLrsTimerResume(receiver.timer);
+    }
 
     return RX_SPI_RECEIVED_DATA;
 }
@@ -572,6 +589,7 @@ bool expressLrsSpiInit(const struct rxSpiConfig_s *rxConfig, struct rxRuntimeSta
     expressLrsPhaseLockReset();
 
     expressLrsInitialiseTimer(&receiver);
+    expressLrsTimerStop(receiver.timer);
 
     generateCrc14Table();
     initializeReceiver();
@@ -588,7 +606,7 @@ static void handleTimeout(void)
 {
     if (!receiver.failsafe) {
 
-        const uint32_t time = micros();
+        const uint32_t nowUs = micros();
 
         if (receiver.missedPackets > 50) {
             receiver.sentTelemetry = false;
@@ -616,20 +634,21 @@ static void handleTimeout(void)
                 receiver.startReceiving();
 
             }
-        } else if ((time - receiver.lastValidPacket) > ELRS_TIMEOUT(receiver.mod_params->interval)) {
+        } else if ((nowUs - receiver.lastValidPacketUs) > ELRS_TIMEOUT(receiver.mod_params->interval)) {
             if (receiver.sentTelemetry) {
                 receiver.sentTelemetry = false;
-            } else {
-                receiver.missedPackets += 1;
-                receiver.uplinkLQ = getLQ(false); // FIXME not called when task isn't called on schedule.
             }
-            receiver.lastValidPacket += receiver.mod_params->interval;
 #if 0
+            else {
+                receiver.missedPackets += 1;
+                receiver.uplinkLQ = getLQ(false);
+            }
+            receiver.lastValidPacketUs += receiver.mod_params->interval;
             receiver.nonceRX += 1;
-#endif
             if (receiver.synced) {
                 setNextChannel();
             }
+#endif
         }
     } else if (receiver.bound && !receiver.shouldCycle && ((millis() - receiver.rfModeLastCycled) > receiver.cycleInterval)) {
         receiver.rfModeLastCycled += receiver.cycleInterval;
@@ -675,8 +694,6 @@ rx_spi_received_e expressLrsDataReceived(uint8_t *payload)
         if (receiver.sentTelemetry) {
             receiver.startReceiving();
         } else {
-            expressLrsEPRRecordEvent(EPR_EXTERNAL, isrTimeStampUs);
-
             result = processRFPacket(payload, isrTimeStampUs);
         }
     }
