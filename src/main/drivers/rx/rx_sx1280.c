@@ -41,6 +41,11 @@
 
 static IO_t busy;
 
+bool sx1280IsBusy(void)
+{
+    return IORead(busy);
+}
+
 static bool sx1280PollBusy(void)
 {
     uint32_t startTime = micros();
