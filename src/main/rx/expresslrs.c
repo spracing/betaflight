@@ -245,6 +245,11 @@ void expressLrsOnTimerTockISR(void)
     receiver.nextChannelRequired = true;
 }
 
+static void reconfigureRF(void)
+{
+    receiver.config(receiver.mod_params->bw, receiver.mod_params->sf, receiver.mod_params->cr, receiver.currentFreq, receiver.mod_params->preambleLen, receiver.UID[5] & 0x01);
+}
+
 static void setRFLinkRate(const uint8_t index)
 {
 #if defined(USE_RX_SX1280) && defined(USE_RX_SX127X)
@@ -255,7 +260,8 @@ static void setRFLinkRate(const uint8_t index)
     receiver.currentFreq = getInitialFreq(receiver.freqOffset);
     // Wait for (11/10) 110% of time it takes to cycle through all freqs in FHSS table (in ms)
     receiver.cycleInterval = ((uint32_t)11U * getFHSSNumEntries() * receiver.mod_params->fhssHopInterval * receiver.mod_params->interval) / (10U * 1000U);
-    receiver.config(receiver.mod_params->bw, receiver.mod_params->sf, receiver.mod_params->cr, receiver.currentFreq, receiver.mod_params->preambleLen, receiver.UID[5] & 0x01);
+
+    reconfigureRF();
 
     expressLrsUpdateTimerInterval(receiver.timer, receiver.mod_params->interval);
 
@@ -636,8 +642,11 @@ static void handleTimeout(void)
 
             receiver.synced = false;
             receiver.failsafe = true;
+
+            // in connection lost state we want to listen on the frequency that sync packets are expected to appear on.
             receiver.currentFreq = getInitialFreq(receiver.freqOffset);
-            receiver.setFrequency(receiver.currentFreq); // in conn lost state we always want to listen on freq index 0
+
+            reconfigureRF();
 
             receiver.startReceiving();
         } else if ((nowUs - receiver.lastValidPacketUs) > ELRS_TIMEOUT(receiver.mod_params->interval)) {
