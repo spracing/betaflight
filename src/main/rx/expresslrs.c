@@ -347,7 +347,7 @@ static void initializeReceiver(void)
     receiver.freqOffset = 0;
     receiver.failsafe = false;
     receiver.sentTelemetry = false;
-    receiver.shouldCycle = false;
+    receiver.firstConnection = false;
     receiver.configChanged = false;
     receiver.rssi = 0;
     receiver.snr = 0;
@@ -427,8 +427,8 @@ static rx_spi_received_e processRFPacket(uint8_t *payload, const uint32_t timeSt
     rxSetRfMode((uint8_t)RATE_4HZ - (uint8_t)receiver.mod_params->enumRate);
 #endif
 
-    if (!receiver.shouldCycle) {
-        receiver.shouldCycle = true;
+    if (!receiver.firstConnection) {
+        receiver.firstConnection = true;
         if (receiver.rateIndex != rxExpressLrsSpiConfig()->rateIndex) {
             rxExpressLrsSpiConfigMutable()->rateIndex = receiver.rateIndex;
             receiver.configChanged = true;
@@ -622,18 +622,16 @@ static void handleTimeout(void)
             setLinkQualityDirect(receiver.uplinkLQ);
 #endif
             resetLQ();
-            if (!receiver.failsafe) {
-                // FAILSAFE!
-                expressLrsPhaseLockReset();
 
-                receiver.synced = false;
-                receiver.failsafe = true;
-                receiver.currentFreq = getInitialFreq(receiver.freqOffset);
-                receiver.setFrequency(receiver.currentFreq); // in conn lost state we always want to listen on freq index 0
+            // FAILSAFE!
+            expressLrsPhaseLockReset();
 
-                receiver.startReceiving();
+            receiver.synced = false;
+            receiver.failsafe = true;
+            receiver.currentFreq = getInitialFreq(receiver.freqOffset);
+            receiver.setFrequency(receiver.currentFreq); // in conn lost state we always want to listen on freq index 0
 
-            }
+            receiver.startReceiving();
         } else if ((nowUs - receiver.lastValidPacketUs) > ELRS_TIMEOUT(receiver.mod_params->interval)) {
             if (receiver.sentTelemetry) {
                 receiver.sentTelemetry = false;
@@ -650,7 +648,7 @@ static void handleTimeout(void)
             }
 #endif
         }
-    } else if (receiver.bound && !receiver.shouldCycle && ((millis() - receiver.rfModeLastCycled) > receiver.cycleInterval)) {
+    } else if (receiver.bound && !receiver.firstConnection && ((millis() - receiver.rfModeLastCycled) > receiver.cycleInterval)) {
         receiver.rfModeLastCycled += receiver.cycleInterval;
         receiver.rateIndex = (receiver.rateIndex + 1) % ELRS_RATE_MAX;
         setRFLinkRate(receiver.rateIndex);
