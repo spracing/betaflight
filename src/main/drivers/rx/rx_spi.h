@@ -32,6 +32,7 @@ struct rxSpiConfig_s;
 
 void rxSpiDevicePreInit(const struct rxSpiConfig_s *rxSpiConfig);
 bool rxSpiDeviceInit(const struct rxSpiConfig_s *rxSpiConfig);
+void rxSpiSetNormalSpeedMhz(uint32_t mhz);
 void rxSpiNormalSpeed();
 void rxSpiStartupSpeed();
 void rxSpiDmaEnable(bool enable);
