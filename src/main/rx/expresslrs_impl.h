@@ -64,7 +64,7 @@ typedef struct elrsReceiver_s {
     bool sentTelemetry;
     bool firstConnection;
     bool synced;
-    bool nextChannelRequired;
+    volatile bool nextChannelRequired;
 
     elrsRxInitFnPtr init;
     elrsRxConfigFnPtr config;
