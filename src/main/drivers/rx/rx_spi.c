@@ -58,6 +58,8 @@ static bool extiLevel = true;
 static volatile bool extiHasOccurred = false;
 static volatile timeUs_t lastExtiTimeUs = 0;
 
+static uint32_t spiNormalSpeedMhz = RX_MAX_SPI_CLK_HZ;
+
 void rxSpiDevicePreInit(const rxSpiConfig_t *rxSpiConfig)
 {
     spiPreinitRegister(rxSpiConfig->csnTag, IOCFG_IPU, 1);
@@ -75,9 +77,14 @@ void rxSpiExtiHandler(extiCallbackRec_t* callback)
     }
 }
 
+void rxSpiSetNormalSpeedMhz(uint32_t mhz)
+{
+    spiNormalSpeedMhz = mhz;
+}
+
 void rxSpiNormalSpeed()
 {
-    spiSetClkDivisor(dev, spiCalculateDivider(RX_MAX_SPI_CLK_HZ));
+    spiSetClkDivisor(dev, spiCalculateDivider(spiNormalSpeedMhz));
 }
 
 void rxSpiStartupSpeed()
