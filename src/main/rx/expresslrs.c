@@ -208,6 +208,8 @@ static void setNextChannel(void)
         return;
     }
 
+    DEBUG_HI(1);
+
     if (((receiver.nonceRX + 1) % receiver.mod_params->fhssHopInterval) != 0) {
         receiver.handleFreqCorrection(receiver.freqOffset, receiver.currentFreq); //corrects for RX freq offset
     } else {
@@ -220,6 +222,8 @@ static void setNextChannel(void)
     } else {
         handleTelemetry();
     }
+
+    DEBUG_LO(1);
 }
 
 void expressLrsOnTimerTickISR(void)
