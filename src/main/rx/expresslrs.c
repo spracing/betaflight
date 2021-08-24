@@ -238,15 +238,7 @@ void expressLrsOnTimerTockISR(void)
 
     expressLrsEPRRecordEvent(EPR_INTERNAL, currentTimeUs);
 
-    if (rxSpiIsBusy() || receiver.isBusy()) {
-        receiver.nextChannelRequired = true;
-    } else {
-        DEBUG_HI(1);
-
-        setNextChannel();
-
-        DEBUG_LO(1);
-    }
+    receiver.nextChannelRequired = true;
 }
 
 static void setRFLinkRate(const uint8_t index)
@@ -710,7 +702,9 @@ rx_spi_received_e expressLrsDataReceived(uint8_t *payload)
 
     if (receiver.nextChannelRequired) {
         receiver.nextChannelRequired = false;
-        setNextChannel();
+        if (receiver.synced) {
+            setNextChannel();
+        }
     }
 
     DEBUG_SET(DEBUG_RX_EXPRESSLRS_SPI, 0, receiver.missedPackets);
