@@ -48,3 +48,4 @@ bool rxSpiPollExti(void);
 void rxSpiResetExti(void);
 timeUs_t rxSpiGetLastExtiTimeUs(void);
 void rxSpiTransferCommandMulti(uint8_t *data, uint8_t length);
+bool rxSpiIsBusy(void);
