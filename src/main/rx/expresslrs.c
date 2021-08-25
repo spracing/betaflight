@@ -241,10 +241,6 @@ void expressLrsOnTimerTickISR(void)
     if (shouldStartNewLQPeriod) {
         lqNewPeriod();
     }
-    if (receiver.sentTelemetry) {
-        DEBUG_LO(1);
-        receiver.sentTelemetry = false;
-    }
 }
 
 void expressLrsOnTimerTockISR(void)
@@ -254,6 +250,11 @@ void expressLrsOnTimerTockISR(void)
     expressLrsEPRRecordEvent(EPR_INTERNAL, currentTimeUs);
 
     receiver.nextChannelRequired = true;
+
+    if (receiver.sentTelemetry) {
+        DEBUG_LO(1);
+        receiver.sentTelemetry = false;
+    }
 }
 
 static void reconfigureRF(void)
