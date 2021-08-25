@@ -37,6 +37,7 @@ TARGET_SRC += \
             $(addprefix drivers/barometer/,$(notdir $(wildcard $(SRC_DIR)/drivers/barometer/*.c))) \
             drivers/rx/rx_sx1280.c \
             drivers/rx/rx_sx127x.c \
+            drivers/rx/rx_sx127x.c \
+            drivers/rx/expresslrs_hal.c \
             rx/expresslrs.c \
             rx/expresslrs_common.c \
-            rx/expresslrs_hal.c \
