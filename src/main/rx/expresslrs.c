@@ -156,7 +156,7 @@ static void expressLrsUpdatePhaseLock(void)
     pl.previousOffsetUs = pl.offsetUs;
     pl.previousRawOffsetUs = pl.rawOffsetUs;
 
-    if (1) { // RXtimerState == tim_locked && LQCalc.currentIsSet()
+    if (lqPeriodIsSet()) { // RXtimerState == tim_locked && LQCalc.currentIsSet()
         if (receiver.nonceRX % 8 == 0)
         {
             if (pl.offsetUs > 0)
