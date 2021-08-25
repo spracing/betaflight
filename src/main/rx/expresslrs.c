@@ -212,7 +212,6 @@ static void setNextChannel(void)
         return;
     }
 
-    DEBUG_HI(1);
 
     if (((receiver.nonceRX + 1) % receiver.mod_params->fhssHopInterval) != 0) {
         receiver.handleFreqCorrection(receiver.freqOffset, receiver.currentFreq); //corrects for RX freq offset
@@ -224,10 +223,10 @@ static void setNextChannel(void)
     if (receiver.mod_params->tlmInterval == TLM_RATIO_NO_TLM || (((receiver.nonceRX + 1) % (tlmRatioEnumToValue(receiver.mod_params->tlmInterval))) != 0)) {
         receiver.startReceiving();
     } else {
+        DEBUG_HI(1);
         handleTelemetry();
     }
 
-    DEBUG_LO(1);
 }
 
 void expressLrsOnTimerTickISR(void)
@@ -243,6 +242,7 @@ void expressLrsOnTimerTickISR(void)
         lqNewPeriod();
     }
     if (receiver.sentTelemetry) {
+        DEBUG_LO(1);
         receiver.sentTelemetry = false;
     }
 }
