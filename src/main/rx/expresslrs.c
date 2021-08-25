@@ -627,7 +627,7 @@ static void handleTimeout(void)
 
         const uint32_t nowUs = micros();
 
-        if (receiver.missedPackets > 50) {
+        if (receiver.missedPackets > 2000) {
             receiver.sentTelemetry = false;
             receiver.rssi = 0;
             receiver.snr = 0;
