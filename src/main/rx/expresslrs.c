@@ -232,8 +232,12 @@ void expressLrsOnTimerTickISR(void)
     receiver.nonceRX += 1;
     receiver.missedPackets += 1;
 
-    bool shouldIncreaseLQ = !receiver.sentTelemetry;
-    receiver.uplinkLQ = getLQ(shouldIncreaseLQ);
+    receiver.uplinkLQ = lqGet();
+
+    bool shouldStartNewLQPeriod = !receiver.sentTelemetry;
+    if (shouldStartNewLQPeriod) {
+        lqNewPeriod();
+    }
 }
 
 void expressLrsOnTimerTockISR(void)
@@ -347,7 +351,7 @@ static void unpackChannelDataHybridSwitches(uint16_t *rcData, const uint8_t *pay
 static void initializeReceiver(void)
 {
     FHSSrandomiseFHSSsequence(receiver.UID, rxExpressLrsSpiConfig()->domain);
-    resetLQ();
+    lqReset();
 
     receiver.nonceRX = 0;
     receiver.missedPackets = 0;
@@ -423,6 +427,7 @@ static rx_spi_received_e processRFPacket(uint8_t *payload, const uint32_t timeSt
     receiver.lastValidPacketUs = timeStampUs;
     receiver.missedPackets = 0;
     receiver.failsafe = false;
+    lqIncrease();
     receiver.getRFlinkInfo(&receiver.rssi, &receiver.snr);
     uint16_t rssiScaled = scaleRange(constrain(receiver.rssi, receiver.mod_params->sensitivity, -50), receiver.mod_params->sensitivity, -50, 0, 1023);
     setRssi(rssiScaled, RSSI_SOURCE_RX_PROTOCOL);
@@ -635,7 +640,7 @@ static void handleTimeout(void)
 #ifdef USE_RX_LINK_QUALITY_INFO
             setLinkQualityDirect(receiver.uplinkLQ);
 #endif
-            resetLQ();
+            lqReset();
 
             // FAILSAFE!
             expressLrsPhaseLockReset();
@@ -656,7 +661,6 @@ static void handleTimeout(void)
 #if 0
             else {
                 receiver.missedPackets += 1;
-                receiver.uplinkLQ = getLQ(false);
             }
             receiver.lastValidPacketUs += receiver.mod_params->interval;
             receiver.nonceRX += 1;

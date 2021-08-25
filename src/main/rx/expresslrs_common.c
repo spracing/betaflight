@@ -518,8 +518,16 @@ typedef struct linkQuality_s {
 
 static linkQuality_t lq;
 
+void lqIncrease(void)
+{
+    if (lqPeriodIsSet()) {
+        return;
+    }
+    lq.array[lq.byte] |= lq.mask;
+    lq.value += 1;
+}
 
-uint8_t getLQ(const bool addLQ)
+void lqNewPeriod(void)
 {
     lq.mask <<= 1;
     if (lq.mask == 0) {
@@ -537,16 +545,19 @@ uint8_t getLQ(const bool addLQ)
         lq.array[lq.byte] &= ~lq.mask;
         lq.value -= 1;
     }
+}
 
-    if (addLQ) {
-        lq.array[lq.byte] |= lq.mask;
-        lq.value += 1;
-    }
-
+uint8_t lqGet(void)
+{
     return lq.value;
 }
 
-void resetLQ(void)
+bool lqPeriodIsSet(void)
+{
+    return lq.array[lq.byte] & lq.mask;
+}
+
+void lqReset(void)
 {
     memset(&lq, 0, sizeof(lq));
 }
