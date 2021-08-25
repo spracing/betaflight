@@ -31,6 +31,7 @@
 
 #ifdef USE_RX_EXPRESSLRS
 
+#include "build/debug.h"
 #include "build/debug_pin.h"
 
 #include "drivers/timer.h"
@@ -73,6 +74,12 @@ static elrsTimerState_t timerState = {
     0,
     0
 };
+
+void expressLrsTimerDebug(void)
+{
+    DEBUG_SET(DEBUG_RX_EXPRESSLRS_PHASELOCK, 2, timerState.frequencyOffsetTicks);
+    DEBUG_SET(DEBUG_RX_EXPRESSLRS_PHASELOCK, 3, timerState.phaseShiftUs);
+}
 
 static void expressLrsRecalculatePhaseShiftLimits(void)
 {
