@@ -242,6 +242,9 @@ void expressLrsOnTimerTickISR(void)
     if (shouldStartNewLQPeriod) {
         lqNewPeriod();
     }
+    if (receiver.sentTelemetry) {
+        receiver.sentTelemetry = false;
+    }
 }
 
 void expressLrsOnTimerTockISR(void)
@@ -629,8 +632,6 @@ static void handleTimeout(void)
 {
     if (!receiver.failsafe) {
 
-        const uint32_t nowUs = micros();
-
         if (receiver.missedPackets > 2000) {
             receiver.sentTelemetry = false;
             receiver.rssi = 0;
@@ -658,20 +659,6 @@ static void handleTimeout(void)
             reconfigureRF();
 
             receiver.startReceiving();
-        } else if ((nowUs - receiver.lastValidPacketUs) > ELRS_TIMEOUT(receiver.mod_params->interval)) {
-            if (receiver.sentTelemetry) {
-                receiver.sentTelemetry = false;
-            }
-#if 0
-            else {
-                receiver.missedPackets += 1;
-            }
-            receiver.lastValidPacketUs += receiver.mod_params->interval;
-            receiver.nonceRX += 1;
-            if (receiver.synced) {
-                setNextChannel();
-            }
-#endif
         }
     } else if (receiver.bound && !receiver.firstConnection && ((millis() - receiver.rfModeLastCycled) > receiver.cycleInterval)) {
         receiver.rfModeLastCycled += receiver.cycleInterval;
