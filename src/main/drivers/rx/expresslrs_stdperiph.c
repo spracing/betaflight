@@ -24,6 +24,7 @@
  *
  * Authors:
  * Dominic Clifton/Hydra - Timer-based timeout implementation.
+ * AlessandroAU - stdperiph Timer-based timeout implementation.
  */
 
 #include <string.h>
