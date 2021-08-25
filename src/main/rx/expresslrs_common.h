@@ -129,8 +129,14 @@ uint32_t FHSSgetNextFreq(const int32_t freqCorrection);
 void FHSSrandomiseFHSSsequence(const uint8_t UID[], const elrs_freq_domain_e dom);
 uint8_t tlmRatioEnumToValue(const elrs_tlm_ratio_e enumval);
 
-uint8_t getLQ(const bool addLQ);
-void resetLQ(void);
+//
+// Link Quality
+//
+void lqReset(void);
+void lqNewPeriod(void);
+bool lqPeriodIsSet(void);
+void lqIncrease(void);
+uint8_t lqGet(void);
 
 uint16_t convertSwitch1b(const uint16_t val);
 uint16_t convertSwitch3b(const uint16_t val);
