@@ -77,20 +77,6 @@ typedef struct elrsReceiver_s {
     elrsRxHandleFreqCorrectionFnPtr handleFreqCorrection;
     elrsRxIsBusyFnPtr isBusy;
 
-    TIM_TypeDef *timer;
     timerOvrHandlerRec_t timerUpdateCb;
 } elrsReceiver_t;
 
-void expressLrsInitialiseTimer(elrsReceiver_t *receiver);
-void expressLrsUpdateTimerInterval(TIM_TypeDef *timer, uint16_t intervalUs);
-void expressLrsUpdatePhaseShift(int32_t newPhaseShift);
-void expressLrsOnTimerTickISR(void);
-void expressLrsOnTimerTockISR(void);
-
-void expressLrsTimerIncreaseFrequencyOffset(void);
-void expressLrsTimerDecreaseFrequencyOffset(void);
-
-void expressLrsTimerStop(TIM_TypeDef *timer);
-void expressLrsTimerResume(TIM_TypeDef *timer);
-
-void expressLrsTimerDebug(void);

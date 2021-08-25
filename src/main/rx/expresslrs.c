@@ -42,8 +42,10 @@
 #include "drivers/rx/rx_spi.h"
 #include "drivers/system.h"
 #include "drivers/time.h"
+#include "drivers/timer.h"
 #include "drivers/rx/rx_sx127x.h"
 #include "drivers/rx/rx_sx1280.h"
+#include "drivers/rx/expresslrs_driver.h"
 
 #include "config/config.h"
 #include "config/feature.h"
@@ -275,7 +277,7 @@ static void setRFLinkRate(const uint8_t index)
 
     reconfigureRF();
 
-    expressLrsUpdateTimerInterval(receiver.timer, receiver.mod_params->interval);
+    expressLrsUpdateTimerInterval(receiver.mod_params->interval);
 
 #ifdef USE_RX_RSSI_DBM
     pt1FilterInit(&rssiFilter, pt1FilterGain(ELRS_RSSI_LPF_CUTOFF_FREQ_HZ, ELRS_INTERVAL_S(receiver.mod_params->interval)));
@@ -497,7 +499,7 @@ static rx_spi_received_e processRFPacket(uint8_t *payload, const uint32_t timeSt
     }
 
     if (shouldStartTimer) {
-        expressLrsTimerResume(receiver.timer);
+        expressLrsTimerResume();
     }
 
     return RX_SPI_RECEIVED_DATA;
@@ -615,8 +617,8 @@ bool expressLrsSpiInit(const struct rxSpiConfig_s *rxConfig, struct rxRuntimeSta
 
     expressLrsPhaseLockReset();
 
-    expressLrsInitialiseTimer(&receiver);
-    expressLrsTimerStop(receiver.timer);
+    expressLrsInitialiseTimer(RX_EXPRESSLRS_TIMER_INSTANCE, &receiver.timerUpdateCb);
+    expressLrsTimerStop();
 
     generateCrc14Table();
     initializeReceiver();

@@ -29,22 +29,21 @@
 #include <string.h>
 #include "platform.h"
 
-#ifdef USE_RX_EXPRESSLRS
+#if defined(USE_RX_EXPRESSLRS) && defined(USE_HAL_DRIVER)
 
 #include "build/debug.h"
 #include "build/debug_pin.h"
 
 #include "drivers/timer.h"
-
 #include "drivers/nvic.h"
-
-#include "rx/expresslrs_common.h"
-#include "rx/expresslrs_impl.h"
+#include "drivers/rx/expresslrs_driver.h"
 
 #include "common/maths.h"
 
 #define TIMER_INTERVAL_US_DEFAULT 20000
 #define TICK_TOCK_COUNT 2
+
+TIM_TypeDef *timer;
 
 typedef enum {
     TICK,
@@ -96,7 +95,7 @@ static uint16_t expressLrsCalculateMaximumExpectedPeriod(uint16_t intervalUs)
     return maximumExpectedPeriod;
 }
 
-void expressLrsUpdateTimerInterval(TIM_TypeDef *timer, uint16_t intervalUs)
+void expressLrsUpdateTimerInterval(uint16_t intervalUs)
 {
     timerState.intervalUs = intervalUs;
     expressLrsRecalculatePhaseShiftLimits();
@@ -126,13 +125,11 @@ static void expressLrsOnTimerUpdate(timerOvrHandlerRec_t *cbRec, captureCompare_
     UNUSED(cbRec);
     UNUSED(capture);
 
-    elrsReceiver_t *self = container_of(cbRec, elrsReceiver_t, timerUpdateCb);
-
     if (timerState.tickTock == TICK) {
         DEBUG_HI(0);
 
         uint32_t adjustedPeriod = (timerState.intervalUs / TICK_TOCK_COUNT) + timerState.frequencyOffsetTicks;
-        LL_TIM_SetAutoReload(self->timer, adjustedPeriod - 1);
+        LL_TIM_SetAutoReload(timer, adjustedPeriod - 1);
 
         expressLrsOnTimerTickISR();
 
@@ -141,7 +138,7 @@ static void expressLrsOnTimerUpdate(timerOvrHandlerRec_t *cbRec, captureCompare_
         DEBUG_LO(0);
 
         uint32_t adjustedPeriod = (timerState.intervalUs / TICK_TOCK_COUNT) + timerState.phaseShiftUs + timerState.frequencyOffsetTicks;
-        LL_TIM_SetAutoReload(self->timer, adjustedPeriod - 1);
+        LL_TIM_SetAutoReload(timer, adjustedPeriod - 1);
 
         timerState.phaseShiftUs = 0;
         
@@ -149,12 +146,9 @@ static void expressLrsOnTimerUpdate(timerOvrHandlerRec_t *cbRec, captureCompare_
 
         timerState.tickTock = TICK;
     }
-
-
-    UNUSED(self);
 }
 
-void expressLrsTimerStop(TIM_TypeDef *timer)
+void expressLrsTimerStop(void)
 {
     LL_TIM_DisableIT_UPDATE(timer);
     LL_TIM_DisableCounter(timer);
@@ -162,7 +156,7 @@ void expressLrsTimerStop(TIM_TypeDef *timer)
     LL_TIM_SetCounter(timer, 0);
 }
 
-void expressLrsTimerResume(TIM_TypeDef *timer)
+void expressLrsTimerResume(void)
 {
     timerState.tickTock = TOCK;
 
@@ -176,26 +170,25 @@ void expressLrsTimerResume(TIM_TypeDef *timer)
     LL_TIM_GenerateEvent_UPDATE(timer);
 }
 
-void expressLrsInitialiseTimer(elrsReceiver_t *receiver)
+void expressLrsInitialiseTimer(TIM_TypeDef *t, timerOvrHandlerRec_t *timerUpdateCb)
 {
-    receiver->timer = RX_EXPRESSLRS_TIMER_INSTANCE;
+    timer = t;
 
+    configTimeBase(timer, expressLrsCalculateMaximumExpectedPeriod(timerState.intervalUs), MHZ_TO_HZ(1));
 
-    configTimeBase(receiver->timer, expressLrsCalculateMaximumExpectedPeriod(timerState.intervalUs), MHZ_TO_HZ(1));
+    expressLrsUpdateTimerInterval(timerState.intervalUs);
 
-    expressLrsUpdateTimerInterval(receiver->timer, timerState.intervalUs);
+    timerChOvrHandlerInit(timerUpdateCb, expressLrsOnTimerUpdate);
 
-    timerChOvrHandlerInit(&receiver->timerUpdateCb, expressLrsOnTimerUpdate);
+    timerConfigUpdateCallback(timer, timerUpdateCb);
 
-    timerConfigUpdateCallback(receiver->timer, &receiver->timerUpdateCb);
-
-    uint8_t irq = timerInputIrq(receiver->timer);
+    uint8_t irq = timerInputIrq(timer);
 
     // Use the NVIC TIMER priority for now
     HAL_NVIC_SetPriority(irq, NVIC_PRIORITY_BASE(NVIC_PRIO_TIMER), NVIC_PRIORITY_SUB(NVIC_PRIO_TIMER));
     HAL_NVIC_EnableIRQ(irq);
 
-    LL_TIM_EnableCounter(receiver->timer);
+    LL_TIM_EnableCounter(timer);
 }
 
 #endif
