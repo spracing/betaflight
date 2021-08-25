@@ -49,7 +49,7 @@ typedef struct elrsReceiver_s {
     uint8_t uplinkLQ;
 
     uint32_t lastValidPacketUs;
-    uint8_t missedPackets;
+    uint16_t missedPackets;
 
 
     uint16_t cycleInterval;
