@@ -92,3 +92,5 @@ void expressLrsTimerDecreaseFrequencyOffset(void);
 
 void expressLrsTimerStop(TIM_TypeDef *timer);
 void expressLrsTimerResume(TIM_TypeDef *timer);
+
+void expressLrsTimerDebug(void);

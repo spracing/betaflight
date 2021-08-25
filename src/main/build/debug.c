@@ -100,5 +100,6 @@ const char * const debugModeNames[DEBUG_COUNT] = {
     "VTX_TRAMP",
     "GHST",
     "RX_EXPRESSLRS_SPI",
+    "RX_EXPRESSLRS_PHASELOCK",
     "SPRACING_PIXEL_OSD",
 };

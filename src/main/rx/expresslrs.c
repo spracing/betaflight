@@ -178,6 +178,10 @@ static void expressLrsUpdatePhaseLock(void)
             expressLrsUpdatePhaseShift(pl.offsetUs >> 2);
         }
 
+        expressLrsTimerDebug();
+
+        DEBUG_SET(DEBUG_RX_EXPRESSLRS_PHASELOCK, 0, pl.rawOffsetUs);
+        DEBUG_SET(DEBUG_RX_EXPRESSLRS_PHASELOCK, 1, pl.offsetUs);
     }
 
     expressLrsEPRReset();
