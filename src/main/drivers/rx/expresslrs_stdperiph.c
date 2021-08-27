@@ -195,14 +195,14 @@ void expressLrsInitialiseTimer(TIM_TypeDef *t, timerOvrHandlerRec_t *timerUpdate
     timerChOvrHandlerInit(timerUpdateCb, expressLrsOnTimerUpdate);
 
     timerConfigUpdateCallback(timer, timerUpdateCb);
+}
 
+void expressLrsTimerEnableIRQs(void)
+{
     uint8_t irq = timerInputIrq(timer);
 
     NVIC_SetPriority(irq, NVIC_PRIORITY_BASE(NVIC_PRIO_TIMER));
     NVIC_EnableIRQ(irq);
-
-    timerState.running = true;
-    TIM_Cmd(timer, ENABLE);
 }
 
 #endif
