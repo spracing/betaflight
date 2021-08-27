@@ -250,6 +250,10 @@ void expressLrsOnTimerTickISR(void)
 
     receiver.uplinkLQ = lqGet();
 
+#ifdef USE_RX_LINK_QUALITY_INFO
+    setLinkQualityDirect(receiver.uplinkLQ);
+#endif
+
     bool shouldStartNewLQPeriod = receiver.lqMode == LQ_RECEIVING;
     if (shouldStartNewLQPeriod) {
         lqNewPeriod();
