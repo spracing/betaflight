@@ -396,6 +396,7 @@ static void initializeReceiver(void)
     receiver.snr = 0;
     receiver.uplinkLQ = 0;
     receiver.rateIndex = rxExpressLrsSpiConfig()->rateIndex;
+    receiver.packetToTockDelayUs = PACKET_TO_TOCK_ISR_DELAY_US;
     setRFLinkRate(receiver.rateIndex);
 
     receiver.rfModeLastCycled = millis();
@@ -453,7 +454,7 @@ static rx_spi_received_e processRFPacket(uint8_t *payload, const uint32_t timeSt
     elrs_tlm_ratio_e tlmRateIn;
     uint8_t switchEncMode;
 
-    expressLrsEPRRecordEvent(EPR_EXTERNAL, timeStampUs + PACKET_TO_TOCK_ISR_DELAY_US);
+    expressLrsEPRRecordEvent(EPR_EXTERNAL, timeStampUs + receiver.packetToTockDelayUs);
 
     receiver.lastValidPacketUs = timeStampUs;
     receiver.missedPackets = 0;
