@@ -477,20 +477,22 @@ static rx_spi_received_e processRFPacket(uint8_t *payload, const uint32_t timeSt
             tlmRateIn = (packet[3] & 0x38) >> 3;
             switchEncMode = (packet[3] & 0x06) >> 1;
 
-            if (switchEncMode != rxExpressLrsSpiConfig()->hybridSwitches) {
-                rxExpressLrsSpiConfigMutable()->hybridSwitches = switchEncMode;
-                receiver.configChanged = true;
-            }
-
-            if (receiver.mod_params->index == indexIN && packet[4] == receiver.UID[3] && packet[5] == receiver.UID[4] && packet[6] == receiver.UID[5]) {
-                if (receiver.mod_params->tlmInterval != tlmRateIn) { // change link parameters if required
-                    receiver.mod_params->tlmInterval = tlmRateIn;
+            if (packet[4] == receiver.UID[3] && packet[5] == receiver.UID[4] && packet[6] == receiver.UID[5]) {
+                if (switchEncMode != rxExpressLrsSpiConfig()->hybridSwitches) {
+                    rxExpressLrsSpiConfigMutable()->hybridSwitches = switchEncMode;
+                    receiver.configChanged = true;
                 }
 
-                if (receiver.nonceRX != packet[2] || FHSSgetCurrIndex() != packet[1]) {
-                    FHSSsetCurrIndex(packet[1]);
-                    receiver.nonceRX = packet[2];
-                    shouldStartTimer = true;
+                if (receiver.mod_params->index == indexIN ) {
+                    if (receiver.mod_params->tlmInterval != tlmRateIn) { // change link parameters if required
+                        receiver.mod_params->tlmInterval = tlmRateIn;
+                    }
+
+                    if (receiver.nonceRX != packet[2] || FHSSgetCurrIndex() != packet[1]) {
+                        FHSSsetCurrIndex(packet[1]);
+                        receiver.nonceRX = packet[2];
+                        shouldStartTimer = true;
+                    }
                 }
             }
             break;
