@@ -193,15 +193,15 @@ void expressLrsInitialiseTimer(TIM_TypeDef *t, timerOvrHandlerRec_t *timerUpdate
     timerChOvrHandlerInit(timerUpdateCb, expressLrsOnTimerUpdate);
 
     timerConfigUpdateCallback(timer, timerUpdateCb);
+}
 
+void expressLrsTimerEnableIRQs(void)
+{
     uint8_t irq = timerInputIrq(timer);
 
     // Use the NVIC TIMER priority for now
     HAL_NVIC_SetPriority(irq, NVIC_PRIORITY_BASE(NVIC_PRIO_TIMER), NVIC_PRIORITY_SUB(NVIC_PRIO_TIMER));
     HAL_NVIC_EnableIRQ(irq);
-
-    timerState.running = true;
-    LL_TIM_EnableCounter(timer);
 }
 
 #endif

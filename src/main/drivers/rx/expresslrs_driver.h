@@ -25,6 +25,7 @@
 #pragma once
 
 void expressLrsInitialiseTimer(TIM_TypeDef *timer, timerOvrHandlerRec_t *timerUpdateCb);
+void expressLrsTimerEnableIRQs(void);
 void expressLrsUpdateTimerInterval(uint16_t intervalUs);
 void expressLrsUpdatePhaseShift(int32_t newPhaseShift);
 void expressLrsOnTimerTickISR(void);
@@ -39,3 +40,4 @@ void expressLrsTimerResume(void);
 bool expressLrsTimerIsRunning(void);
 
 void expressLrsTimerDebug(void);
+
