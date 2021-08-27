@@ -36,4 +36,6 @@ void expressLrsTimerDecreaseFrequencyOffset(void);
 void expressLrsTimerStop(void);
 void expressLrsTimerResume(void);
 
+bool expressLrsTimerIsRunning(void);
+
 void expressLrsTimerDebug(void);

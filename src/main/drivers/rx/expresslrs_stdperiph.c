@@ -52,6 +52,7 @@ typedef enum {
 } tickTock_e;
 
 typedef struct elrsTimerState_s {
+    bool running;
     volatile tickTock_e tickTock;
     uint32_t intervalUs;
     int32_t frequencyOffsetTicks;
@@ -69,6 +70,7 @@ typedef struct elrsPhaseShiftLimits_s {
 elrsPhaseShiftLimits_t phaseShiftLimits;
 
 static elrsTimerState_t timerState = {
+    false,
     TOCK, // Start on TOCK (in ELRS isTick is initialised to false)
     TIMER_INTERVAL_US_DEFAULT,
     0,
@@ -149,11 +151,17 @@ static void expressLrsOnTimerUpdate(timerOvrHandlerRec_t *cbRec, captureCompare_
     }
 }
 
+bool expressLrsTimerIsRunning(void)
+{
+    return timerState.running;
+}
+
 void expressLrsTimerStop(void)
 {
     TIM_ITConfig(timer, TIM_IT_Update, DISABLE);
     
     TIM_Cmd(timer, DISABLE);
+    timerState.running = false;
 
     TIM_SetCounter(timer, 0);
 }
@@ -169,6 +177,8 @@ void expressLrsTimerResume(void)
 
     TIM_ClearFlag(timer, TIM_FLAG_Update);
     TIM_ITConfig(timer, TIM_IT_Update, ENABLE);
+
+    timerState.running = true;
     TIM_Cmd(timer, ENABLE);
 
     TIM_GenerateEvent(timer, TIM_EventSource_Update);
@@ -191,6 +201,7 @@ void expressLrsInitialiseTimer(TIM_TypeDef *t, timerOvrHandlerRec_t *timerUpdate
     NVIC_SetPriority(irq, NVIC_PRIORITY_BASE(NVIC_PRIO_TIMER));
     NVIC_EnableIRQ(irq);
 
+    timerState.running = true;
     TIM_Cmd(timer, ENABLE);
 }
 
