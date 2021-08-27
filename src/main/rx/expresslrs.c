@@ -71,7 +71,7 @@ static uint16_t crcInitializer = 0;
 static pt1Filter_t rssiFilter;
 #endif
 
-#define PACKET_TO_TOCK_ISR_DELAY_US 200
+#define PACKET_TO_TOCK_ISR_DELAY_US 25
 
 //
 // Event pair recorder
