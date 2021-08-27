@@ -491,7 +491,10 @@ static rx_spi_received_e processRFPacket(uint8_t *payload, const uint32_t timeSt
                     if (receiver.nonceRX != packet[2] || FHSSgetCurrIndex() != packet[1]) {
                         FHSSsetCurrIndex(packet[1]);
                         receiver.nonceRX = packet[2];
-                        shouldStartTimer = true;
+
+                        if (!expressLrsTimerIsRunning()) {
+                            shouldStartTimer = true;
+                        }
                     }
                 }
             }
