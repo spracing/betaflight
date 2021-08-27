@@ -669,6 +669,8 @@ bool expressLrsSpiInit(const struct rxSpiConfig_s *rxConfig, struct rxRuntimeSta
     generateCrc14Table();
     initializeReceiver();
 
+    // Timer IRQs must only be enabled after the receiver is configured otherwise race conditions occur.
+    expressLrsTimerEnableIRQs();
 
     startReceiving();
 
