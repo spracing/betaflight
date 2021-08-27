@@ -30,6 +30,18 @@ typedef enum {
     ELRS_TLM_PACKET=0x03,
 } elrs_packet_type_e;
 
+typedef enum {
+    DIO_UNKNOWN = 0,
+    DIO_RX_DONE,
+    DIO_TX_DONE
+} dioReason_e;
+
+typedef enum {
+    LQ_NONE,
+    LQ_TRANSMITTING,
+    LQ_RECEIVING
+} lqMode_e;
+
 typedef struct elrsReceiver_s {
 
     IO_t resetPin;
@@ -46,7 +58,11 @@ typedef struct elrsReceiver_s {
 
     int8_t rssi;
     int8_t snr;
+
     uint8_t uplinkLQ;
+    lqMode_e lqMode;
+
+    dioReason_e dioReason;
 
     uint32_t lastValidPacketUs;
     uint16_t missedPackets;
@@ -61,10 +77,10 @@ typedef struct elrsReceiver_s {
 
     bool bound;
     bool failsafe;
-    bool sentTelemetry;
     bool firstConnection;
     bool synced;
     volatile bool nextChannelRequired;
+
 
     elrsRxInitFnPtr init;
     elrsRxConfigFnPtr config;

@@ -189,7 +189,7 @@ static void expressLrsUpdatePhaseLock(void)
     expressLrsEPRReset();
 }
 
-static void handleTelemetry(void)
+static void transmitTelemetry(void)
 {
     uint8_t packet[8];
 
@@ -204,8 +204,19 @@ static void handleTelemetry(void)
     uint16_t crc = calcCrc14(packet, 7, crcInitializer);
     packet[0] |= (crc >> 6) & 0xFC;
     packet[7] = crc & 0xFF;
+
+    DEBUG_HI(1);
+    receiver.dioReason = DIO_TX_DONE;
+    receiver.lqMode = LQ_TRANSMITTING;
     receiver.transmitData(packet, ELRS_RX_TX_BUFF_SIZE);
-    receiver.sentTelemetry = true;
+}
+
+static void startReceiving(void)
+{
+    DEBUG_LO(1);
+    receiver.dioReason = DIO_RX_DONE;
+    receiver.lqMode = LQ_RECEIVING;
+    receiver.startReceiving();
 }
 
 static void setNextChannel(void)
@@ -223,10 +234,9 @@ static void setNextChannel(void)
     }
 
     if (receiver.mod_params->tlmInterval == TLM_RATIO_NO_TLM || (((receiver.nonceRX + 1) % (tlmRatioEnumToValue(receiver.mod_params->tlmInterval))) != 0)) {
-        receiver.startReceiving();
+        startReceiving();
     } else {
-        DEBUG_HI(1);
-        handleTelemetry();
+        transmitTelemetry();
     }
 
 }
@@ -237,11 +247,19 @@ void expressLrsOnTimerTickISR(void)
     receiver.nonceRX += 1;
     receiver.missedPackets += 1;
 
+
     receiver.uplinkLQ = lqGet();
 
-    bool shouldStartNewLQPeriod = !receiver.sentTelemetry;
+    bool shouldStartNewLQPeriod = receiver.lqMode == LQ_RECEIVING;
     if (shouldStartNewLQPeriod) {
         lqNewPeriod();
+    }
+
+    if (receiver.lqMode == LQ_TRANSMITTING) {
+        // If we just transmitted, the next LQ period should be receiving on the next tick.
+        // However, late processing of the DIO TX_DONE IRQ means that it is possible to miss packets and
+        // these missed packets must still be counted.
+        receiver.lqMode = LQ_RECEIVING;
     }
 }
 
@@ -252,11 +270,6 @@ void expressLrsOnTimerTockISR(void)
     expressLrsEPRRecordEvent(EPR_INTERNAL, currentTimeUs);
 
     receiver.nextChannelRequired = true;
-
-    if (receiver.sentTelemetry) {
-        DEBUG_LO(1);
-        receiver.sentTelemetry = false;
-    }
 }
 
 static void reconfigureRF(void)
@@ -367,7 +380,6 @@ static void initializeReceiver(void)
     receiver.missedPackets = 0;
     receiver.freqOffset = 0;
     receiver.failsafe = false;
-    receiver.sentTelemetry = false;
     receiver.firstConnection = false;
     receiver.configChanged = false;
     receiver.rssi = 0;
@@ -389,10 +401,9 @@ static void enterBindingMode(void)
 
     receiver.freqOffset = 0;
     receiver.failsafe = false;
-    receiver.sentTelemetry = false;
 
     setRFLinkRate(ELRS_RATE_DEFAULT);
-    receiver.startReceiving();
+    startReceiving();
 }
 
 static void unpackBindPacket(uint8_t *packet)
@@ -409,7 +420,7 @@ static void unpackBindPacket(uint8_t *packet)
     receiver.bound = true;
 
     initializeReceiver();
-    receiver.startReceiving();
+    startReceiving();
 }
 
 static rx_spi_received_e processRFPacket(uint8_t *payload, const uint32_t timeStampUs) {
@@ -629,7 +640,7 @@ bool expressLrsSpiInit(const struct rxSpiConfig_s *rxConfig, struct rxRuntimeSta
     initializeReceiver();
 
 
-    receiver.startReceiving();
+    startReceiving();
 
     return true;
 }
@@ -641,7 +652,6 @@ static void handleTimeout(void)
     if (!receiver.failsafe) {
 
         if (receiver.missedPackets > 2000) {
-            receiver.sentTelemetry = false;
             receiver.rssi = 0;
             receiver.snr = 0;
             receiver.uplinkLQ = 0;
@@ -666,7 +676,7 @@ static void handleTimeout(void)
 
             reconfigureRF();
 
-            receiver.startReceiving();
+            startReceiving();
         }
     } else if (receiver.bound && !receiver.firstConnection && ((millis() - receiver.rfModeLastCycled) > receiver.cycleInterval)) {
         receiver.rfModeLastCycled += receiver.cycleInterval;
@@ -675,7 +685,7 @@ static void handleTimeout(void)
 
         expressLrsPhaseLockReset();
 
-        receiver.startReceiving();
+        startReceiving();
     }
 }
 
@@ -709,8 +719,16 @@ rx_spi_received_e expressLrsDataReceived(uint8_t *payload)
     }
 
     if (receiver.rxISR(&isrTimeStampUs)) {
-        if (receiver.sentTelemetry) {
-            receiver.startReceiving();
+
+        // It's important to note that the DIO reason, and LQ mode are tracked separately as the task can run late.
+        // When a task runs late the reason for the DIO might not match the current LQ mode.  i.e. if telemetry is sent
+        // then the task is late the LQ mode should be LQ_RECEIVING but the reason for the DIO will be DIO_TX_DONE.
+
+        // Note: it is possible to read the IRQ state from the receiver to find out the cause of the EXTI (DIO) trigger
+        // (e.g. see SX1280_RADIO_GET_IRQSTATUS), but instead we maintain state to avoid having to read from the device via SPI.
+
+        if (receiver.dioReason == DIO_TX_DONE) {
+            startReceiving();
         } else {
             result = processRFPacket(payload, isrTimeStampUs);
         }
