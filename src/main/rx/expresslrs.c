@@ -97,11 +97,15 @@ static void expressLrsEPRRecordEvent(eprEvent_e event, uint32_t currentTimeUs)
     eprState.eventRecorded[event] = true;
 }
 
-static int32_t expressLrsEPRGetResult(void)
+static bool expressLrsEPRHaveBothEvents(void)
 {
     bool bothEventsRecorded = eprState.eventRecorded[EPR_SECOND] && eprState.eventRecorded[EPR_FIRST];
+    return bothEventsRecorded;
+}
 
-    if (!bothEventsRecorded) {
+static int32_t expressLrsEPRGetResult(void)
+{
+    if (!expressLrsEPRHaveBothEvents()) {
         return 0;
     }
 
@@ -150,40 +154,42 @@ static void expressLrsUpdatePhaseLock(void)
         return;
     }
 
-    pl.rawOffsetUs = expressLrsEPRGetResult();
+    if (expressLrsEPRHaveBothEvents()) {
+        pl.rawOffsetUs = expressLrsEPRGetResult();
 
-    pl.offsetUs = simpleLPFilterUpdate(&pl.offsetFilter, pl.rawOffsetUs);
-    pl.offsetDeltaUs = simpleLPFilterUpdate(&pl.offsetDxFilter, pl.rawOffsetUs - pl.previousRawOffsetUs);
+        pl.offsetUs = simpleLPFilterUpdate(&pl.offsetFilter, pl.rawOffsetUs);
+        pl.offsetDeltaUs = simpleLPFilterUpdate(&pl.offsetDxFilter, pl.rawOffsetUs - pl.previousRawOffsetUs);
 
-    pl.previousOffsetUs = pl.offsetUs;
-    pl.previousRawOffsetUs = pl.rawOffsetUs;
+        pl.previousOffsetUs = pl.offsetUs;
+        pl.previousRawOffsetUs = pl.rawOffsetUs;
 
-    if (lqPeriodIsSet()) { // RXtimerState == tim_locked && LQCalc.currentIsSet()
-        if (receiver.nonceRX % 8 == 0)
-        {
-            if (pl.offsetUs > 0)
+        if (lqPeriodIsSet()) { // RXtimerState == tim_locked && LQCalc.currentIsSet()
+            if (receiver.nonceRX % 8 == 0)
             {
-                expressLrsTimerIncreaseFrequencyOffset();
+                if (pl.offsetUs > 0)
+                {
+                    expressLrsTimerIncreaseFrequencyOffset();
+                }
+                else if (pl.offsetUs < 0)
+                {
+                    expressLrsTimerDecreaseFrequencyOffset();
+                }
             }
-            else if (pl.offsetUs < 0)
+
+            if (receiver.failsafe)
             {
-                expressLrsTimerDecreaseFrequencyOffset();
+                expressLrsUpdatePhaseShift(pl.rawOffsetUs >> 1);
             }
-        }
+            else
+            {
+                expressLrsUpdatePhaseShift(pl.offsetUs >> 2);
+            }
 
-        if (receiver.failsafe)
-        {
-            expressLrsUpdatePhaseShift(pl.rawOffsetUs >> 1);
-        }
-        else
-        {
-            expressLrsUpdatePhaseShift(pl.offsetUs >> 2);
-        }
+            expressLrsTimerDebug();
 
-        expressLrsTimerDebug();
-
-        DEBUG_SET(DEBUG_RX_EXPRESSLRS_PHASELOCK, 0, pl.rawOffsetUs);
-        DEBUG_SET(DEBUG_RX_EXPRESSLRS_PHASELOCK, 1, pl.offsetUs);
+            DEBUG_SET(DEBUG_RX_EXPRESSLRS_PHASELOCK, 0, pl.rawOffsetUs);
+            DEBUG_SET(DEBUG_RX_EXPRESSLRS_PHASELOCK, 1, pl.offsetUs);
+        }
     }
 
     expressLrsEPRReset();
