@@ -67,7 +67,7 @@ typedef struct elrsReceiver_s {
     uint32_t lastValidPacketUs;
     uint16_t missedPackets;
 
-    uint16_t packetToTockDelayUs;
+    uint16_t packetHandlingToTockDelayUs;
 
     uint16_t cycleInterval;
     uint32_t rfModeLastCycled;

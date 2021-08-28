@@ -71,7 +71,7 @@ static uint16_t crcInitializer = 0;
 static pt1Filter_t rssiFilter;
 #endif
 
-#define PACKET_TO_TOCK_ISR_DELAY_US 25
+#define PACKET_HANDLING_TO_TOCK_ISR_DELAY_US 250
 
 //
 // Event pair recorder
@@ -396,7 +396,7 @@ static void initializeReceiver(void)
     receiver.snr = 0;
     receiver.uplinkLQ = 0;
     receiver.rateIndex = rxExpressLrsSpiConfig()->rateIndex;
-    receiver.packetToTockDelayUs = PACKET_TO_TOCK_ISR_DELAY_US;
+    receiver.packetHandlingToTockDelayUs = PACKET_HANDLING_TO_TOCK_ISR_DELAY_US;
     setRFLinkRate(receiver.rateIndex);
 
     receiver.rfModeLastCycled = millis();
@@ -434,11 +434,15 @@ static void unpackBindPacket(uint8_t *packet)
     startReceiving();
 }
 
-static rx_spi_received_e processRFPacket(uint8_t *payload, const uint32_t timeStampUs) {
+static rx_spi_received_e processRFPacket(uint8_t *payload, const uint32_t isrTimeStampUs)
+{
+    UNUSED(isrTimeStampUs);
 
     uint8_t packet[ELRS_RX_TX_BUFF_SIZE];
 
     receiver.receiveData(packet, ELRS_RX_TX_BUFF_SIZE);
+
+    uint32_t timeStampUs = micros();
 
     elrs_packet_type_e type = packet[0] & 0x03;
     uint16_t inCRC = (((uint16_t)(packet[0] & 0xFC)) << 6 ) | packet[7];
@@ -454,7 +458,7 @@ static rx_spi_received_e processRFPacket(uint8_t *payload, const uint32_t timeSt
     elrs_tlm_ratio_e tlmRateIn;
     uint8_t switchEncMode;
 
-    expressLrsEPRRecordEvent(EPR_EXTERNAL, timeStampUs + receiver.packetToTockDelayUs);
+    expressLrsEPRRecordEvent(EPR_EXTERNAL, timeStampUs + receiver.packetHandlingToTockDelayUs);
 
     receiver.lastValidPacketUs = timeStampUs;
     receiver.missedPackets = 0;
