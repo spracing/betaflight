@@ -225,12 +225,20 @@ static void startReceiving(void)
     receiver.startReceiving();
 }
 
-static void setNextChannel(void)
+static void setNextChannelOrSendTelemetry(void)
 {
     if ((receiver.mod_params->fhssHopInterval == 0) || !receiver.bound) {
         return;
     }
 
+    static uint8_t lastNonceRX = 0;
+
+    if (receiver.nonceRX == lastNonceRX) {
+        // already done, either because of packet reception or because of tock.
+        return;
+    }
+
+    lastNonceRX = receiver.nonceRX;
 
     if (((receiver.nonceRX + 1) % receiver.mod_params->fhssHopInterval) != 0) {
         receiver.handleFreqCorrection(receiver.freqOffset, receiver.currentFreq); //corrects for RX freq offset
@@ -458,6 +466,7 @@ static rx_spi_received_e processRFPacket(uint8_t *payload, const uint32_t isrTim
     elrs_tlm_ratio_e tlmRateIn;
     uint8_t switchEncMode;
 
+
     expressLrsEPRRecordEvent(EPR_EXTERNAL, timeStampUs + receiver.packetHandlingToTockDelayUs);
 
     receiver.lastValidPacketUs = timeStampUs;
@@ -532,6 +541,8 @@ static rx_spi_received_e processRFPacket(uint8_t *payload, const uint32_t isrTim
     if (shouldStartTimer) {
         expressLrsTimerResume();
     }
+
+    receiver.nextChannelRequired = true;
 
     return RX_SPI_RECEIVED_DATA;
 }
@@ -754,7 +765,7 @@ rx_spi_received_e expressLrsDataReceived(uint8_t *payload)
     if (receiver.nextChannelRequired) {
         receiver.nextChannelRequired = false;
         if (receiver.synced) {
-            setNextChannel();
+            setNextChannelOrSendTelemetry();
         }
     }
 
