@@ -143,7 +143,6 @@ static osdDisplayPortDevice_e osdDisplayPortDeviceType;
 static bool osdIsReady;
 
 static bool suppressStatsDisplay = false;
-static uint8_t osdStatsRowCount = 0;
 
 static bool backgroundLayerSupported = false;
 
@@ -877,34 +876,54 @@ static bool osdDisplayStat(int statistic, uint8_t displayRow)
     return false;
 }
 
-static uint8_t osdShowStats(int statsRowCount)
+typedef struct osdStatsRenderingState_s {
+    uint8_t row;
+    uint8_t index;
+} osdStatsRenderingState_t;
+
+static osdStatsRenderingState_t osdStatsRenderingState;
+
+static void osdRenderStatsBegin(void)
 {
-    uint8_t top = 0;
-    bool displayLabel = false;
+    osdStatsRenderingState.row = 0;
+    osdStatsRenderingState.index = 0;
+}
 
-    // if statsRowCount is 0 then we're running an initial analysis of the active stats items
-    if (statsRowCount > 0) {
-        const int availableRows = osdDisplayPort->rows;
-        int displayRows = MIN(statsRowCount, availableRows);
-        if (statsRowCount < availableRows) {
-            displayLabel = true;
-            displayRows++;
-        }
-        top = (availableRows - displayRows) / 2;  // center the stats vertically
+// call repeatedly until it returns true which indicates that all stats have been rendered.
+static bool osdRenderStatsContinue(void)
+{
+    if (osdStatsRenderingState.row == 0) {
+        displayWrite(osdDisplayPort, 2 + 2, osdStatsRenderingState.row++, DISPLAYPORT_ATTR_NONE, "--- STATS ---");
+        return false;
     }
 
-    if (displayLabel) {
-        displayWrite(osdDisplayPort, 2, top++, DISPLAYPORT_ATTR_NONE, "  --- STATS ---");
-    }
 
-    for (int i = 0; i < OSD_STAT_COUNT; i++) {
-        if (osdStatGetState(osdStatsDisplayOrder[i])) {
-            if (osdDisplayStat(osdStatsDisplayOrder[i], top)) {
-                top++;
+    bool renderedStat = false;
+
+    while (osdStatsRenderingState.index < OSD_STAT_COUNT) {
+        int index = osdStatsRenderingState.index;
+
+        // prepare for the next call to the method
+        osdStatsRenderingState.index++;
+
+        // look for something to render
+        if (osdStatGetState(osdStatsDisplayOrder[index])) {
+            if (osdDisplayStat(osdStatsDisplayOrder[index], osdStatsRenderingState.row)) {
+                osdStatsRenderingState.row++;
+                renderedStat = true;
+                break;
             }
         }
     }
-    return top;
+
+    bool moreSpaceAvailable = osdStatsRenderingState.row < osdDisplayPort->rows;
+
+    if (renderedStat && moreSpaceAvailable) {
+        return false;
+    }
+
+
+    return true;
 }
 
 static timeDelta_t osdShowArmed(void)
@@ -1080,9 +1099,10 @@ STATIC_UNIT_TESTED bool osdRefresh(timeUs_t currentTimeUs)
 
         }
         break;
+
     case OSD_RENDERING_ELEMENTS: {
-            bool allElementsDrawn = osdDrawActiveElements(osdDisplayPort);
-            if (allElementsDrawn) {
+            bool allElementsRendered = osdDrawActiveElements(osdDisplayPort);
+            if (allElementsRendered) {
                 displayHeartbeat(osdDisplayPort);
                 nextState = OSD_END;
             } else {
@@ -1090,50 +1110,47 @@ STATIC_UNIT_TESTED bool osdRefresh(timeUs_t currentTimeUs)
             }
         }
         break;
+
     case OSD_PREPARE_SCREEN_FOR_INITIAL_STATS: {
 
             displayBeginTransaction(osdDisplayPort, DISPLAY_TRANSACTION_OPT_RESET_DRAWING);
 
             displayClearScreen(osdDisplayPort, DISPLAY_CLEAR_NONE);
+
             if (!osdStatsVisible) {
                 nextState = OSD_END;
+            } else {
+                osdRenderStatsBegin();
             }
 
-            nextState = OSD_RENDER_INITIAL_STATS;
-        }
-        break;
-    case OSD_RENDER_INITIAL_STATS: {
-
-            // Go through the logic one time to determine how many stats rows are actually displayed.
-            osdStatsRowCount = osdShowStats(0);
-
-            osdShowStats(osdStatsRowCount);
-
-            nextState = OSD_PREPARE_SCREEN_FOR_STATS;
+            nextState = OSD_RENDER_STATS;
         }
         break;
 
     case OSD_PREPARE_SCREEN_FOR_STATS_REFRESH: {
             displayBeginTransaction(osdDisplayPort, DISPLAY_TRANSACTION_OPT_RESET_DRAWING);
 
-            nextState = OSD_PREPARE_SCREEN_FOR_STATS;
-        }
-        break;
-
-    case OSD_PREPARE_SCREEN_FOR_STATS: {
-
             displayClearScreen(osdDisplayPort, DISPLAY_CLEAR_NONE);
+            osdRenderStatsBegin();
 
             nextState = OSD_RENDER_STATS;
         }
         break;
+
     case OSD_RENDER_STATS: {
             if (osdRefreshNow) {
                 osdStatsRefreshTimeUs = currentTimeUs + REFRESH_1S;
 
-                osdShowStats(osdStatsRowCount);
+                bool allStatsRendered = osdRenderStatsContinue();
+                if (allStatsRendered) {
+                    displayHeartbeat(osdDisplayPort);
+                    nextState = OSD_END;
+                } else {
+                    osdRefreshRequired = true;
+                }
+            } else {
+                nextState = OSD_END;
             }
-            nextState = OSD_END;
         }
         break;
 

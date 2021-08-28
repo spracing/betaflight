@@ -214,7 +214,7 @@ void doTestDisarm()
            enabledStats >>= 1;
         }
 
-        displayPortTestBufferSubstring(2, 7 - count / 2, "  --- STATS ---");
+        displayPortTestBufferSubstring(2 + 2, 7 - count / 2, "--- STATS ---");
     }
 }
 

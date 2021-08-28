@@ -187,7 +187,7 @@ void doTestDisarm()
     // then
     // post flight statistics displayed
     if (isSomeStatEnabled()) {
-        displayPortTestBufferSubstring(2, 2, "  --- STATS ---");
+        displayPortTestBufferSubstring(2 + 2, 2, "--- STATS ---");
     }
 }
 
