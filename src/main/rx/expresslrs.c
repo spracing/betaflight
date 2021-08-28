@@ -176,7 +176,7 @@ static void expressLrsUpdatePhaseLock(void)
                 }
             }
 
-            if (receiver.failsafe)
+            if (receiver.failsafe) // really `!connected`, but no connection state management yet.
             {
                 expressLrsUpdatePhaseShift(pl.rawOffsetUs >> 1);
             }
