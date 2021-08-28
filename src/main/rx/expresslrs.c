@@ -680,6 +680,7 @@ static void handleTimeout(void)
     if (!receiver.failsafe) {
 
         if (receiver.missedPackets > 2000) {
+            // FAILSAFE!
             receiver.rssi = 0;
             receiver.snr = 0;
             receiver.uplinkLQ = 0;
@@ -693,8 +694,8 @@ static void handleTimeout(void)
 #endif
             lqReset();
 
-            // FAILSAFE!
             expressLrsPhaseLockReset();
+            expressLrsTimerStop();
 
             receiver.synced = false;
             receiver.failsafe = true;
