@@ -24,6 +24,8 @@
 #define USBD_PRODUCT_STRING "SPRacingH7RF"
 
 #define USE_TARGET_CONFIG
+#define TARGET_USART_CONFIG
+
 #define USE_DEBUG_PIN
 #define DEBUG_PIN_COUNT 2
 

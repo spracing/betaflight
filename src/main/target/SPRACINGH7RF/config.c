@@ -23,6 +23,9 @@
 
 #include "platform.h"
 
+#include "drivers/serial.h"
+#include "drivers/serial_uart.h"
+
 #ifdef USE_TARGET_CONFIG
 
 #include "config_helper.h"
@@ -37,5 +40,13 @@ static targetSerialPortFunction_t targetSerialPortFunction[] = {
 void targetConfiguration(void)
 {
     targetSerialPortFunctionConfig(targetSerialPortFunction, ARRAYLEN(targetSerialPortFunction));
+}
+
+void usartTargetConfigure(uartPort_t *uartPort)
+{
+    if (uartPort->USARTx == UART5) {
+        uartPort->Handle.AdvancedInit.AdvFeatureInit |= UART_ADVFEATURE_SWAP_INIT;
+        uartPort->Handle.AdvancedInit.Swap = UART_ADVFEATURE_SWAP_ENABLE;
+    }
 }
 #endif
