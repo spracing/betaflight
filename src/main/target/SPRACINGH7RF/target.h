@@ -102,8 +102,9 @@
 #define UART4_TX_PIN            PD1 // J8:11
 
 #define USE_UART5
-#define UART5_RX_PIN            NONE
-#define UART5_TX_PIN            PB13 // ESC TLM IN
+// Note: PB13 by default is a UART 5 TX pin, this configuration requires use of PINSWAP in the UART initialisation code.
+#define UART5_RX_PIN            PB13 // ESC TLM IN
+#define UART5_TX_PIN            NONE
 
 //#define USE_UART6
 #define UART6_RX_PIN            NONE
