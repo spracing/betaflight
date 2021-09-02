@@ -567,6 +567,7 @@ bool lqPeriodIsSet(void)
 void lqReset(void)
 {
     memset(&lq, 0, sizeof(lq));
+    lq.mask = (1 << 0);
 }
 
 inline uint16_t convertSwitch1b(const uint16_t val)

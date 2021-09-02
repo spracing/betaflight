@@ -30,7 +30,6 @@
 /*
  * Known issues:
  * 1 - @AlessandroAU - Link cycling is broken, it needs missedPackets to increment which doesn't currently happen as the timer is only started once there's a connection.
- * 2 - @Jye - LQ is off sometimes.  Potentially due to lack of initialisation of the lq.Mask to (1 << 0).
  */
 
 
