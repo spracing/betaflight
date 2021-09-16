@@ -64,16 +64,17 @@ typedef struct elrsReceiver_s {
 
     dioReason_e dioReason;
 
-    uint32_t lastValidPacketUs;
+    uint32_t validPacketReceivedAtUs;
+    uint32_t failsafeIntervalUs;
     uint16_t missedPackets;
 
     uint16_t packetHandlingToTockDelayUs;
 
-    uint16_t cycleInterval;
-    uint32_t rfModeLastCycled;
+    uint16_t cycleIntervalMs;
+    uint32_t rfModeCycledAtMs;
     uint8_t rateIndex;
 
-    uint32_t lastConfigCheckTime;
+    uint32_t configCheckedAtMs;
     bool configChanged;
 
     bool bound;

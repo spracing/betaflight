@@ -27,12 +27,6 @@
  * Dominic Clifton/Hydra - Timer-based timeout implementation.
  */
 
-/*
- * Known issues:
- * 1 - @AlessandroAU - Link cycling is broken, it needs missedPackets to increment which doesn't currently happen as the timer is only started once there's a connection.
- */
-
-
 #include <string.h>
 #include "platform.h"
 
@@ -310,7 +304,8 @@ static void setRFLinkRate(const uint8_t index)
 #endif
     receiver.currentFreq = getInitialFreq(receiver.freqOffset);
     // Wait for (11/10) 110% of time it takes to cycle through all freqs in FHSS table (in ms)
-    receiver.cycleInterval = ((uint32_t)11U * getFHSSNumEntries() * receiver.mod_params->fhssHopInterval * receiver.mod_params->interval) / (10U * 1000U);
+    receiver.cycleIntervalMs = ((uint32_t)11U * getFHSSNumEntries() * receiver.mod_params->fhssHopInterval * receiver.mod_params->interval) / (10U * 1000U);
+    receiver.failsafeIntervalUs = receiver.cycleIntervalMs * 1000;
 
     reconfigureRF();
 
@@ -413,9 +408,9 @@ static void initializeReceiver(void)
     receiver.packetHandlingToTockDelayUs = PACKET_HANDLING_TO_TOCK_ISR_DELAY_US;
     setRFLinkRate(receiver.rateIndex);
 
-    receiver.rfModeLastCycled = millis();
-    receiver.lastConfigCheckTime = receiver.rfModeLastCycled;
-    receiver.lastValidPacketUs = micros();
+    receiver.rfModeCycledAtMs = millis();
+    receiver.configCheckedAtMs = receiver.rfModeCycledAtMs;
+    receiver.validPacketReceivedAtUs = micros();
 }
 
 static void enterBindingMode(void)
@@ -475,7 +470,7 @@ static rx_spi_received_e processRFPacket(uint8_t *payload, const uint32_t isrTim
 
     expressLrsEPRRecordEvent(EPR_EXTERNAL, timeStampUs + receiver.packetHandlingToTockDelayUs);
 
-    receiver.lastValidPacketUs = timeStampUs;
+    receiver.validPacketReceivedAtUs = timeStampUs;
     receiver.missedPackets = 0;
     receiver.failsafe = false;
     lqIncrease();
@@ -685,7 +680,7 @@ static void handleTimeout(void)
 {
     if (!receiver.failsafe) {
 
-        if (receiver.missedPackets > 2000) {
+        if ((micros() - receiver.validPacketReceivedAtUs) > receiver.failsafeIntervalUs) {
             // FAILSAFE!
             receiver.rssi = 0;
             receiver.snr = 0;
@@ -713,8 +708,8 @@ static void handleTimeout(void)
 
             startReceiving();
         }
-    } else if (receiver.bound && !receiver.firstConnection && ((millis() - receiver.rfModeLastCycled) > receiver.cycleInterval)) {
-        receiver.rfModeLastCycled += receiver.cycleInterval;
+    } else if (receiver.bound && !receiver.firstConnection && ((millis() - receiver.rfModeCycledAtMs) > receiver.cycleIntervalMs)) {
+        receiver.rfModeCycledAtMs += receiver.cycleIntervalMs;
         receiver.rateIndex = (receiver.rateIndex + 1) % ELRS_RATE_MAX;
         setRFLinkRate(receiver.rateIndex);
 
@@ -728,8 +723,8 @@ static void handleConfigUpdate(void)
 {
     const uint32_t time = millis();
 
-    if ((time - receiver.lastConfigCheckTime) > ELRS_CONFIG_CHECK_MS) {
-        receiver.lastConfigCheckTime = time;
+    if ((time - receiver.configCheckedAtMs) > ELRS_CONFIG_CHECK_MS) {
+        receiver.configCheckedAtMs = time;
         if (receiver.configChanged) {
             writeEEPROM();
             receiver.configChanged = false;
