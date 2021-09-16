@@ -65,7 +65,6 @@ typedef struct elrsReceiver_s {
     dioReason_e dioReason;
 
     uint32_t validPacketReceivedAtUs;
-    uint32_t failsafeIntervalUs;
     uint16_t missedPackets;
 
     uint16_t packetHandlingToTockDelayUs;

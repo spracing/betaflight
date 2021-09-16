@@ -41,21 +41,27 @@ STATIC_UNIT_TESTED uint8_t FHSSsequence[ELRS_NR_SEQUENCE_ENTRIES] = {0};
 static const uint32_t *FHSSfreqs;
 static uint8_t numEntries = 0; // The number of FHSS frequencies in the table
 
+#define MS_TO_US(ms) (ms * 1000)
+
+// Regarding failsafe timeout values:
+// @CapnBry - Higher rates shorter timeout. Usually it runs 1-1.5 seconds with complete sync 500Hz.
+//            250Hz is 2-5s. 150Hz 2.5s. 50Hz stays in sync all 5 seconds of my test.
+// The failsafe timeout values come from the ELRS project's ExpressLRS_AirRateConfig definitions.
 elrs_mod_settings_t air_rate_config[][ELRS_RATE_MAX] = {
 #ifdef USE_RX_SX127X
     {
-        {0, RATE_200HZ, SX127x_BW_500_00_KHZ, SX127x_SF_6, SX127x_CR_4_7, 5000, TLM_RATIO_1_64, 4, 8, -112},
-        {1, RATE_100HZ, SX127x_BW_500_00_KHZ, SX127x_SF_7, SX127x_CR_4_7, 10000, TLM_RATIO_1_64, 4, 8, -117},
-        {2, RATE_50HZ, SX127x_BW_500_00_KHZ, SX127x_SF_8, SX127x_CR_4_7, 20000, TLM_RATIO_NO_TLM, 4, 10, -120},
-        {3, RATE_25HZ, SX127x_BW_500_00_KHZ, SX127x_SF_9, SX127x_CR_4_7, 40000, TLM_RATIO_NO_TLM, 4, 10, -123}
+        {0, RATE_200HZ, SX127x_BW_500_00_KHZ, SX127x_SF_6, SX127x_CR_4_7, 5000, TLM_RATIO_1_64, 4, 8, -112, MS_TO_US(3000)},
+        {1, RATE_100HZ, SX127x_BW_500_00_KHZ, SX127x_SF_7, SX127x_CR_4_7, 10000, TLM_RATIO_1_64, 4, 8, -117, MS_TO_US(3500)},
+        {2, RATE_50HZ, SX127x_BW_500_00_KHZ, SX127x_SF_8, SX127x_CR_4_7, 20000, TLM_RATIO_NO_TLM, 4, 10, -120, MS_TO_US(4000)},
+        {3, RATE_25HZ, SX127x_BW_500_00_KHZ, SX127x_SF_9, SX127x_CR_4_7, 40000, TLM_RATIO_NO_TLM, 4, 10, -123, MS_TO_US(6000)}
     },
 #endif
 #ifdef USE_RX_SX1280
     {
-        {0, RATE_500HZ, SX1280_LORA_BW_0800, SX1280_LORA_SF5, SX1280_LORA_CR_LI_4_6, 2000, TLM_RATIO_1_128, 4, 12, -105},
-        {1, RATE_250HZ, SX1280_LORA_BW_0800, SX1280_LORA_SF6, SX1280_LORA_CR_LI_4_7, 4000, TLM_RATIO_1_64, 4, 14, -108},
-        {2, RATE_150HZ, SX1280_LORA_BW_0800, SX1280_LORA_SF7, SX1280_LORA_CR_LI_4_7, 6666, TLM_RATIO_1_32, 4, 12, -112},
-        {3, RATE_50HZ, SX1280_LORA_BW_0800, SX1280_LORA_SF9, SX1280_LORA_CR_LI_4_6, 20000, TLM_RATIO_NO_TLM, 4, 12, -117}
+        {0, RATE_500HZ, SX1280_LORA_BW_0800, SX1280_LORA_SF5, SX1280_LORA_CR_LI_4_6, 2000, TLM_RATIO_1_128, 4, 12, -105, MS_TO_US(2500)},
+        {1, RATE_250HZ, SX1280_LORA_BW_0800, SX1280_LORA_SF6, SX1280_LORA_CR_LI_4_7, 4000, TLM_RATIO_1_64, 4, 14, -108, MS_TO_US(3000)},
+        {2, RATE_150HZ, SX1280_LORA_BW_0800, SX1280_LORA_SF7, SX1280_LORA_CR_LI_4_7, 6666, TLM_RATIO_1_32, 4, 12, -112, MS_TO_US(3500)},
+        {3, RATE_50HZ, SX1280_LORA_BW_0800, SX1280_LORA_SF9, SX1280_LORA_CR_LI_4_6, 20000, TLM_RATIO_NO_TLM, 4, 12, -117, MS_TO_US(4000)}
     },
 #endif
 #if !defined(USE_RX_SX127X) && !defined(USE_RX_SX1280)
