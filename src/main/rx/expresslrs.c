@@ -305,7 +305,6 @@ static void setRFLinkRate(const uint8_t index)
     receiver.currentFreq = getInitialFreq(receiver.freqOffset);
     // Wait for (11/10) 110% of time it takes to cycle through all freqs in FHSS table (in ms)
     receiver.cycleIntervalMs = ((uint32_t)11U * getFHSSNumEntries() * receiver.mod_params->fhssHopInterval * receiver.mod_params->interval) / (10U * 1000U);
-    receiver.failsafeIntervalUs = receiver.cycleIntervalMs * 1000;
 
     reconfigureRF();
 
@@ -680,7 +679,7 @@ static void handleTimeout(void)
 {
     if (!receiver.failsafe) {
 
-        if ((micros() - receiver.validPacketReceivedAtUs) > receiver.failsafeIntervalUs) {
+        if ((micros() - receiver.validPacketReceivedAtUs) > (receiver.mod_params->failsafeIntervalUs)) {
             // FAILSAFE!
             receiver.rssi = 0;
             receiver.snr = 0;
