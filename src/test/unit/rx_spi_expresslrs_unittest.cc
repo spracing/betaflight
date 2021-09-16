@@ -192,7 +192,7 @@ TEST(RxSpiExpressLrsUnitTest, TestInitUnbound)
     }
     EXPECT_EQ(0, receiver.nonceRX);
     EXPECT_EQ(0, receiver.freqOffset);
-    EXPECT_EQ(0, receiver.lastValidPacketUs);
+    EXPECT_EQ(0, receiver.validPacketReceivedAtUs);
 
     const uint32_t initialFrequencies[6] = {
         FREQ_HZ_TO_REG_VAL_900(433420000), 
