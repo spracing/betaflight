@@ -103,6 +103,7 @@ typedef struct elrs_mod_settings_s {
     uint8_t fhssHopInterval;            // every X packets we hop to a new frequency. Max value of 16 since only 4 bits have been assigned in the sync package.
     uint8_t preambleLen;
     int8_t sensitivity;                 // expected RF sensitivity
+    uint32_t failsafeIntervalUs;
 } elrs_mod_settings_t;
 
 typedef bool (*elrsRxInitFnPtr)(IO_t resetPin, IO_t busyPin);
