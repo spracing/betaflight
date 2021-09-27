@@ -752,20 +752,20 @@ static void timUpdateHandler(TIM_TypeDef *tim, timerConfig_t *timerConfig)
 
 // handler for shared interrupts when both timers need to check status bits
 #define _TIM_IRQ_HANDLER2(name, i, j)                                   \
-    void name(void)                                     \
+    HOT_IRQ_HANDLER void name(void)                                     \
     {                                                                   \
         timCCxHandler(TIM ## i, &timerConfig[TIMER_INDEX(i)]);          \
         timCCxHandler(TIM ## j, &timerConfig[TIMER_INDEX(j)]);          \
     } struct dummy
 
 #define _TIM_IRQ_HANDLER(name, i)                                       \
-    void name(void)                                     \
+    HOT_IRQ_HANDLER void name(void)                                     \
     {                                                                   \
         timCCxHandler(TIM ## i, &timerConfig[TIMER_INDEX(i)]);          \
     } struct dummy
 
 #define _TIM_IRQ_HANDLER_UPDATE_ONLY(name, i)                           \
-    void name(void)                                     \
+    HOT_IRQ_HANDLER void name(void)                                     \
     {                                                                   \
         timUpdateHandler(TIM ## i, &timerConfig[TIMER_INDEX(i)]);       \
     } struct dummy
