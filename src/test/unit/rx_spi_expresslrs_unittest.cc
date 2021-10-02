@@ -243,11 +243,11 @@ TEST(RxSpiExpressLrsUnitTest, TestInitUnbound)
     receiver = empty;
     rxExpressLrsSpiConfigMutable()->hybridSwitches = false;
     expressLrsSpiInit(&injectedConfig, &config, &extiConfig);
-    EXPECT_EQ(12, config.channelCount);
+    EXPECT_EQ(16, config.channelCount);
     receiver = empty;
     rxExpressLrsSpiConfigMutable()->hybridSwitches = true;
     expressLrsSpiInit(&injectedConfig, &config, &extiConfig);
-    EXPECT_EQ(12, config.channelCount);
+    EXPECT_EQ(16, config.channelCount);
 }
 
 TEST(RxSpiExpressLrsUnitTest, TestInitBound)

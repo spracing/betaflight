@@ -67,9 +67,13 @@ STATIC_UNIT_TESTED elrsReceiver_t receiver;
 static const uint8_t BindingUID[6] = {0,1,2,3,4,5}; // Special binding UID values
 static uint16_t crcInitializer = 0;
 
-#ifdef USE_RX_RSSI_DBM
-static pt1Filter_t rssiFilter;
-#endif
+static simpleLowpassFilter_t rssiFilter;
+
+static void rssiFilterReset(void)
+{
+    // In ExpressLRS code beta=5, but stats are sent every 100ms to the FC, to account for that smoothing must be higher here
+    simpleLPFilterInit(&rssiFilter, 8, 5);
+}
 
 #define PACKET_HANDLING_TO_TOCK_ISR_DELAY_US 250
 
@@ -201,7 +205,7 @@ static void transmitTelemetry(void)
 
     packet[0] = ELRS_TLM_PACKET;
     packet[1] = ELRS_TELEMETRY_TYPE_LINK;
-    packet[2] = receiver.rssi;
+    packet[2] = receiver.rssiFiltered;
     packet[3] = 0;
     packet[4] = receiver.snr;
     packet[5] = receiver.uplinkLQ;
@@ -310,9 +314,13 @@ static void setRFLinkRate(const uint8_t index)
 
     expressLrsUpdateTimerInterval(receiver.mod_params->interval);
 
-#ifdef USE_RX_RSSI_DBM
-    pt1FilterInit(&rssiFilter, pt1FilterGain(ELRS_RSSI_LPF_CUTOFF_FREQ_HZ, ELRS_INTERVAL_S(receiver.mod_params->interval)));
-#endif
+    rssiFilterReset();
+}
+
+static void setRssiChannelData(uint16_t *rcData)
+{
+    rcData[ELRS_LQ_CHANNEL] = scaleRange(receiver.uplinkLQ, 0, 100, 988, 2011);
+    rcData[ELRS_RSSI_CHANNEL] = scaleRange(constrain(receiver.rssiFiltered, receiver.mod_params->sensitivity, -50), receiver.mod_params->sensitivity, -50, 988, 2011); 
 }
 
 /**
@@ -335,6 +343,8 @@ static void unpackChannelData10bit(uint16_t *rcData, const uint8_t *payload)
     rcData[9] = convertSwitch1b(payload[5] & 0x04);
     rcData[10] = convertSwitch1b(payload[5] & 0x02);
     rcData[11] = convertSwitch1b(payload[5] & 0x01);
+
+    setRssiChannelData(rcData);
 }
 
 /**
@@ -387,6 +397,8 @@ static void unpackChannelDataHybridSwitches(uint16_t *rcData, const uint8_t *pay
         default:
             break;
     }
+
+    setRssiChannelData(rcData);
 }
 
 static void initializeReceiver(void)
@@ -401,6 +413,7 @@ static void initializeReceiver(void)
     receiver.firstConnection = false;
     receiver.configChanged = false;
     receiver.rssi = 0;
+    receiver.rssiFiltered = 0;
     receiver.snr = 0;
     receiver.uplinkLQ = 0;
     receiver.rateIndex = rxExpressLrsSpiConfig()->rateIndex;
@@ -474,10 +487,11 @@ static rx_spi_received_e processRFPacket(uint8_t *payload, const uint32_t isrTim
     receiver.failsafe = false;
     lqIncrease();
     receiver.getRFlinkInfo(&receiver.rssi, &receiver.snr);
-    uint16_t rssiScaled = scaleRange(constrain(receiver.rssi, receiver.mod_params->sensitivity, -50), receiver.mod_params->sensitivity, -50, 0, 1023);
+    receiver.rssiFiltered = simpleLPFilterUpdate(&rssiFilter, receiver.rssi);
+    uint16_t rssiScaled = scaleRange(constrain(receiver.rssiFiltered, receiver.mod_params->sensitivity, -50), receiver.mod_params->sensitivity, -50, 0, 1023);
     setRssi(rssiScaled, RSSI_SOURCE_RX_PROTOCOL);
 #ifdef USE_RX_RSSI_DBM
-    setRssiDbm(pt1FilterApply(&rssiFilter, receiver.rssi), RSSI_SOURCE_RX_PROTOCOL);
+    setRssiDbm(receiver.rssiFiltered, RSSI_SOURCE_RX_PROTOCOL);
 #endif
 #ifdef USE_RX_LINK_QUALITY_INFO
     setLinkQualityDirect(receiver.uplinkLQ);
@@ -592,7 +606,7 @@ bool expressLrsSpiInit(const struct rxSpiConfig_s *rxConfig, struct rxRuntimeSta
 
     rxSpiCommonIOInit(rxConfig);
 	
-    rxRuntimeState->channelCount = 12;
+    rxRuntimeState->channelCount = ELRS_MAX_CHANNELS;
 	
     extiConfig->ioConfig = IOCFG_IPD;
     extiConfig->trigger = BETAFLIGHT_EXTI_TRIGGER_RISING;
@@ -682,6 +696,7 @@ static void handleTimeout(void)
         if ((micros() - receiver.validPacketReceivedAtUs) > (receiver.mod_params->failsafeIntervalUs)) {
             // FAILSAFE!
             receiver.rssi = 0;
+            receiver.rssiFiltered = 0;
             receiver.snr = 0;
             receiver.uplinkLQ = 0;
             receiver.freqOffset = 0;
@@ -771,7 +786,7 @@ rx_spi_received_e expressLrsDataReceived(uint8_t *payload)
     }
 
     DEBUG_SET(DEBUG_RX_EXPRESSLRS_SPI, 0, receiver.missedPackets);
-    DEBUG_SET(DEBUG_RX_EXPRESSLRS_SPI, 1, receiver.rssi);
+    DEBUG_SET(DEBUG_RX_EXPRESSLRS_SPI, 1, receiver.rssiFiltered);
     DEBUG_SET(DEBUG_RX_EXPRESSLRS_SPI, 2, receiver.snr);
     DEBUG_SET(DEBUG_RX_EXPRESSLRS_SPI, 3, receiver.uplinkLQ);
 
