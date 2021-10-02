@@ -49,9 +49,10 @@
 #define ELRS_RATE_MAX 4
 #define ELRS_RATE_DEFAULT 0
 
-#define ELRS_RSSI_LPF_CUTOFF_FREQ_HZ 0.1f
-#define ELRS_INTERVAL_S(interval) ((float)interval / (1000 * 1000))
-#define ELRS_TIMEOUT(interval) (interval + (interval >> 5))
+#define ELRS_MAX_CHANNELS 16
+#define ELRS_RSSI_CHANNEL 15
+#define ELRS_LQ_CHANNEL 14
+
 #define ELRS_CONFIG_CHECK_MS 200
 
 typedef enum {
