@@ -41,6 +41,7 @@
 #define ELRS_RX_TX_BUFF_SIZE 8
 
 #define ELRS_TELEMETRY_TYPE_LINK 0x01
+#define ELRS_TELEMETRY_TYPE_DATA 0x02
 #define ELRS_MSP_BIND 0x09
 
 #define FREQ_HZ_TO_REG_VAL_900(freq) ((uint32_t)((double) freq / (double) SX127x_FREQ_STEP))
@@ -130,6 +131,7 @@ void FHSSsetCurrIndex(const uint8_t value);
 uint32_t FHSSgetNextFreq(const int32_t freqCorrection);
 void FHSSrandomiseFHSSsequence(const uint8_t UID[], const elrs_freq_domain_e dom);
 uint8_t tlmRatioEnumToValue(const elrs_tlm_ratio_e enumval);
+uint16_t rateEnumToHz(const elrs_rf_rate_e eRate);
 
 //
 // Link Quality

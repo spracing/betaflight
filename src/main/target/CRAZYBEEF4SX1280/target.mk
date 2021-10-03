@@ -9,6 +9,7 @@ TARGET_SRC = \
             drivers/rx/expresslrs_stdperiph.c \
             drivers/rx/rx_sx127x.c \
             drivers/rx/rx_sx1280.c \
+            rx/expresslrs_telemetry.c \
             rx/expresslrs_common.c \
             rx/expresslrs.c
 

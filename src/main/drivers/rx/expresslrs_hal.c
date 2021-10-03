@@ -128,7 +128,7 @@ static void expressLrsOnTimerUpdate(timerOvrHandlerRec_t *cbRec, captureCompare_
     UNUSED(capture);
 
     if (timerState.tickTock == TICK) {
-        DEBUG_HI(0);
+        dbgPinHi(0);
 
         uint32_t adjustedPeriod = (timerState.intervalUs / TICK_TOCK_COUNT) + timerState.frequencyOffsetTicks;
         LL_TIM_SetAutoReload(timer, adjustedPeriod - 1);
@@ -137,7 +137,7 @@ static void expressLrsOnTimerUpdate(timerOvrHandlerRec_t *cbRec, captureCompare_
 
         timerState.tickTock = TOCK;
     } else {
-        DEBUG_LO(0);
+        dbgPinLo(0);
 
         uint32_t adjustedPeriod = (timerState.intervalUs / TICK_TOCK_COUNT) + timerState.phaseShiftUs + timerState.frequencyOffsetTicks;
         LL_TIM_SetAutoReload(timer, adjustedPeriod - 1);

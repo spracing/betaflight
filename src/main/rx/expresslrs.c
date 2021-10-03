@@ -62,6 +62,7 @@
 #include "rx/expresslrs.h"
 #include "rx/expresslrs_common.h"
 #include "rx/expresslrs_impl.h"
+#include "rx/expresslrs_telemetry.h"
 
 STATIC_UNIT_TESTED elrsReceiver_t receiver;
 static const uint8_t BindingUID[6] = {0,1,2,3,4,5}; // Special binding UID values
@@ -199,23 +200,78 @@ static void expressLrsUpdatePhaseLock(void)
     expressLrsEPRReset();
 }
 
+static uint8_t nextTelemetryType = ELRS_TELEMETRY_TYPE_LINK;
+
+#ifdef USE_RX_EXPRESSLRS_TELEMETRY
+static uint8_t telemetryBurstCount;
+static uint8_t telemetryBurstMax;
+static bool telemBurstValid = false;
+
+// Maximum ms between LINK_STATISTICS packets for determining burst max
+#define TELEM_MIN_LINK_INTERVAL 512U
+
+#ifdef USE_MSP_OVER_TELEMETRY
+static uint8_t mspBuffer[ELRS_MSP_BUFFER_SIZE];
+#endif
+#endif
+
 static void transmitTelemetry(void)
 {
     uint8_t packet[8];
 
+#ifdef USE_RX_EXPRESSLRS_TELEMETRY
+    uint8_t *data;
+    uint8_t maxLength;
+    uint8_t packageIndex;
+#endif 
+
     packet[0] = ELRS_TLM_PACKET;
-    packet[1] = ELRS_TELEMETRY_TYPE_LINK;
-    packet[2] = receiver.rssiFiltered;
-    packet[3] = 0;
-    packet[4] = receiver.snr;
-    packet[5] = receiver.uplinkLQ;
-    packet[6] = 0;
+
+    switch (nextTelemetryType) {
+        case ELRS_TELEMETRY_TYPE_LINK:
+#ifdef USE_RX_EXPRESSLRS_TELEMETRY
+            nextTelemetryType = ELRS_TELEMETRY_TYPE_DATA;
+            telemetryBurstCount = 0;
+#else
+            nextTelemetryType = ELRS_TELEMETRY_TYPE_LINK;
+#endif
+            
+            packet[1] = ELRS_TELEMETRY_TYPE_LINK;
+            packet[2] = receiver.rssiFiltered;
+            packet[3] = 0; //diversity not supported
+            packet[4] = receiver.snr;
+            packet[5] = receiver.uplinkLQ;
+#if defined(USE_RX_EXPRESSLRS_TELEMETRY) && defined(USE_MSP_OVER_TELEMETRY)
+            packet[6] = getCurrentMspConfirm() ? 1 : 0;
+#else
+            packet[6] = 0;
+#endif
+            break;
+#ifdef USE_RX_EXPRESSLRS_TELEMETRY
+        case ELRS_TELEMETRY_TYPE_DATA:
+            if (telemetryBurstCount < telemetryBurstMax) {
+                telemetryBurstCount++;
+            } else {
+                nextTelemetryType = ELRS_TELEMETRY_TYPE_LINK;
+            }
+
+            getCurrentTelemetryPayload(&packageIndex, &maxLength, &data);
+            packet[1] = (packageIndex << ELRS_TELEMETRY_SHIFT) + ELRS_TELEMETRY_TYPE_DATA;
+            packet[2] = maxLength > 0 ? *data : 0;
+            packet[3] = maxLength >= 1 ? *(data + 1) : 0;
+            packet[4] = maxLength >= 2 ? *(data + 2) : 0;
+            packet[5] = maxLength >= 3 ? *(data + 3) : 0;
+            packet[6] = maxLength >= 4 ? *(data + 4) : 0;
+
+            break;
+#endif
+    }
 
     uint16_t crc = calcCrc14(packet, 7, crcInitializer);
     packet[0] |= (crc >> 6) & 0xFC;
     packet[7] = crc & 0xFF;
 
-    DEBUG_HI(1);
+    dbgPinHi(1);
     receiver.dioReason = DIO_TX_DONE;
     receiver.lqMode = LQ_TRANSMITTING;
     receiver.transmitData(packet, ELRS_RX_TX_BUFF_SIZE);
@@ -223,7 +279,7 @@ static void transmitTelemetry(void)
 
 static void startReceiving(void)
 {
-    DEBUG_LO(1);
+    dbgPinLo(1);
     receiver.dioReason = DIO_RX_DONE;
     receiver.lqMode = LQ_RECEIVING;
     receiver.startReceiving();
@@ -315,6 +371,10 @@ static void setRFLinkRate(const uint8_t index)
     expressLrsUpdateTimerInterval(receiver.mod_params->interval);
 
     rssiFilterReset();
+
+#ifdef USE_RX_EXPRESSLRS_TELEMETRY
+    telemBurstValid = false;
+#endif
 }
 
 static void setRssiChannelData(uint16_t *rcData)
@@ -478,7 +538,12 @@ static rx_spi_received_e processRFPacket(uint8_t *payload, const uint32_t isrTim
     uint8_t indexIN;
     elrs_tlm_ratio_e tlmRateIn;
     uint8_t switchEncMode;
-
+#ifdef USE_RX_EXPRESSLRS_TELEMETRY
+    bool telemetryConfirmValue;
+#ifdef USE_MSP_OVER_TELEMETRY
+    bool currentMspConfirmValue;
+#endif
+#endif
 
     expressLrsEPRRecordEvent(EPR_EXTERNAL, timeStampUs + receiver.packetHandlingToTockDelayUs);
 
@@ -511,11 +576,29 @@ static rx_spi_received_e processRFPacket(uint8_t *payload, const uint32_t isrTim
     switch(type) {
         case ELRS_RC_DATA_PACKET:
             memcpy(payload, &packet[1], 6);
+#ifdef USE_RX_EXPRESSLRS_TELEMETRY
+            telemetryConfirmValue = packet[6] & (1 << 7);
+            confirmCurrentTelemetryPayload(telemetryConfirmValue);
+#endif
             break;
         case ELRS_MSP_DATA_PACKET:
+#if defined(USE_RX_EXPRESSLRS_TELEMETRY) && defined(USE_MSP_OVER_TELEMETRY)
+            currentMspConfirmValue = getCurrentMspConfirm();
+            receiveMspData(packet[1], packet + 2);
+            if (currentMspConfirmValue != getCurrentMspConfirm()) {
+                nextTelemetryType = ELRS_TELEMETRY_TYPE_LINK;
+            }
+#endif
             if (!receiver.bound && packet[1] == 1 && packet[2] == ELRS_MSP_BIND) {
                 unpackBindPacket(packet);
+#if defined(USE_RX_EXPRESSLRS_TELEMETRY) && defined(USE_MSP_OVER_TELEMETRY)
+                mspReceiverResetState();
+            } else if (hasFinishedMspData()) {
+                processMspPacket(mspBuffer);
+                mspReceiverUnlock();
+#endif
             }
+
             break;
         case ELRS_TLM_PACKET:
             //not implemented
@@ -535,6 +618,9 @@ static rx_spi_received_e processRFPacket(uint8_t *payload, const uint32_t isrTim
                 if (receiver.mod_params->index == indexIN ) {
                     if (receiver.mod_params->tlmInterval != tlmRateIn) { // change link parameters if required
                         receiver.mod_params->tlmInterval = tlmRateIn;
+#ifdef USE_RX_EXPRESSLRS_TELEMETRY
+                        telemBurstValid = false;
+#endif
                     }
 
                     if (receiver.nonceRX != packet[2] || FHSSgetCurrIndex() != packet[1]) {
@@ -679,6 +765,13 @@ bool expressLrsSpiInit(const struct rxSpiConfig_s *rxConfig, struct rxRuntimeSta
     generateCrc14Table();
     initializeReceiver();
 
+#ifdef USE_RX_EXPRESSLRS_TELEMETRY
+    initTelemetry();
+#ifdef USE_MSP_OVER_TELEMETRY
+    setMspDataToReceive(ELRS_MSP_BUFFER_SIZE, mspBuffer, ELRS_MSP_BYTES_PER_CALL);
+#endif
+#endif
+
     // Timer IRQs must only be enabled after the receiver is configured otherwise race conditions occur.
     expressLrsTimerEnableIRQs();
 
@@ -746,6 +839,43 @@ static void handleConfigUpdate(void)
     }
 }
 
+#ifdef USE_RX_EXPRESSLRS_TELEMETRY
+static void updateTelemetryBurst(void)
+{
+    if (telemBurstValid) {
+        return;
+    }
+    telemBurstValid = true;
+
+    uint32_t hz = rateEnumToHz(receiver.mod_params->enumRate);
+    uint32_t ratiodiv = tlmRatioEnumToValue(receiver.mod_params->tlmInterval);
+    // telemInterval = 1000 / (hz / ratiodiv);
+    // burst = TELEM_MIN_LINK_INTERVAL / telemInterval;
+    // This ^^^ rearranged to preserve precision vvv
+    telemetryBurstMax = TELEM_MIN_LINK_INTERVAL * hz / ratiodiv / 1000U;
+
+    // Reserve one slot for LINK telemetry
+    if (telemetryBurstMax > 1) {
+        --telemetryBurstMax;
+    } else {
+        telemetryBurstMax = 1;
+    }
+
+    // Notify the sender to adjust its expected throughput
+    updateTelemetryRate(hz, ratiodiv, telemetryBurstMax);
+}
+
+static void handleTelemetryUpdate(void)
+{
+    uint8_t *nextPayload = 0;
+    uint8_t nextPlayloadSize = 0;
+    if (!isTelemetrySenderActive() && getNextTelemetryPayload(&nextPlayloadSize, &nextPayload)) {
+        setTelemetryDataToTransmit(nextPlayloadSize, nextPayload, ELRS_TELEMETRY_BYTES_PER_CALL);
+    }
+    updateTelemetryBurst();
+}
+#endif
+
 void expressLrsSetRcDataFromPayload(uint16_t *rcData, const uint8_t *payload)
 {
     if (rcData && payload) {
@@ -792,6 +922,9 @@ rx_spi_received_e expressLrsDataReceived(uint8_t *payload)
 
     handleTimeout();
     handleConfigUpdate();
+#ifdef USE_RX_EXPRESSLRS_TELEMETRY
+    handleTelemetryUpdate();
+#endif
 
     receiver.bound ? rxSpiLedBlinkRxLoss(result) : rxSpiLedBlinkBind();
 

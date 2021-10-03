@@ -441,5 +441,23 @@ extern "C" {
         return (a / b) + destFrom;
     }
 
+<<<<<<< HEAD
     void expressLrsInitialiseTimer(elrsReceiver_t *) {}
+=======
+    void expressLrsInitialiseTimer(TIM_TypeDef *, elrsReceiver_t *) {}
+    void expressLrsTimerEnableIRQs(void) {}
+    void expressLrsUpdateTimerInterval(uint16_t ) {}
+    void expressLrsUpdatePhaseShift(int32_t ) {}
+    void expressLrsTimerIncreaseFrequencyOffset(void) {}
+    void expressLrsTimerDecreaseFrequencyOffset(void) {}
+    void expressLrsTimerStop(void) {}
+    void expressLrsTimerResume(void) {}
+    bool expressLrsTimerIsRunning(void) { return true; }
+    void expressLrsTimerDebug(void) {}
+
+    int32_t simpleLPFilterUpdate(simpleLowpassFilter_t *, int32_t ) { return 0; };
+    void simpleLPFilterInit(simpleLowpassFilter_t *, int32_t , int32_t ) {};
+    void dbgPinHi(int ) {};
+    void dbgPinLo(int ) {};
+>>>>>>> b56c8f06f... ExpressLRS - added extended telemetry and MSP support.
 }

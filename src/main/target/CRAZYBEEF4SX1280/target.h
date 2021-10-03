@@ -76,6 +76,7 @@
 // *************** SPI RX **********************
 #define USE_RX_SPI
 #define USE_RX_EXPRESSLRS
+#define USE_RX_EXPRESSLRS_TELEMETRY
 #define USE_RX_SX1280
 //#define USE_RX_SX127X
 

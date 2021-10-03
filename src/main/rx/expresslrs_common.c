@@ -514,7 +514,25 @@ uint8_t tlmRatioEnumToValue(const elrs_tlm_ratio_e enumval)
 }
 
 #define ELRS_LQ_BIT_COUNT 100
-#define ELRS_LQ_DEPTH ((ELRS_LQ_BIT_COUNT + 31) / 32)
+/* #define ELRS_LQ_DEPTH ((ELRS_LQ_BIT_COUNT + 31) / 32) */
+#define ELRS_LQ_DEPTH 4 //100 % 32
+#ifdef USE_RX_EXPRESSLRS_TELEMETRY
+uint16_t rateEnumToHz(const elrs_rf_rate_e eRate)
+{
+    switch(eRate)
+    {
+    case RATE_500HZ: return 500;
+    case RATE_250HZ: return 250;
+    case RATE_200HZ: return 200;
+    case RATE_150HZ: return 150;
+    case RATE_100HZ: return 100;
+    case RATE_50HZ: return 50;
+    case RATE_25HZ: return 25;
+    case RATE_4HZ: return 4;
+    default: return 1;
+    }
+}
+#endif
 
 typedef struct linkQuality_s {
     uint32_t array[ELRS_LQ_DEPTH];

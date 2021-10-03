@@ -24,8 +24,6 @@
 #include "telemetry/crsf.h"
 #include "telemetry/smartport.h"
 
-typedef void (*mspResponseFnPtr)(uint8_t *payload);
-
 struct mspPacket_s;
 typedef struct mspPackage_s {
     sbuf_t requestFrame;
