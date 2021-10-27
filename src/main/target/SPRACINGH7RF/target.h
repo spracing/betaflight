@@ -301,6 +301,7 @@
 #define USE_RX_SPI
 #define USE_RX_EXPRESSLRS
 #define USE_RX_SX1280
+#define USE_RX_EXPRESSLRS_TELEMETRY
 
 #define RX_SPI_INSTANCE                                 SPI2
 #define RX_NSS_PIN                                      SPI2_NSS_PIN
