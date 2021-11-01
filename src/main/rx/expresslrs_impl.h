@@ -24,16 +24,16 @@
 // 11 -> tlm packet
 // 10 -> sync packet with hop data
 typedef enum {
-    ELRS_RC_DATA_PACKET=0x00,
-    ELRS_MSP_DATA_PACKET=0x01,
-    ELRS_SYNC_PACKET=0x02,
-    ELRS_TLM_PACKET=0x03,
+    ELRS_RC_DATA_PACKET = 0x00,
+    ELRS_MSP_DATA_PACKET = 0x01,
+    ELRS_SYNC_PACKET = 0x02,
+    ELRS_TLM_PACKET = 0x03,
 } elrs_packet_type_e;
 
 typedef enum {
     DIO_UNKNOWN = 0,
-    DIO_RX_DONE,
-    DIO_TX_DONE
+    DIO_RX_DONE = 1,
+    DIO_TX_DONE = 2
 } dioReason_e;
 
 typedef enum {
@@ -62,8 +62,6 @@ typedef struct elrsReceiver_s {
 
     uint8_t uplinkLQ;
     lqMode_e lqMode;
-
-    dioReason_e dioReason;
 
     uint32_t validPacketReceivedAtUs;
     uint16_t missedPackets;

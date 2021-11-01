@@ -71,18 +71,21 @@ static bool sx127xDetectChip(void)
     return flagFound;
 }
 
-bool sx127xISR(timeUs_t *timeStamp)
+uint8_t sx127xISR(timeUs_t *timeStamp)
 {
     if (rxSpiPollExti()) {
         if (rxSpiGetLastExtiTimeUs()) {
             *timeStamp = rxSpiGetLastExtiTimeUs();
         }
 
+        uint8_t irqReason;
+        irqReason = sx127xGetIrqReason();
+
         rxSpiResetExti();
 
-        return true;
+        return irqReason;
     }
-    return false;
+    return 0;
 }
 
 bool sx127xInit(IO_t resetPin, IO_t busyPin)
@@ -264,7 +267,6 @@ void sx127xSetFrequencyReg(const uint32_t freq)
 
 void sx127xTransmitData(const uint8_t *data, const uint8_t length)
 {
-    sx127xClearIRQFlags();
     sx127xSetMode(SX127x_OPMODE_STANDBY);
 
     sx127xWriteRegister(SX127X_REG_FIFO_ADDR_PTR, SX127X_FIFO_TX_BASE_ADDR_MAX);
@@ -275,13 +277,11 @@ void sx127xTransmitData(const uint8_t *data, const uint8_t length)
 
 void sx127xReceiveData(uint8_t *data, const uint8_t length)
 {
-    sx127xClearIRQFlags();
     sx127xReadRegisterFIFO(data, length);
 }
 
 void sx127xStartReceiving(void)
 {
-    sx127xClearIRQFlags();
     sx127xSetMode(SX127x_OPMODE_STANDBY);
     sx127xWriteRegister(SX127X_REG_FIFO_ADDR_PTR, SX127X_FIFO_RX_BASE_ADDR_MAX);
     sx127xSetMode(SX127x_OPMODE_RXCONTINUOUS);
@@ -426,9 +426,26 @@ void sx127xGetLastPacketStats(int8_t *rssi, int8_t *snr)
     *snr = sx127xGetLastPacketSNR();
 }
 
-void sx127xClearIRQFlags(void)
+uint8_t sx127xGetIrqFlags(void)
+{
+    return sx127xGetRegisterValue(SX127X_REG_IRQ_FLAGS, 7, 0);
+}
+
+void sx127xClearIrqFlags(void)
 {
     sx127xWriteRegister(SX127X_REG_IRQ_FLAGS, 0xFF);
+}
+
+uint8_t sx127xGetIrqReason(void)
+{
+    uint8_t irqFlags = sx127xGetIrqFlags();
+    sx127xClearIrqFlags();
+    if ((irqFlags & SX127X_CLEAR_IRQ_FLAG_TX_DONE)) {
+        return 2;
+    } else if ((irqFlags & SX127X_CLEAR_IRQ_FLAG_RX_DONE)) {
+        return 1;
+    }
+    return 0;
 }
 
 void sx127xConfigLoraDefaults(const bool iqInverted)
@@ -436,6 +453,8 @@ void sx127xConfigLoraDefaults(const bool iqInverted)
     sx127xWriteRegister(SX127X_REG_OP_MODE, SX127x_OPMODE_SLEEP);
     sx127xWriteRegister(SX127X_REG_OP_MODE, SX127x_OPMODE_LORA); //must be written in sleep mode
     sx127xSetMode(SX127x_OPMODE_STANDBY);
+
+    sx127xClearIrqFlags();
 
     sx127xWriteRegister(SX127X_REG_PAYLOAD_LENGTH, 8);
     sx127xSetSyncWord(SX127X_SYNC_WORD);

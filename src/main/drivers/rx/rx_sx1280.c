@@ -101,18 +101,21 @@ bool sx1280Init(IO_t resetPin, IO_t busyPin)
     return true;
 }
 
-bool sx1280ISR(timeUs_t *timeStamp)
+uint8_t sx1280ISR(timeUs_t *timeStamp)
 {
     if (rxSpiPollExti()) {
         if (rxSpiGetLastExtiTimeUs()) {
             *timeStamp = rxSpiGetLastExtiTimeUs();
         }
 
+        uint8_t irqReason;
+        irqReason = sx1280GetIrqReason();
+
         rxSpiResetExti();
 
-        return true;
+        return irqReason;
     }
-    return false;
+    return 0;
 }
 
 void sx1280WriteCommand(const uint8_t address, const uint8_t data)
@@ -420,6 +423,14 @@ void sx1280SetDioIrqParams(const uint16_t irqMask, const uint16_t dio1Mask, cons
     sx1280WriteCommandBurst(SX1280_RADIO_SET_DIOIRQPARAMS, buf, 8);
 }
 
+uint16_t sx1280GetIrqStatus(void)
+{
+    uint8_t status[2];
+
+    sx1280ReadCommandBurst(SX1280_RADIO_GET_IRQSTATUS, status, 2);
+    return status[0] << 8 | status[1];
+}
+
 void sx1280ClearIrqStatus(const uint16_t irqMask)
 {
     uint8_t buf[2];
@@ -430,16 +441,20 @@ void sx1280ClearIrqStatus(const uint16_t irqMask)
     sx1280WriteCommandBurst(SX1280_RADIO_CLR_IRQSTATUS, buf, 2);
 }
 
+uint8_t sx1280GetIrqReason(void)
+{
+    uint16_t irqStatus = sx1280GetIrqStatus();
+    sx1280ClearIrqStatus(SX1280_IRQ_RADIO_ALL);
+    if ((irqStatus & SX1280_IRQ_TX_DONE)) {
+        return 2;
+    } else if ((irqStatus & SX1280_IRQ_RX_DONE)) {
+        return 1;
+    }
+    return 0;
+}
+
 void sx1280TransmitData(const uint8_t *data, const uint8_t length)
 {
-    /*if (instance->currOpmode == SX1280_MODE_TX) //catch TX timeout
-    {
-        instance->ClearIrqStatus(SX1280_IRQ_RADIO_ALL);
-        instance->SetMode(SX1280_MODE_FS);
-        TXnbISR();
-        return;
-    }*/
-    sx1280ClearIrqStatus(SX1280_IRQ_RADIO_ALL);
     sx1280WriteBuffer(0x00, data, length);
     sx1280SetMode(SX1280_MODE_TX);
 }
@@ -453,14 +468,12 @@ static uint8_t sx1280GetRxBufferAddr(void)
 
 void sx1280ReceiveData(uint8_t *data, const uint8_t length)
 {
-    sx1280ClearIrqStatus(SX1280_IRQ_RADIO_ALL);
     uint8_t FIFOaddr = sx1280GetRxBufferAddr();
     sx1280ReadBuffer(FIFOaddr, data, length);
 }
 
 void sx1280StartReceiving(void)
 {
-    sx1280ClearIrqStatus(SX1280_IRQ_RADIO_ALL);
     sx1280SetMode(SX1280_MODE_RX);
 }
 

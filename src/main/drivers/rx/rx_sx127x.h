@@ -298,7 +298,7 @@ typedef enum {
 #define SX127x_FREQ_CORRECTION_MIN ((int32_t)(-100000 / SX127x_FREQ_STEP))
 
 bool sx127xInit(IO_t resetPin, IO_t busyPin);
-bool sx127xISR(uint32_t *timeStamp);
+uint8_t sx127xISR(uint32_t *timeStamp);
 void sx127xWriteRegister(const uint8_t address, const uint8_t data);
 void sx127xWriteRegisterBurst(const uint8_t address, const uint8_t *data, const uint8_t length);
 uint8_t sx127xReadRegister(const uint8_t address);
@@ -330,7 +330,9 @@ uint8_t sx127xUnsignedGetLastPacketRSSI(void);
 int8_t sx127xGetLastPacketRSSI(void);
 int8_t sx127xGetCurrRSSI(void);
 int8_t sx127xGetLastPacketSNR(void);
-void sx127xClearIRQFlags(void);
+uint8_t sx127xGetIrqFlags(void);
+void sx127xClearIrqFlags(void);
+uint8_t sx127xGetIrqReason(void);
 void sx127xGetLastPacketStats(int8_t *rssi, int8_t *snr);
 
 void sx127xConfigLoraDefaults(const bool iqInverted);

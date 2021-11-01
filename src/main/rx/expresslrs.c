@@ -231,7 +231,9 @@ static void transmitTelemetry(void)
         case ELRS_TELEMETRY_TYPE_LINK:
 #ifdef USE_RX_EXPRESSLRS_TELEMETRY
             nextTelemetryType = ELRS_TELEMETRY_TYPE_DATA;
-            telemetryBurstCount = 0;
+            // Start the count at 1 because the next will be DATA and doing +1 before checking
+            // against Max below is for some reason 10 bytes more code
+            telemetryBurstCount = 1;
 #else
             nextTelemetryType = ELRS_TELEMETRY_TYPE_LINK;
 #endif
@@ -272,7 +274,6 @@ static void transmitTelemetry(void)
     packet[7] = crc & 0xFF;
 
     dbgPinHi(1);
-    receiver.dioReason = DIO_TX_DONE;
     receiver.lqMode = LQ_TRANSMITTING;
     receiver.transmitData(packet, ELRS_RX_TX_BUFF_SIZE);
 }
@@ -280,7 +281,6 @@ static void transmitTelemetry(void)
 static void startReceiving(void)
 {
     dbgPinLo(1);
-    receiver.dioReason = DIO_RX_DONE;
     receiver.lqMode = LQ_RECEIVING;
     receiver.startReceiving();
 }
@@ -892,20 +892,11 @@ rx_spi_received_e expressLrsDataReceived(uint8_t *payload)
         enterBindingMode();
     }
 
-    if (receiver.rxISR(&isrTimeStampUs)) {
-
-        // It's important to note that the DIO reason, and LQ mode are tracked separately as the task can run late.
-        // When a task runs late the reason for the DIO might not match the current LQ mode.  i.e. if telemetry is sent
-        // then the task is late the LQ mode should be LQ_RECEIVING but the reason for the DIO will be DIO_TX_DONE.
-
-        // Note: it is possible to read the IRQ state from the receiver to find out the cause of the EXTI (DIO) trigger
-        // (e.g. see SX1280_RADIO_GET_IRQSTATUS), but instead we maintain state to avoid having to read from the device via SPI.
-
-        if (receiver.dioReason == DIO_TX_DONE) {
-            startReceiving();
-        } else {
-            result = processRFPacket(payload, isrTimeStampUs);
-        }
+    uint8_t irqReason = receiver.rxISR(&isrTimeStampUs);
+    if (irqReason == DIO_TX_DONE) {
+        startReceiving();
+    } else if (irqReason == DIO_RX_DONE) {
+        result = processRFPacket(payload, isrTimeStampUs);
     }
 
     if (receiver.nextChannelRequired) {

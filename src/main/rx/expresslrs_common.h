@@ -111,7 +111,7 @@ typedef struct elrs_mod_settings_s {
 typedef bool (*elrsRxInitFnPtr)(IO_t resetPin, IO_t busyPin);
 typedef void (*elrsRxConfigFnPtr)(const uint8_t bw, const uint8_t sf, const uint8_t cr, const uint32_t freq, const uint8_t preambleLen, const bool iqInverted);
 typedef void (*elrsRxStartReceivingFnPtr)(void);
-typedef bool (*elrsRxISRFnPtr)(timeUs_t *timeStamp);
+typedef uint8_t (*elrsRxISRFnPtr)(timeUs_t *timeStamp);
 typedef void (*elrsRxTransmitDataFnPtr)(const uint8_t *data, const uint8_t length);
 typedef void (*elrsRxReceiveDataFnPtr)(uint8_t *data, const uint8_t length);
 typedef void (*elrsRxGetRFlinkInfoFnPtr)(int8_t *rssi, int8_t *snr);

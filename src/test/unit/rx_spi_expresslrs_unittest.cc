@@ -401,10 +401,10 @@ extern "C" {
 
     void sx1280Config(const sx1280_lora_bandwidths_e , const sx1280_lora_spreading_factors_e , const sx1280_lora_coding_rates_e , const uint32_t , const uint8_t , const bool ) {}
     void sx1280StartReceiving(void) {}
-    bool sx1280ISR(uint32_t *timestamp)
+    uint8_t sx1280ISR(uint32_t *timestamp)
     {
         *timestamp = 0;
-        return true;
+        return 0;
     }
     void sx1280TransmitData(const uint8_t *, const uint8_t ) {}
     void sx1280ReceiveData(uint8_t *, const uint8_t ) {}
@@ -419,10 +419,10 @@ extern "C" {
 
     void sx127xConfig(const sx127x_bandwidth_e , const sx127x_spreading_factor_e , const sx127x_coding_rate_e , const uint32_t , const uint8_t , const bool ) {}
     void sx127xStartReceiving(void) {}
-    bool sx127xISR(uint32_t *timestamp)
+    uint8_t sx127xISR(uint32_t *timestamp)
     {
         *timestamp = 0;
-        return true;
+        return 0;
     }
     void sx127xTransmitData(const uint8_t *, const uint8_t ) {}
     void sx127xReceiveData(uint8_t *, const uint8_t ) {}
