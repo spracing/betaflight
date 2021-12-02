@@ -214,7 +214,7 @@ void doTestDisarm()
            enabledStats >>= 1;
         }
 
-        displayPortTestBufferSubstring(2 + 2, 7 - count / 2, "--- STATS ---");
+        displayPortTestBufferSubstring(2 + 2, 0, "--- STATS ---");
     }
 }
 
@@ -476,7 +476,7 @@ TEST_F(OsdTest, TestStatsTiming)
 
     // then
     // statistics screen should display the following
-    int row = 7;
+    int row = 1;
     displayPortTestBufferSubstring(2, row++, "2017-11-19 10:12:");
     displayPortTestBufferSubstring(2, row++, "TOTAL ARM         : 00:02.50");
     displayPortTestBufferSubstring(2, row++, "LAST ARM          : 00:01");
@@ -511,7 +511,7 @@ TEST_F(OsdTest, TestStatsImperial)
 
     // then
     // statistics screen should display the following
-    int row = 5;
+    int row = 2;
     displayPortTestBufferSubstring(2, row++, "MAX ALTITUDE      : 6.6%c", SYM_FT);
     displayPortTestBufferSubstring(2, row++, "MAX SPEED         : 17");
     displayPortTestBufferSubstring(2, row++, "MAX DISTANCE      : 3772%c", SYM_FT);
@@ -547,7 +547,7 @@ TEST_F(OsdTest, TestStatsMetric)
 
     // then
     // statistics screen should display the following
-    int row = 5;
+    int row = 2;
     displayPortTestBufferSubstring(2, row++, "MAX ALTITUDE      : 2.0%c", SYM_M);
     displayPortTestBufferSubstring(2, row++, "MAX SPEED         : 28");
     displayPortTestBufferSubstring(2, row++, "MAX DISTANCE      : 1.15%c", SYM_KM);
@@ -583,7 +583,7 @@ TEST_F(OsdTest, TestStatsMetricDistanceUnits)
 
     // then
     // statistics screen should display the following
-    int row = 5;
+    int row = 2;
     displayPortTestBufferSubstring(2, row++, "MAX ALTITUDE      : 2.0%c", SYM_M);
     displayPortTestBufferSubstring(2, row++, "MAX SPEED         : 28");
     displayPortTestBufferSubstring(2, row++, "MAX DISTANCE      : 1.15%c", SYM_KM);
