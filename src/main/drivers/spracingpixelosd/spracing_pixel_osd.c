@@ -194,11 +194,11 @@ static void configureDMAHandlers(void)
     // ADC DMA
     //
 
-    dmaResource_t *adcDmaRef = dmaGetRefByIdentifier(DMA2_ST5_HANDLER);
     uint16_t adcDmaParam = 0;
 
-    dmaInit(dmaGetIdentifier(adcDmaRef), OWNER_OSD, 0);
-    dmaSetHandler(dmaGetIdentifier(adcDmaRef), ADC_DMA_IRQHandler, NVIC_PRIO_VIDEO_ADC, adcDmaParam);
+    dmaIdentifier_e adcDmaIdentifier = DMA2_ST5_HANDLER;
+    dmaAllocate(adcDmaIdentifier, OWNER_OSD, 0);
+    dmaSetHandler(adcDmaIdentifier, ADC_DMA_IRQHandler, NVIC_PRIO_VIDEO_ADC, adcDmaParam);
 
     //
     // Sync Detecton
@@ -232,8 +232,9 @@ static void configureDMAHandlers(void)
     uint16_t syncTimerChannel = syncTimerHardware->channel;
     uint16_t syncDmaIndex = timerDmaIndex(syncTimerChannel);
 
-    dmaInit(dmaGetIdentifier(syncDmaRef), OWNER_OSD, 0);
-    dmaSetHandler(dmaGetIdentifier(syncDmaRef), SYNC_DMA_IRQHandler, NVIC_PRIO_VIDEO_DMA, syncDmaIndex);
+    dmaIdentifier_e syncDmaIdentifier = dmaGetIdentifier(syncDmaRef);
+    dmaAllocate(syncDmaIdentifier, OWNER_OSD, 0);
+    dmaSetHandler(syncDmaIdentifier, SYNC_DMA_IRQHandler, NVIC_PRIO_VIDEO_DMA, syncDmaIndex);
 
     //
     // Pixel Generation DMA
@@ -262,8 +263,9 @@ static void configureDMAHandlers(void)
     uint16_t pixelTimerChannel = pixelTimerHardware->channel;
     uint16_t pixelDmaIndex = timerDmaIndex(pixelTimerChannel);
 
-    dmaInit(dmaGetIdentifier(pixelDmaRef), OWNER_OSD, 0);
-    dmaSetHandler(dmaGetIdentifier(pixelDmaRef), PIXEL_DMA_IRQHandler, NVIC_PRIO_VIDEO_DMA, pixelDmaIndex);
+    dmaIdentifier_e pixelDmaIdentifier = dmaGetIdentifier(pixelDmaRef);
+    dmaAllocate(pixelDmaIdentifier, OWNER_OSD, 0);
+    dmaSetHandler(pixelDmaIdentifier, PIXEL_DMA_IRQHandler, NVIC_PRIO_VIDEO_DMA, pixelDmaIndex);
 }
 
 typedef struct spracingPixelOSDIO_s {
