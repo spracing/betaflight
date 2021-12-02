@@ -215,7 +215,7 @@ static void transmitTelemetry(void)
     packet[0] |= (crc >> 6) & 0xFC;
     packet[7] = crc & 0xFF;
 
-    DEBUG_HI(1);
+    dbgPinHi(1);
     receiver.dioReason = DIO_TX_DONE;
     receiver.lqMode = LQ_TRANSMITTING;
     receiver.transmitData(packet, ELRS_RX_TX_BUFF_SIZE);
@@ -223,7 +223,7 @@ static void transmitTelemetry(void)
 
 static void startReceiving(void)
 {
-    DEBUG_LO(1);
+    dbgPinLo(1);
     receiver.dioReason = DIO_RX_DONE;
     receiver.lqMode = LQ_RECEIVING;
     receiver.startReceiving();
