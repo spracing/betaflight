@@ -42,4 +42,3 @@ TARGET_SRC += \
             rx/expresslrs.c \
             rx/expresslrs_common.c \
             rx/expresslrs_telemetry.c \
-            
