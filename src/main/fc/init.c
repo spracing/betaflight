@@ -229,7 +229,10 @@ static void configureSPIBusses(void)
     spiInit(SPIDEV_6);
 #endif
 #endif // USE_SPI
+}
 
+static void configureQuadSPIBusses(void)
+{
 #ifdef USE_QUADSPI
     quadSpiPinConfigure(quadSpiConfig(0));
 
@@ -237,13 +240,15 @@ static void configureSPIBusses(void)
     quadSpiInit(QUADSPIDEV_1);
 #endif
 #endif // USE_QUAD_SPI
+}
 
+static void configureOctoSPIBusses(void)
+{
 #ifdef USE_OCTOSPI
 #ifdef USE_OCTOSPI_DEVICE_1
     octoSpiInit(OCTOSPIDEV_1);
 #endif
 #endif
-
 }
 
 #ifdef USE_SDCARD
@@ -301,9 +306,10 @@ void init(void)
 #endif
 
     enum {
-        FLASH_INIT_ATTEMPTED            = (1 << 0),
-        SD_INIT_ATTEMPTED               = (1 << 1),
-        SPI_BUSSES_INIT_ATTEMPTED      = (1 << 2),
+        FLASH_INIT_ATTEMPTED                = (1 << 0),
+        SD_INIT_ATTEMPTED                   = (1 << 1),
+        SPI_BUSSES_INIT_ATTEMPTED           = (1 << 2),
+        QUAD_OCTO_SPI_BUSSES_INIT_ATTEMPTED = (1 << 3),
     };
     uint8_t initFlags = 0;
 
@@ -377,9 +383,16 @@ void init(void)
 #error "CONFIG_IN_EXTERNAL_FLASH/CONFIG_IN_MEMORY_MAPPED_FLASH and TARGET_BUS_INIT are mutually exclusive"
 #endif
 
+#if defined(CONFIG_IN_EXTERNAL_FLASH)
     configureSPIBusses();
     initFlags |= SPI_BUSSES_INIT_ATTEMPTED;
+#endif
 
+#if defined(CONFIG_IN_MEMORY_MAPPED_FLASH) || defined(CONFIG_IN_EXTERNAL_FLASH)
+    configureQuadSPIBusses();
+    configureOctoSPIBusses();
+    initFlags |= QUAD_OCTO_SPI_BUSSES_INIT_ATTEMPTED;
+#endif
 
 #ifndef USE_FLASH_CHIP
 #error "CONFIG_IN_EXTERNAL_FLASH/CONFIG_IN_MEMORY_MAPPED_FLASH requires USE_FLASH_CHIP to be defined."
@@ -393,6 +406,7 @@ void init(void)
     initFlags |= FLASH_INIT_ATTEMPTED;
 
 #endif // CONFIG_IN_EXTERNAL_FLASH || CONFIG_IN_MEMORY_MAPPED_FLASH
+
 
     initEEPROM();
 
@@ -598,6 +612,12 @@ void init(void)
     if (!(initFlags & SPI_BUSSES_INIT_ATTEMPTED)) {
         configureSPIBusses();
         initFlags |= SPI_BUSSES_INIT_ATTEMPTED;
+    }
+
+    if (!(initFlags & QUAD_OCTO_SPI_BUSSES_INIT_ATTEMPTED)) {
+        configureQuadSPIBusses();
+        configureOctoSPIBusses();
+        initFlags |= QUAD_OCTO_SPI_BUSSES_INIT_ATTEMPTED;
     }
 
 #if defined(USE_SDCARD_SDIO) && !defined(CONFIG_IN_SDCARD) && defined(STM32H7)
