@@ -380,7 +380,7 @@ $(TARGET_BIN): $(TARGET_UNPATCHED_BIN)
 # As a workaround drop the ._user_heap_stack section, which is only used during build to show errors if there's not enough space for the heap/stack. 
 # The issue can be seen with `readelf -S $(TARGET_EXST_ELF)' vs `readelf -S $(TARGET_ELF)`
 	$(V1) @echo "Patching updated HASH section into $(TARGET_EXST_ELF)" "$(STDOUT)"
-	$(OBJCOPY) $(TARGET_ELF) $(TARGET_EXST_ELF) --remove-section ._user_heap_stack --update-section .exst_hash=$(TARGET_EXST_HASH_SECTION_FILE)
+	$(OBJCOPY) $(TARGET_ELF) $(TARGET_EXST_ELF) --update-section .exst_hash=$(TARGET_EXST_HASH_SECTION_FILE)
 
 	$(V1) $(READELF) -S $(TARGET_EXST_ELF)
 	$(V1) $(READELF) -l $(TARGET_EXST_ELF)
