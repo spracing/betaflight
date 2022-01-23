@@ -32,9 +32,12 @@
 
 #ifdef USE_RX_SX1280
 
+#include "build/atomic.h"
+
 #include "drivers/bus_spi.h"
 #include "drivers/io.h"
 #include "drivers/io_impl.h"
+#include "drivers/nvic.h"
 #include "drivers/rx/rx_sx1280.h"
 #include "drivers/rx/rx_spi.h"
 #include "drivers/time.h"
@@ -103,16 +106,23 @@ bool sx1280Init(IO_t resetPin, IO_t busyPin)
 
 uint8_t sx1280ISR(timeUs_t *timeStamp)
 {
-    if (rxSpiPollExti()) {
-        if (rxSpiGetLastExtiTimeUs()) {
-            *timeStamp = rxSpiGetLastExtiTimeUs();
+    bool exti_triggered = false;
+    timeUs_t exti_timestamp;
+
+    ATOMIC_BLOCK(NVIC_PRIO_RX_SPI_INT_EXTI) {
+        // prevent a data-race that can occur if a new EXTI ISR occurs during this block.
+        exti_triggered = rxSpiPollExti();
+        exti_timestamp = rxSpiGetLastExtiTimeUs();
+        if (exti_triggered) {
+            rxSpiResetExti();
         }
+    }
 
-        uint8_t irqReason;
-        irqReason = sx1280GetIrqReason();
-
-        rxSpiResetExti();
-
+    if (exti_triggered) {
+        uint8_t irqReason = sx1280GetIrqReason();
+        if (exti_timestamp) {
+            *timeStamp = exti_timestamp;
+        }
         return irqReason;
     }
     return 0;
