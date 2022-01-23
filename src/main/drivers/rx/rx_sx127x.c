@@ -31,9 +31,12 @@
 
 #ifdef USE_RX_SX127X
 
+#include "build/atomic.h"
+
 #include "drivers/bus_spi.h"
 #include "drivers/io.h"
 #include "drivers/io_impl.h"
+#include "drivers/nvic.h"
 #include "drivers/rx/rx_sx127x.h"
 #include "drivers/rx/rx_spi.h"
 #include "drivers/time.h"
@@ -73,15 +76,23 @@ static bool sx127xDetectChip(void)
 
 uint8_t sx127xISR(timeUs_t *timeStamp)
 {
-    if (rxSpiPollExti()) {
-        if (rxSpiGetLastExtiTimeUs()) {
+    bool exti_triggered = false;
+    timeUs_t exti_timestamp;
+
+    ATOMIC_BLOCK(NVIC_PRIO_RX_SPI_INT_EXTI) {
+        // prevent a data-race that can occur if a new EXTI ISR occurs during this block.
+        exti_triggered = rxSpiPollExti();
+        exti_timestamp = rxSpiGetLastExtiTimeUs();
+        if (exti_triggered) {
+            rxSpiResetExti();
+        }
+    }
+
+    if (exti_triggered) {
+        uint8_t irqReason = sx127xGetIrqReason();
+        if (exti_timestamp) {
             *timeStamp = rxSpiGetLastExtiTimeUs();
         }
-
-        uint8_t irqReason;
-        irqReason = sx127xGetIrqReason();
-
-        rxSpiResetExti();
 
         return irqReason;
     }
