@@ -1059,6 +1059,8 @@ static void enterBindingMode(void)
 
 static uint32_t isrTimeStampUs;
 
+static uint16_t unexpectedIRQReasonCounter = 0;
+
 rx_spi_received_e expressLrsDataReceived(uint8_t *payload)
 {
     rx_spi_received_e result = RX_SPI_RECEIVED_NONE;
@@ -1074,6 +1076,7 @@ rx_spi_received_e expressLrsDataReceived(uint8_t *payload)
 
     uint8_t irqReason = receiver.rxISR(&isrTimeStampUs);
     if (irqReason == ELRS_DIO_RX_AND_TX_DONE) {
+        unexpectedIRQReasonCounter++;
         startReceiving();
     } else if (irqReason == ELRS_DIO_TX_DONE) {
         startReceiving();
@@ -1115,7 +1118,7 @@ rx_spi_received_e expressLrsDataReceived(uint8_t *payload)
     handleLinkStatsUpdate(timeStampMs);
 
     DEBUG_SET(DEBUG_RX_EXPRESSLRS_SPI, 0, lostConnectionCounter);
-    DEBUG_SET(DEBUG_RX_EXPRESSLRS_SPI, 1, receiver.rssiFiltered);
+    DEBUG_SET(DEBUG_RX_EXPRESSLRS_SPI, 1, unexpectedIRQReasonCounter);
     DEBUG_SET(DEBUG_RX_EXPRESSLRS_SPI, 2, receiver.snr);
     DEBUG_SET(DEBUG_RX_EXPRESSLRS_SPI, 3, receiver.uplinkLQ);
 
