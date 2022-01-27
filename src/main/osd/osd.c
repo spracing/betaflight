@@ -1198,10 +1198,9 @@ bool osdUpdateCheck(timeUs_t currentTimeUs, timeDelta_t currentDeltaTimeUs)
 // Called when there is OSD update work to be done
 void osdUpdate(timeUs_t currentTimeUs)
 {
-    // Times are known to be short so use uint16_t rather than timeUs_t
-    static uint16_t osdStateDurationFracUs[OSD_STATE_COUNT] = { 0 };
+    static uint32_t osdStateDurationFracUs[OSD_STATE_COUNT] = { 0 };
     static uint16_t osdElementDurationUs[OSD_ITEM_COUNT] = { 0 };
-    static uint16_t osdElementGroupMembership[OSD_ITEM_COUNT];
+    static uint8_t osdElementGroupMembership[OSD_ITEM_COUNT];
     static uint16_t osdElementGroupTargetFracUs[OSD_GROUP_COUNT] = { 0 };
     static uint16_t osdElementGroupDurationFracUs[OSD_GROUP_COUNT] = { 0 };
     static uint8_t osdElementGroup;
