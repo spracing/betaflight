@@ -1204,17 +1204,18 @@ bool osdUpdateCheck(timeUs_t currentTimeUs, timeDelta_t currentDeltaTimeUs)
     return (osdState != OSD_STATE_IDLE);
 }
 
+static uint16_t osdStateDurationFractionUs[OSD_STATE_COUNT] = { 0 };
+static uint32_t osdElementDurationUs[OSD_ITEM_COUNT] = { 0 };
+static uint8_t osdElementGroupMemberships[OSD_ITEM_COUNT];
+static uint16_t osdElementGroupTargetFractionUs[OSD_GROUP_COUNT] = { 0 };
+static uint16_t osdElementGroupDurationFractionUs[OSD_GROUP_COUNT] = { 0 };
+static uint8_t osdElementGroup;
+static uint8_t osdCurrentElementGroup = 0;
+
 // Called when there is OSD update work to be done
 void osdUpdate(timeUs_t currentTimeUs)
 {
-    static uint16_t osdStateDurationFractionUs[OSD_STATE_COUNT] = { 0 };
-    static uint32_t osdElementDurationUs[OSD_ITEM_COUNT] = { 0 };
-    static uint8_t osdElementGroupMemberships[OSD_ITEM_COUNT];
-    static uint16_t osdElementGroupTargetFractionUs[OSD_GROUP_COUNT] = { 0 };
-    static uint16_t osdElementGroupDurationFractionUs[OSD_GROUP_COUNT] = { 0 };
-    static uint8_t osdElementGroup;
     static bool firstPass = true;
-    uint8_t osdCurrentElementGroup = 0;
     timeUs_t executeTimeUs;
     osdState_e osdCurrentState = osdState;
 
