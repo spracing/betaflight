@@ -524,7 +524,7 @@ static const char* const lookupTableFreqDomain[] = {
 };
 
 static const char* const lookupTableSwitchMode[] = {
-    "HYBRID", "WIDE",
+    "WIDE", "HYBRID",
 };
 #endif
 
