@@ -19,6 +19,7 @@ HSE_VALUE    = 8000000
 # * OSD fonts
 # * OSD logos
 
+EXST ?= yes
 
 ifneq ($(EXST),)
 EXST = yes
