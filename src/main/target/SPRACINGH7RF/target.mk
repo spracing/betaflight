@@ -42,3 +42,5 @@ TARGET_SRC += \
             drivers/rx/expresslrs_driver.c \
             rx/expresslrs.c \
             rx/expresslrs_common.c \
+            rx/expresslrs_telemetry.c \
+            
