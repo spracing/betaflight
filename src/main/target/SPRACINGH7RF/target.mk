@@ -38,6 +38,6 @@ TARGET_SRC += \
             drivers/rx/rx_sx1280.c \
             drivers/rx/rx_sx127x.c \
             drivers/rx/rx_sx127x.c \
-            drivers/rx/expresslrs_hal.c \
+            drivers/rx/expresslrs_driver.c \
             rx/expresslrs.c \
             rx/expresslrs_common.c \
