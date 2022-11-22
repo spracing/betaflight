@@ -19,17 +19,15 @@ HSE_VALUE    = 8000000
 # * OSD fonts
 # * OSD logos
 
+EXST ?= yes
+
 ifneq ($(EXST),)
 EXST = yes
 EXST_ADJUST_VMA = 0x90100000
+LD_SCRIPT       = $(LINKER_DIR)/stm32_ram_h730_exst_spracingpixelosd.ld
 endif
 
 FEATURES       += VCP ONBOARDFLASH SPRACING_PIXEL_OSD
-
-ifneq ($(EXST),)
-EXST = yes
-LD_SCRIPT       = $(LINKER_DIR)/stm32_ram_h730_exst_spracingpixelosd.ld
-endif
 
 TARGET_SRC += \
             drivers/bus_quadspi_hal.c \
