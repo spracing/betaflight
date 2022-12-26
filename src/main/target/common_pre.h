@@ -25,17 +25,17 @@
     The purpose of this file is to enable the firmware "gates" for features and drivers
     prior to entering the target.h.
 
-    CLOUD_BUILD is used to signify that the build is a user requested build and that the 
+    CLOUD_BUILD is used to signify that the build is a user requested build and that the
     features to be enabled will be defined ALREADY.
 
-    CORE_BUILD is used to signify that the build is a user requested build and that the 
+    CORE_BUILD is used to signify that the build is a user requested build and that the
     features to be enabled will be the minimal set, and all the drivers should be present.
 
-    If neither of the above are present then the build should simply be a baseline build 
+    If neither of the above are present then the build should simply be a baseline build
     for continuous integration, i.e. the compilation of the majority of features and drivers
     dependent on the size of the flash available.
 
-    NOTE: for 4.5 we will be removing any conditions related to specific MCU types, instead 
+    NOTE: for 4.5 we will be removing any conditions related to specific MCU types, instead
     these should be defined in the target.h or in a file that is imported by target.h (in the
     case of common settings for a given MCU group)
 
@@ -166,6 +166,7 @@
 
 #if defined(USE_FLASH)
 
+#if !defined(USE_EXST)
 #define USE_FLASHFS
 #define USE_FLASH_TOOLS
 #define USE_FLASH_M25P16
@@ -174,6 +175,7 @@
 #define USE_FLASH_W25M512    // 512Kb (256Kb x 2 stacked) NOR flash support
 #define USE_FLASH_W25M02G    // 2Gb (1Gb x 2 stacked) NAND flash support
 #define USE_FLASH_W25Q128FV  // 16MB Winbond 25Q128
+#endif
 
 #endif
 #endif
