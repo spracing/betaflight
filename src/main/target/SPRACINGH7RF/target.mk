@@ -1,3 +1,6 @@
+TARGET_MCU        := STM32H730xx
+TARGET_MCU_FAMILY := STM32H7
+
 H730xB_TARGETS += $(TARGET)
 
 HSE_VALUE    = 8000000
@@ -30,8 +33,6 @@ endif
 FEATURES       += VCP ONBOARDFLASH SDCARD_SDIO SPRACING_PIXEL_OSD
 
 TARGET_SRC += \
-            drivers/bus_quadspi_hal.c \
-            drivers/bus_quadspi.c \
             $(addprefix drivers/accgyro/,$(notdir $(wildcard $(SRC_DIR)/drivers/accgyro/*.c))) \
             $(addprefix drivers/compass/,$(notdir $(wildcard $(SRC_DIR)/drivers/compass/*.c))) \
             $(addprefix drivers/barometer/,$(notdir $(wildcard $(SRC_DIR)/drivers/barometer/*.c))) \
