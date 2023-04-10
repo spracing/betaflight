@@ -44,6 +44,16 @@ timerIOConfig_t *timerIoConfigByTag(ioTag_t ioTag)
     return NULL;
 }
 
+// timerIndex index means 'occurrence index' of the ioTag in the TIMER_HARDWARE map.
+// e.g, for STM32H750 the TIMER_HARDWARE is defined by
+// "timerHardware_t fullTimerHardware"
+// which contains first:
+// DEF_TIM(TIM1, CH1N, PA7, TIM_USE_ANY, 0, 0, 0),
+// then:
+// DEF_TIM(TIM3, CH2, PA7, TIM_USE_ANY, 0, 0, 0),
+// so for TIM3 on PA7 the `timerIndex` would be `2` as PA7 appears first for `TIM1` and
+// `timerIndex` is one-based (unlike most other indexes).
+// Suggest renaming `timerIndex` to `tagOccurenceNumber`
 const timerHardware_t *timerGetByTagAndIndex(ioTag_t ioTag, unsigned timerIndex)
 {
 
